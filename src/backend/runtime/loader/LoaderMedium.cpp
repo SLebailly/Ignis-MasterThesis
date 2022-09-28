@@ -24,6 +24,23 @@ static void medium_homogeneous(std::ostream& stream, const std::string& name, co
     tree.endClosure();
 }
 
+static void medium_heterogeneous(std::ostream& stream, const std::string& name, const std::shared_ptr<Parser::Object>& medium, ShadingTree& tree)
+{
+    // FIXME: The shading context is not available here! Texture & PExpr will produce errors
+    tree.beginClosure(name);
+
+    const std::string filename = medium->property("filename").getString();
+
+    tree.addNumber("g", *medium, 0, true);
+
+    const std::string media_id = tree.currentClosureID();
+    stream << tree.pullHeader()
+           << "  let medium_" << media_id << " = make_heterogeneous_medium(" << filename
+           << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "));" << std::endl;
+
+    tree.endClosure();
+}
+
 // It is recommended to not define the medium, instead of using vacuum
 static void medium_vacuum(std::ostream& stream, const std::string& name, const std::shared_ptr<Parser::Object>&, ShadingTree& tree)
 {
@@ -42,6 +59,7 @@ static const struct {
     MediumLoader Loader;
 } _generators[] = {
     { "homogeneous", medium_homogeneous },
+    { "heterogeneous", medium_heterogeneous },
     { "constant", medium_homogeneous },
     { "vacuum", medium_vacuum },
     { "", nullptr }

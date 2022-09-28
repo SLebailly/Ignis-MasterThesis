@@ -245,7 +245,41 @@ void ShadingTree::addTexture(const std::string& name, const Parser::Object& obj,
 
     currentClosure().Parameters[name] = inline_str;
 }
+/*
+void ShadingTree::addVoxelGrid(const std::string& name, const Parser::Object& obj, const Vector3f& def, bool hasDef, const VectorOptions& options)
+{
+    if (hasParameter(name)) {
+        IG_LOG(L_ERROR) << "Multiple use of parameter '" << name << "'" << std::endl;
+        signalError();
+    }
 
+    const auto prop = obj.property(name);
+
+    std::string inline_str;
+    switch (prop.type()) {
+    default:
+        IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
+        [[fallthrough]];
+    case Parser::PT_NONE:
+        if (!hasDef)
+            return;
+        inline_str = acquireVector(name, def, options);
+        break;
+    case Parser::PT_INTEGER:
+    case Parser::PT_NUMBER:
+        inline_str = "vec3_expand(" + acquireNumber(name, prop.getNumber(), mapToNumberOptions(options)) + ")";
+        break;
+    case Parser::PT_VECTOR3:
+        inline_str = acquireVector(name, prop.getVector3(), options);
+        break;
+    case Parser::PT_STRING:
+        inline_str = "color_to_vec3(" + handleTexture(name, prop.getString(), true) + ")"; // TODO: Map options
+        break;
+    }
+
+    currentClosure().Parameters[name] = inline_str;
+}
+*/
 bool ShadingTree::beginClosure(const std::string& name)
 {
     mClosures.emplace_back(Closure{ name, getClosureID(name), {} });
