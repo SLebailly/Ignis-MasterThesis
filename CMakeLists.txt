@@ -7,7 +7,7 @@ endif()
 # Prevent in source builds
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 	if(NOT DEFINED WITH_IN_SOURCE_BUILD)
-		messag(FATAL_ERROR "CMake generation for Ignis is not allowed within the source directory! Define WITH_IN_SOURCE_BUILD if absolutely necessary!" )
+		message(FATAL_ERROR "CMake generation for Ignis is not allowed within the source directory! Define WITH_IN_SOURCE_BUILD if absolutely necessary!" )
 	endif()
 endif()
 
@@ -58,6 +58,7 @@ option(IG_WITH_PYTHON_API    "Build python API" ON)
 option(IG_WITH_TOOLS         "Build tools" ON)
 option(IG_WITH_DOCUMENTATION "Build the documentation if Sphinx is available on the system" ON)
 option(IG_WITH_ASSERTS       "Build with asserts even in release. It is always enabled on debug" OFF)
+option(IG_WITH_DENOISER      "Integrate Inten Open Image Denoise if available" ON)
 option(IG_USE_LTO 			 "Use linked time optimization if available in release" ON)
 
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.21)
@@ -110,6 +111,10 @@ find_package(TBB REQUIRED)
 
 # ZLib is used in the generator
 find_package(ZLIB REQUIRED)
+
+if(IG_WITH_DENOISER)
+	find_package(OpenImageDenoise)
+endif()
 
 include(cmake/GetDependencies.cmake)
 include(cmake/Install.cmake)
