@@ -206,6 +206,15 @@ bool Runtime::load(const std::filesystem::path& path, Parser::Scene&& scene)
     lopts.IsTracer            = mOptions.IsTracer;
     lopts.Scene               = std::move(scene);
     lopts.ForceSpecialization = mOptions.ForceSpecialization;
+    lopts.Denoiser            = mOptions.Denoiser;
+    lopts.Denoiser.Enabled    = !mOptions.IsTracer && mOptions.Denoiser.Enabled && hasDenoiser();
+
+    // Print a warning if denoiser was requested but none is available
+    if (mOptions.Denoiser.Enabled && !lopts.Denoiser.Enabled && !mOptions.IsTracer && hasDenoiser())
+        IG_LOG(L_WARNING) << "Trying to use denoiser but no denoiser is available" << std::endl;
+
+    if (lopts.Denoiser.Enabled)
+        IG_LOG(L_INFO) << "Using denoiser" << std::endl;
 
     // Extract technique
     setup_technique(lopts, mOptions);
@@ -241,10 +250,13 @@ bool Runtime::load(const std::filesystem::path& path, Parser::Scene&& scene)
     mTechniqueVariants        = std::move(result.TechniqueVariants);
     mResourceMap              = std::move(result.ResourceMap);
 
+    if (lopts.Denoiser.Enabled)
+        mTechniqueInfo.EnabledAOVs.emplace_back("Denoised");
+
     return setup();
 }
 
-void Runtime::step()
+void Runtime::step(bool ignoreDenoiser)
 {
     if (mOptions.IsTracer) {
         IG_LOG(L_ERROR) << "Trying to use step() in a trace driver!" << std::endl;
@@ -261,30 +273,35 @@ void Runtime::step()
 
         IG_ASSERT(active.size() > 0, "Expected some variants to be returned by the technique variant selector");
 
-        for (const auto& ind : active)
-            stepVariant(ind);
+        for (size_t i = 0; i < active.size(); ++i)
+            stepVariant(ignoreDenoiser, active[i], i == active.size() - 1);
     } else {
         for (size_t i = 0; i < mTechniqueVariants.size(); ++i)
-            stepVariant((int)i);
+            stepVariant(ignoreDenoiser, (int)i, i == mTechniqueVariants.size() - 1);
     }
 
     ++mCurrentIteration;
 }
 
-void Runtime::stepVariant(size_t variant)
+void Runtime::stepVariant(bool ignoreDenoiser, size_t variant, bool lastVariant)
 {
     IG_ASSERT(variant < mTechniqueVariants.size(), "Expected technique variant to be well selected");
     const auto& info = mTechniqueInfo.Variants[variant];
 
     // IG_LOG(L_DEBUG) << "Rendering iteration " << mCurrentIteration << ", variant " << variant << std::endl;
 
+    // Only apply denoiser after the final pass
+    if (!lastVariant)
+        ignoreDenoiser = true;
+
     DriverRenderSettings settings;
-    settings.rays        = nullptr; // No artifical ray streams
-    settings.device      = mDevice;
-    settings.spi         = info.GetSPI(mSamplesPerIteration);
-    settings.work_width  = info.GetWidth(mFilmWidth);
-    settings.work_height = info.GetHeight(mFilmHeight);
-    settings.info        = info;
+    settings.rays           = nullptr; // No artificial ray streams
+    settings.device         = mDevice;
+    settings.apply_denoiser = mOptions.Denoiser.Enabled && !ignoreDenoiser;
+    settings.spi            = info.GetSPI(mSamplesPerIteration);
+    settings.work_width     = info.GetWidth(mFilmWidth);
+    settings.work_height    = info.GetHeight(mFilmHeight);
+    settings.info           = info;
 
     setParameter("__spi", (int)settings.spi);
     mLoadedInterface.RenderFunction(mTechniqueVariantShaderSets[variant], settings, &mParameterSet, mCurrentIteration, mCurrentFrame);
@@ -317,7 +334,7 @@ void Runtime::trace(const std::vector<Ray>& rays, std::vector<float>& data)
     ++mCurrentIteration;
 
     // Get result
-    const float* data_ptr = getFramebuffer(0);
+    const float* data_ptr = getFramebuffer({}).Data;
     data.resize(rays.size() * 3);
     std::memcpy(data.data(), data_ptr, sizeof(float) * rays.size() * 3);
 }
@@ -330,12 +347,13 @@ void Runtime::traceVariant(const std::vector<Ray>& rays, size_t variant)
     // IG_LOG(L_DEBUG) << "Tracing iteration " << mCurrentIteration << ", variant " << variant << std::endl;
 
     DriverRenderSettings settings;
-    settings.rays        = rays.data();
-    settings.device      = mDevice;
-    settings.spi         = info.GetSPI(mSamplesPerIteration);
-    settings.work_width  = rays.size();
-    settings.work_height = 1;
-    settings.info        = info;
+    settings.rays           = rays.data();
+    settings.device         = mDevice;
+    settings.apply_denoiser = false;
+    settings.spi            = info.GetSPI(mSamplesPerIteration);
+    settings.work_width     = rays.size();
+    settings.work_height    = 1;
+    settings.info           = info;
 
     setParameter("__spi", (int)settings.spi);
     mLoadedInterface.RenderFunction(mTechniqueVariantShaderSets[variant], settings, &mParameterSet, mCurrentIteration, mCurrentFrame);
@@ -352,19 +370,21 @@ void Runtime::resizeFramebuffer(size_t width, size_t height)
     reset();
 }
 
-const float* Runtime::getFramebuffer(size_t aov) const
+AOVAccessor Runtime::getFramebuffer(const std::string& name) const
 {
-    return mLoadedInterface.GetFramebufferFunction(aov);
+    DriverAOVAccessor acc;
+    mLoadedInterface.GetFramebufferFunction((int)mDevice, name.c_str(), acc);
+    return AOVAccessor{ acc.Data, acc.IterationCount };
 }
 
 void Runtime::clearFramebuffer()
 {
-    return mLoadedInterface.ClearFramebufferFunction(-1);
+    return mLoadedInterface.ClearAllFramebufferFunction();
 }
 
-void Runtime::clearFramebuffer(size_t aov)
+void Runtime::clearFramebuffer(const std::string& name)
 {
-    return mLoadedInterface.ClearFramebufferFunction((int)aov);
+    return mLoadedInterface.ClearFramebufferFunction(name.c_str());
 }
 
 void Runtime::reset()
@@ -390,7 +410,7 @@ bool Runtime::setup()
     settings.framebuffer_width  = (uint32)mFilmWidth;
     settings.framebuffer_height = (uint32)mFilmHeight;
     settings.acquire_stats      = mAcquireStats;
-    settings.aov_count          = mTechniqueInfo.EnabledAOVs.size();
+    settings.aov_map            = &mTechniqueInfo.EnabledAOVs;
     settings.resource_map       = &mResourceMap;
 
     settings.logger = &IG_LOGGER;
