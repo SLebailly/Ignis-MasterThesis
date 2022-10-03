@@ -60,13 +60,14 @@ set(ARTIC_EXTRA_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/bsdf/plastic.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/bsdf/principled.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/bsdf/tensortree.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/impl/bsdf/djmeasured.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/camera/common.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/camera/fishlens.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/camera/orthogonal.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/camera/perspective.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/light/area.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/light/cie.art
-    ${CMAKE_CURRENT_SOURCE_DIR}/impl/light/common.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/impl/light/directional.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/light/env.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/light/point.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/light/spot.art
@@ -78,6 +79,7 @@ set(ARTIC_EXTRA_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/phase/uniform.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/technique/aotracer.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/technique/debugtracer.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/impl/technique/infobuffer.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/technique/pathtracer.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/technique/photonmapper.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/technique/volpathtracer.art
@@ -92,6 +94,7 @@ set(ARTIC_EXTRA_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/emitter.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/fresnel.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/interval.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/impl/light_hierarchy.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/light_selector.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/math.art
     ${CMAKE_CURRENT_SOURCE_DIR}/impl/microfacet.art
