@@ -30,12 +30,13 @@ static void medium_heterogeneous(std::ostream& stream, const std::string& name, 
     tree.beginClosure(name);
 
     const std::string filename = medium->property("filename").getString();
+    size_t res_id             = tree.context().registerExternalResource(filename)
 
     tree.addNumber("g", *medium, 0, true);
-
+    //child->property("transform").getTransform();
     const std::string media_id = tree.currentClosureID();
     stream << tree.pullHeader()
-           << "  let medium_" << media_id << " = make_heterogeneous_medium(" << filename
+           << "  let medium_" << media_id << " = make_heterogeneous_medium(" << device.load_buffer_by_id(" << res_id << ")
            << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "));" << std::endl;
 
     tree.endClosure();

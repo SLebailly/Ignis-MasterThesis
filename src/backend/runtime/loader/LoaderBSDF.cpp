@@ -488,10 +488,10 @@ static void bsdf_tensortree(std::ostream& stream, const std::string& name, const
     const std::string buffer_path      = std::get<0>(data);
     const TensorTreeSpecification spec = std::get<1>(data);
 
-    size_t res_id             = tree.context().registerExternalResource(buffer_path);
+    size_t res_id             = tree.context().registerExternalResource(buffer_path); //TODO: see here
     const std::string bsdf_id = tree.currentClosureID();
     stream << tree.pullHeader()
-           << "  let tt_" << bsdf_id << " = make_tensortree_model(device.request_debug_output(), device.load_buffer_by_id(" << res_id << "), "
+           << "  let tt_" << bsdf_id << " = make_tensortree_model(device.request_debug_output(), device.load_buffer_by_id(" << res_id << "), "//TODO: see here
            << dump_tt_specification(spec) << ");" << std::endl
            << "  let bsdf_" << bsdf_id << " : BSDFShader = @|ctx| make_tensortree_bsdf(ctx.surf, "
            << tree.getInline("base_color") << ", "

@@ -1,5 +1,5 @@
 //TODO: replace this with heterogeneous
-fn @make_heterogeneous_medium(filename: string, phase: PhaseFunction) -> Medium {
+fn @make_heterogeneous_medium(filename: string, phase: PhaseFunction) -> Medium { //transform mitgeben
     //TODO: read in file and define heterogeneous medium
     let eps     = 1e-3 : f32;
     let sigma_t = color_add(sigma_a, sigma_s);
@@ -8,6 +8,8 @@ fn @make_heterogeneous_medium(filename: string, phase: PhaseFunction) -> Medium 
     let sigma_ind = vec3_min_index(color_to_vec3(sigma_t));
     let sigma_t_p = color_at(sigma_t, sigma_ind);
 
+    // Depending on the method, we will need access to a certain voxel based on: Either a coordinate along the path (ray marching / null collision) or at each grid intersection (regular tracking)
+    // We therefore need a function mapping coordinates to a voxel cell.
     let voxelGrid = [
         [
             [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
