@@ -15,6 +15,8 @@
 #include "light/SpotLight.h"
 #include "light/SunLight.h"
 
+#include "light/LightHierarchy.h"
+
 #include <algorithm>
 #include <chrono>
 
@@ -102,6 +104,48 @@ static const struct {
 
 std::string LoaderLight::generate(ShadingTree& tree, bool skipFinite)
 {
+    std::stringstream stream;
+
+    stream << generateInfinite(tree);
+
+    if (skipFinite)
+        stream << "  let finite_lights = make_proxy_light_table(" << finiteLightCount() << ");" << std::endl;
+    else
+        stream << generateFinite(tree);
+
+    return stream.str();
+}
+
+std::string LoaderLight::generateInfinite(ShadingTree& tree)
+{
+    std::stringstream stream;
+
+    // Write all non-embedded lights to shader
+    size_t counter = 0;
+    for (auto light : mInfiniteLights) {
+        IG_ASSERT(light->id() == counter, "Expected id to match in generate");
+        light->serialize(Light::SerializationInput{ counter++, stream, tree });
+    }
+
+    // Write out basic information and start light table
+    stream << "  let infinite_lights = LightTable {" << std::endl
+           << "    count = " << infiniteLightCount() << "," << std::endl
+           << "    get   = @|id:i32| {" << std::endl
+           << "      match(id) {" << std::endl;
+
+    counter = 0;
+    for (auto light : mInfiniteLights)
+        stream << "      " << (counter++) << " => light_" << tree.getClosureID(light->name()) << "," << std::endl;
+
+    stream << "      _ => make_null_light(id)" << std::endl
+           << "    }" << std::endl
+           << "  }};" << std::endl;
+
+    return stream.str();
+}
+
+std::string LoaderLight::generateFinite(ShadingTree& tree)
+{
     // Embed lights if necessary. This is cached for multiple calls
     embedLights(tree);
 
@@ -109,12 +153,10 @@ std::string LoaderLight::generate(ShadingTree& tree, bool skipFinite)
 
     // Write all non-embedded lights to shader
     size_t counter = embeddedLightCount();
-    for (auto light : mInfiniteLights)
-        light->serialize(Light::SerializationInput{ counter++, stream, tree });
-    if (!skipFinite) {
-        for (auto light : mFiniteLights) {
-            if (!isEmbedding() || !light->getEmbedClass().has_value())
-                light->serialize(Light::SerializationInput{ counter++, stream, tree });
+    for (auto light : mFiniteLights) {
+        if (!isEmbedding() || !light->getEmbedClass().has_value()) {
+            IG_ASSERT(light->id() == counter, "Expected id to match in generate");
+            light->serialize(Light::SerializationInput{ counter++, stream, tree });
         }
     }
 
@@ -123,27 +165,26 @@ std::string LoaderLight::generate(ShadingTree& tree, bool skipFinite)
         stream << std::endl;
 
     // Load embedded lights if necessary
-    if (isEmbedding() && !skipFinite) {
+    if (isEmbedding()) {
         size_t offset = 0;
         for (const auto& p : mEmbedClassCounter) {
             std::string var_name = to_lowercase(p.first);
             stream << "  let e_" << var_name << " = ";
 
             if (p.first == "SimpleAreaLight")
-                stream << "load_simple_area_lights(" << offset << ", device, shapes);" << std::endl;
+                stream << "load_simple_area_lights(" << p.second << ", " << offset << ", device, shapes);" << std::endl;
             else if (p.first == "SimplePlaneLight")
-                stream << "load_simple_plane_lights(" << offset << ", device);" << std::endl;
+                stream << "load_simple_plane_lights(" << p.second << ", " << offset << ", device);" << std::endl;
             else if (p.first == "SimplePointLight")
-                stream << "load_simple_point_lights(" << offset << ", device);" << std::endl;
+                stream << "load_simple_point_lights(" << p.second << ", " << offset << ", device);" << std::endl;
             else if (p.first == "SimpleSpotLight")
-                stream << "load_simple_spot_lights(" << offset << ", device);" << std::endl;
+                stream << "load_simple_spot_lights(" << p.second << ", " << offset << ", device);" << std::endl;
             else
                 IG_LOG(L_ERROR) << "Unknown embed class '" << p.first << "'" << std::endl;
 
             // Special case: Nothing except embedded simple point lights
             if (p.second == counter) {
-                stream << "  let num_lights = " << lightCount() << ";" << std::endl
-                       << "  let lights = e_" << var_name << ";" << std::endl;
+                stream << "  let finite_lights = e_" << var_name << ";" << std::endl;
                 return stream.str();
             }
 
@@ -152,11 +193,12 @@ std::string LoaderLight::generate(ShadingTree& tree, bool skipFinite)
     }
 
     // Write out basic information and start light table
-    stream << "  let num_lights = " << lightCount() << ";" << std::endl
-           << "  let lights = @|id:i32| {" << std::endl;
+    stream << "  let finite_lights = LightTable {" << std::endl
+           << "    count = " << finiteLightCount() << "," << std::endl
+           << "    get   = @|id:i32| {" << std::endl;
 
     bool embedded = false;
-    if (isEmbedding() && !skipFinite) {
+    if (isEmbedding()) {
         size_t offset = 0;
         for (const auto& p : mEmbedClassCounter) {
             std::string var_name = to_lowercase(p.first);
@@ -180,13 +222,9 @@ std::string LoaderLight::generate(ShadingTree& tree, bool skipFinite)
     stream << "    match(id) {" << std::endl;
 
     counter = embeddedLightCount();
-    for (auto light : mInfiniteLights)
-        stream << "      " << (counter++) << " => light_" << tree.getClosureID(light->name()) << "," << std::endl;
-    if (!skipFinite) {
-        for (auto light : mFiniteLights) {
-            if (!isEmbedding() || !light->getEmbedClass().has_value())
-                stream << "      " << (counter++) << " => light_" << tree.getClosureID(light->name()) << "," << std::endl;
-        }
+    for (auto light : mFiniteLights) {
+        if (!isEmbedding() || !light->getEmbedClass().has_value())
+            stream << "      " << (counter++) << " => light_" << tree.getClosureID(light->name()) << "," << std::endl;
     }
 
     stream << "      _ => make_null_light(id)" << std::endl;
@@ -195,7 +233,7 @@ std::string LoaderLight::generate(ShadingTree& tree, bool skipFinite)
         stream << "    }" << std::endl;
 
     stream << "    }" << std::endl
-           << "  };" << std::endl;
+           << "  }};" << std::endl;
 
     return stream.str();
 }
@@ -228,6 +266,8 @@ void LoaderLight::setup(LoaderContext& ctx)
     loadLights(ctx);
     setupEmbedClasses();
     sortLights();
+    setupInfiniteLightIDs(); // Infinite & Finite do not share the same id!
+    setupFiniteLightIDs();
     setupAreaLights();
 }
 
@@ -291,13 +331,51 @@ void LoaderLight::sortLights()
     mTotalEmbedCount = std::distance(mFiniteLights.begin(), begin);
 }
 
+void LoaderLight::setupInfiniteLightIDs()
+{
+    // Order is based on order in generate
+    size_t id = 0;
+    for (auto& light : mInfiniteLights)
+        light->setID(id++);
+}
+
+void LoaderLight::setupFiniteLightIDs()
+{
+    // Order is based on order in generate
+    size_t id = 0;
+
+    const bool embed = isEmbedding();
+
+    // Embedded classes (if necessary)
+    if (embed) {
+        for (const auto& p : mEmbedClassCounter) {
+            const auto embedClass = p.first;
+
+            for (auto& light : mFiniteLights) {
+                if (light->getEmbedClass().value_or("") == embedClass)
+                    light->setID(id++);
+            }
+        }
+    }
+
+    // Non-embedded lights
+    if (embed) {
+        for (auto& light : mFiniteLights) {
+            if (!light->getEmbedClass().has_value())
+                light->setID(id++);
+        }
+    } else {
+        for (auto& light : mFiniteLights)
+            light->setID(id++);
+    }
+}
+
 void LoaderLight::setupAreaLights()
 {
-    for (size_t id = 0; id < mFiniteLights.size(); ++id) {
-        const auto& light = mFiniteLights[id];
+    for (const auto& light : mFiniteLights) {
         const auto entity = light->entity();
         if (entity.has_value())
-            mAreaLights[entity.value()] = id;
+            mAreaLights[entity.value()] = light->id();
     }
 }
 
@@ -326,6 +404,37 @@ void LoaderLight::embedLights(ShadingTree& tree)
             light->embed(Light::EmbedInput{ lightSerializer, tree });
         }
     }
+}
+std::string LoaderLight::generateLightSelector(std::string type, ShadingTree& tree)
+{
+    const std::string uniformSelector = "  let light_selector = make_uniform_light_selector(infinite_lights, finite_lights);";
+
+    // If there is just a none or just a single light, do not bother with fancy selectors
+    if (lightCount() <= 1)
+        return uniformSelector;
+
+    std::stringstream stream;
+
+    if (type == "hierarchy") {
+        auto hierarchy = LightHierarchy::setup(mFiniteLights, tree);
+        if (hierarchy.empty()) {
+            stream << uniformSelector << std::endl;
+        } else {
+            stream << "  let light_selector = make_hierarchy_light_selector(infinite_lights, finite_lights, device.load_buffer(\"" << hierarchy.u8string() << "\"));" << std::endl;
+        }
+    } else if (type == "simple") {
+        auto cdf = generateLightSelectionCDF(tree);
+        if (cdf.empty()) {
+            stream << uniformSelector << std::endl;
+        } else {
+            stream << "  let light_cdf = cdf::make_cdf_1d_from_buffer(device.load_buffer(\"" << cdf.u8string() << "\"), finite_lights.count, 0);" << std::endl
+                   << "  let light_selector = make_cdf_light_selector(infinite_lights, finite_lights, light_cdf);" << std::endl;
+        }
+    } else {
+        stream << uniformSelector << std::endl;
+    }
+
+    return stream.str();
 }
 
 std::filesystem::path LoaderLight::generateLightSelectionCDF(ShadingTree& tree)
