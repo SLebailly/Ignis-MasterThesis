@@ -1,83 +1,45 @@
-//TODO: replace this with heterogeneous
-fn @make_heterogeneous_medium(filename: string, phase: PhaseFunction) -> Medium { //transform mitgeben
-    //TODO: read in file and define heterogeneous medium
-    let eps     = 1e-3 : f32;
-    let sigma_t = color_add(sigma_a, sigma_s);
-    let eval_tr = @|t:f32| make_color(math_builtins::exp(-sigma_t.r * t), math_builtins::exp(-sigma_t.g * t), math_builtins::exp(-sigma_t.b * t), sigma_t.a);
+fn @regular_tracking(grid: VoxelGrid) =  @|rnd, p_start, p_end| {
+    // Implementation of Free-path sampling through Regular tracking
+    // Sample the point of the next light-medium collision along the line of flight:
+    // 1- compute random sampled value of transmittance between 0 and 1
+    // 2- sweep along ray and compute the accumulated optical thickness until it first exceeds the sampled value
+    // 3- coordinates where the accumulated optical thickness exceeds random variable is the sampled point.
 
-    let sigma_ind = vec3_min_index(color_to_vec3(sigma_t));
-    let sigma_t_p = color_at(sigma_t, sigma_ind);
+    const dir_u = vec3_sub(p_end, p_start);
+    const dist  = vec3_len(dir_u);
+    const dir   = vec3_mulf(dir_u, safe_div(1, dist));
 
-    // Depending on the method, we will need access to a certain voxel based on: Either a coordinate along the path (ray marching / null collision) or at each grid intersection (regular tracking)
-    // We therefore need a function mapping coordinates to a voxel cell.
-    let voxelGrid = [
-        [
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)]
-        ],
-        [
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)]
-        ],
-        [
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)]
-        ],
-        [
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)]
-        ],
-        [
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)],
-            [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0), (1.0, 1.0)]
-        ]
-    ]
+    const (ndist, transmittance) = math_builtins::fmin[f32](dist, grid.sample_distance(local_start: p_start, direction: dir, randf(rnd) * 0.99999));
 
+    if math_builtins::fabs(dist - ndist) <= eps { return(reject_medium_sample()) }
+
+    const pos = vec3_add(p_start, vec3_mulf(dir, ndist));
+    const pdf = color_at(tr, sigma_ind) * sigma_t_p;
+
+    make_medium_sample(pos, pdf, color_divf(transmittance, pdf))
+};
+
+
+fn @make_heterogeneous_medium(buffer: DeviceBuffer, phase: PhaseFunction, transform: Mat3x4, transform_inv: Mat3x4) -> Medium { // check dimensions of matrix, give inverse of Matrix with it
+
+    const voxelGrid = make_voxel_grid(buffer, transform, transform_inv);
+    
     Medium {
         phase = @|_| phase,
         eval  = @|p_start, p_end| {
-            let dir_u = vec3_sub(p_end, p_start);
-            let dist  = vec3_len(dir_u);
+            const dir_u = vec3_sub(p_end, p_start);
+            const dist  = vec3_len(dir_u);
             eval_tr(dist)
         },
         eval_inf = @|_, _| color_builtins::black,
         pdf = @|p_start, p_end, p| {
-            let dir_u = vec3_sub(p, p_start);
-            let dist  = vec3_len(dir_u);
+            const dir_u = vec3_sub(p, p_start);
+            const dist  = vec3_len(dir_u);
 
-            let on_surf = vec3_len2(vec3_sub(p_end, p)) <= eps * eps;
-            math_builtins::exp(-sigma_t_p * dist) * if !on_surf { sigma_t_p } else { 1 }
+            const on_surf = vec3_len2(vec3_sub(p_end, p)) <= eps * eps;
+            math_builtins::exp(-sigma_t_p * dist) * if !on_ surf { sigma_t_p } else { 1 }
         },
-        sample   = @|rnd, p_start, p_end| {
-            let dir_u = vec3_sub(p_end, p_start);
-            let dist  = vec3_len(dir_u);
-
-            let ndist = math_builtins::fmin[f32](dist, -math_builtins::log(1 - randf(rnd) * 0.99999) / sigma_t_p);
-
-            if math_builtins::fabs(dist - ndist) <= eps { return(reject_medium_sample()) }
-
-            let dir = vec3_mulf(dir_u, safe_div(1, dist));
-            let pos = vec3_add(p_start, vec3_mulf(dir, ndist));
-            let tr  = eval_tr(ndist);
-
-            let pdf = color_at(tr, sigma_ind) * sigma_t_p;
-            make_medium_sample(pos, pdf, color_divf(tr, pdf))
-        },
-        is_homogeneous = true
+        sample   = @|rnd, p_start, p_end| regular_tracking(voxelGrid),
+        is_homogeneous = false
     }
 }

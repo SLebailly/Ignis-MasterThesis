@@ -30,14 +30,16 @@ static void medium_heterogeneous(std::ostream& stream, const std::string& name, 
     tree.beginClosure(name);
 
     const std::string filename = medium->property("filename").getString();
-    size_t res_id             = tree.context().registerExternalResource(filename)
+    size_t res_id             = tree.context().registerExternalResource(filename);
 
     tree.addNumber("g", *medium, 0, true);
-    //child->property("transform").getTransform();
+    const auto transform = medium->property("transform").getTransform().linear(); // also compute inverse
+    //transform.makeAffine();
+    const auto transform_inv = transform.inverse();
     const std::string media_id = tree.currentClosureID();
     stream << tree.pullHeader()
-           << "  let medium_" << media_id << " = make_heterogeneous_medium(" << device.load_buffer_by_id(" << res_id << ")
-           << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "));" << std::endl;
+           << "  let medium_" << media_id << " = make_heterogeneous_medium( device.load_buffer_by_id(" << res_id << ")"
+           << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "), " << LoaderUtils::inlineMatrix(transform.matrix()) << "), " << LoaderUtils::inlineMatrix(transform_inv.matrix()) <<");" << std::endl;
 
     tree.endClosure();
 }
