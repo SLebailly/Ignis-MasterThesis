@@ -41,6 +41,9 @@ CMakeSettings.json
 # Python cache
 __pycache__/
 
+# Python env
+ignis_env
+
 # glTF cache
 _ignis_cache*/
 
@@ -56,6 +59,10 @@ scenes/radiance/*/*.hdr
 scenes/radiance/*/*.exr
 scenes/radiance/*/*.unf
 scenes/radiance/*/*.oct
+
+# Docker build stuff
+scripts/docker/anydsl/tmp/
+scripts/docker/ignis/tmp/
 
 # Do not add backup files
 *.blend1
