@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
@@ -106,7 +106,6 @@
                                 <p class="caption" role="heading"><span class="caption-text">Getting Started:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../getting_started/start.html">Overview</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../getting_started/start.html#backends">Backends</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../getting_started/start.html#frontends">Frontends</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../getting_started/start.html#running">Running</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../getting_started/start.html#tiny-tools">Tiny tools</a></li>
@@ -114,7 +113,8 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../getting_started/building.html">Building</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../getting_started/building.html#linux-mac-os">Linux &amp; Mac OS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../getting_started/building.html#windows">Windows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting_started/building.html#windows-automatic">Windows (Automatic)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting_started/building.html#windows-manual">Windows (Manual)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../getting_started/building.html#known-issues">Known Issues</a></li>
 </ul>
 </li>
@@ -175,6 +175,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#normal-mapping-normalmap">Normal mapping (<span class="monosp">normalmap</span>)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#bump-mapping-bumpmap">Bump mapping (<span class="monosp">bumpmap</span>)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#transform-transform">Transform (<span class="monosp">transform</span>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dupuy-jakob-measured-materials-djmeasured">Dupuy &amp; Jakob measured materials (<span class="monosp">djmeasured</span>)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#klems-klems">Klems (<span class="monosp">klems</span>)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#tensortree-tensortree">TensorTree (<span class="monosp">tensortree</span>)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#list-of-preset-index-of-refractions">List of preset index of refractions</a></li>
@@ -249,15 +250,15 @@
 All number and color parameters can be connected to a shading network or texture via <a class="reference internal" href="pexpr.html#pexpr"><span class="std std-ref">PExpr</span></a>.</p>
 <p>A bsdf is specified in the <span class="monosp">bsdfs</span> block with a <span class="monosp">name</span> and a <span class="monosp">type</span>.
 The type has to be one of the bsdfs listed at this section below.</p>
-<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-    <span class="c1">// ...</span>
-    <span class="s2">&quot;bsdfs&quot;</span><span class="o">:</span> <span class="p">[</span>
-        <span class="c1">// ...</span>
-        <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="o">:</span><span class="s2">&quot;NAME&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="o">:</span><span class="s2">&quot;TYPE&quot;</span><span class="p">,</span> <span class="cm">/* DEPENDS ON TYPE */</span><span class="p">},</span>
-        <span class="c1">// ...</span>
-    <span class="p">]</span>
-    <span class="c1">// ...</span>
-<span class="p">}</span>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="c1">// ...</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;bsdfs&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
+<span class="w">        </span><span class="c1">// ...</span><span class="w"></span>
+<span class="w">        </span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="o">:</span><span class="s2">&quot;NAME&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;type&quot;</span><span class="o">:</span><span class="s2">&quot;TYPE&quot;</span><span class="p">,</span><span class="w"> </span><span class="cm">/* DEPENDS ON TYPE */</span><span class="p">},</span><span class="w"></span>
+<span class="w">        </span><span class="c1">// ...</span><span class="w"></span>
+<span class="w">    </span><span class="p">]</span><span class="w"></span>
+<span class="w">    </span><span class="c1">// ...</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 <section id="smooth-diffuse-diffuse">
@@ -978,8 +979,39 @@ Note that for physical realism, this parameter should never be touched.</p></td>
 </figcaption>
 </figure>
 </div></section>
+<section id="dupuy-jakob-measured-materials-djmeasured">
+<span id="bsdf-djmeasured"></span><span id="fig-transform"></span><h2>Dupuy &amp; Jakob measured materials (<span class="monosp">djmeasured</span>)<a class="headerlink" href="#dupuy-jakob-measured-materials-djmeasured" title="Permalink to this heading">¶</a></h2>
+<table class="paramstable docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="paramtype">filename</span></p></td>
+<td><p><span class="paramtype">string</span></p></td>
+<td><p><em>None</em></p></td>
+<td><p>Path to a valid brdf.</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="paramtype">tint</span></p></td>
+<td><p><span class="paramtype">color</span></p></td>
+<td><p>1</p></td>
+<td><p>Tint.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="figure compound align-center" id="fig-djmeasured">
+<figure class="align-center" id="id20">
+<a class="reference internal image-reference" href="../../_images/mat_djmeasured.jpg"><img alt="../../_images/mat_djmeasured.jpg" src="../../_images/mat_djmeasured.jpg" style="width: 90%;" /></a>
+<figcaption>
+<p><span class="caption-text">Dupuy &amp; Jakob based measured material. More information and measured data available at <a class="reference external" href="https://rgl.epfl.ch/materials">https://rgl.epfl.ch/materials</a></span><a class="headerlink" href="#id20" title="Permalink to this image">¶</a></p>
+</figcaption>
+</figure>
+</div></section>
 <section id="klems-klems">
-<span id="bsdf-klems"></span><span id="fig-transform"></span><h2>Klems (<span class="monosp">klems</span>)<a class="headerlink" href="#klems-klems" title="Permalink to this heading">¶</a></h2>
+<span id="bsdf-klems"></span><span id="fig-djmeasured"></span><h2>Klems (<span class="monosp">klems</span>)<a class="headerlink" href="#klems-klems" title="Permalink to this heading">¶</a></h2>
 <table class="paramstable docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Parameter</p></th>
@@ -1106,12 +1138,13 @@ Note that for physical realism, this parameter should never be touched.</p></td>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/sphinx_highlight.js"></script>
     <script type="text/javascript" src="../../_static/js/theme.js"></script>
   
     <div class="footer" role="contentinfo">
         <div class="container">
             &#169; Copyright 2020-2022, Ignis-Project.
-        Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.0.2.
+        Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.2.3.
         </div>
     </div>  
 
