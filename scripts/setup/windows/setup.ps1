@@ -9,6 +9,9 @@ $Config=Get-Content -Path $config_file | ConvertFrom-Json
 echo "Config:"
 echo $Config
 
+$GIT_BIN=$Config.GIT_BIN
+$CMAKE_BIN=$Config.CMAKE_BIN
+
 # Create directory structure
 cd $PSScriptRoot\..\..\..\
 $IGNIS_ROOT="$(Get-Location)\"
@@ -27,6 +30,12 @@ If($Config.LOCATION) {
 }
 $DEPS_ROOT=Get-Location
 
+# Setup build dir
+$BUILD_DIR=$Config.BUILD_DIR
+if (![System.IO.Path]::IsPathRooted($BUILD_DIR)) {
+    $BUILD_DIR=$(Join-Path -Path "$IGNIS_ROOT" -ChildPath "$BUILD_DIR")
+}
+
 # Create some necessary folders
 If (!(test-path "bin")) {
     md "bin"
@@ -44,7 +53,7 @@ If($Config.GET_AnyDSL) {
     $choices.Add((New-Object Management.Automation.Host.ChoiceDescription -ArgumentList '&Yes'))
     $choices.Add((New-Object Management.Automation.Host.ChoiceDescription -ArgumentList '&No'))
     $decision = $Host.UI.PromptForChoice("Automatic Ignis Windows Setup",
-                                        "The setup script will download and compile AnyDSL. This may take some time and will use a significant amount of CPU power. Are you Sure You Want To Proceed?",
+                                        "The setup script will download and compile AnyDSL. This may take some time and will use a significant amount of CPU power. Are you sure you want to proceed?",
                                         $choices, 0)
     if ($decision -eq 1) {
         throw "AnyDSL setup rejected by user"
@@ -52,7 +61,9 @@ If($Config.GET_AnyDSL) {
 }
 
 # Setup dev environment
-& $PSScriptRoot\vc_dev_env.ps1
+if(!$Config.SKIP_VC_ENV) {
+    & $PSScriptRoot\vc_dev_env.ps1
+}
 
 If($Config.GET_ZLIB) {
     & $PSScriptRoot\setup_zlib.ps1
@@ -74,6 +85,8 @@ If($Config.GET_SDL2) {
     & $PSScriptRoot\setup_sdl2.ps1
 }
 
-& $PSScriptRoot\setup_ignis.ps1
+if($Config.CONFIGURE_IGNIS) {
+    & $PSScriptRoot\setup_ignis.ps1
+}
 
 cd $CURRENT
