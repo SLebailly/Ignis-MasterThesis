@@ -1,45 +1,8 @@
-fn @regular_tracking(grid: VoxelGrid) =  @|rnd, p_start, p_end| {
-    // Implementation of Free-path sampling through Regular tracking
-    // Sample the point of the next light-medium collision along the line of flight:
-    // 1- compute random sampled value of transmittance between 0 and 1
-    // 2- sweep along ray and compute the accumulated optical thickness until it first exceeds the sampled value
-    // 3- coordinates where the accumulated optical thickness exceeds random variable is the sampled point.
-
-    const dir_u = vec3_sub(p_end, p_start);
-    const dist  = vec3_len(dir_u);
-    const dir   = vec3_mulf(dir_u, safe_div(1, dist));
-
-    const (ndist, transmittance) = math_builtins::fmin[f32](dist, grid.sample_distance(local_start: p_start, direction: dir, randf(rnd) * 0.99999));
-
-    if math_builtins::fabs(dist - ndist) <= eps { return(reject_medium_sample()) }
-
-    const pos = vec3_add(p_start, vec3_mulf(dir, ndist));
-    const pdf = color_at(tr, sigma_ind) * sigma_t_p;
-
-    make_medium_sample(pos, pdf, color_divf(transmittance, pdf))
-};
-
-
 fn @make_heterogeneous_medium(buffer: DeviceBuffer, phase: PhaseFunction, transform: Mat3x4, transform_inv: Mat3x4) -> Medium { // check dimensions of matrix, give inverse of Matrix with it
-
-    const voxelGrid = make_voxel_grid(buffer, transform, transform_inv);
-    
-    Medium {
-        phase = @|_| phase,
-        eval  = @|p_start, p_end| {
-            const dir_u = vec3_sub(p_end, p_start);
-            const dist  = vec3_len(dir_u);
-            eval_tr(dist)
-        },
-        eval_inf = @|_, _| color_builtins::black,
-        pdf = @|p_start, p_end, p| {
-            const dir_u = vec3_sub(p, p_start);
-            const dist  = vec3_len(dir_u);
-
-            const on_surf = vec3_len2(vec3_sub(p_end, p)) <= eps * eps;
-            math_builtins::exp(-sigma_t_p * dist) * if !on_ surf { sigma_t_p } else { 1 }
-        },
-        sample   = @|rnd, p_start, p_end| regular_tracking(voxelGrid),
-        is_homogeneous = false
-    }
+    //regular tracking
+    //TODO: implement more methods and  add variable to pick between them
+    make_regular_tracking_medium(buffer: DeviceBuffer, phase: PhaseFunction, transform: Mat3x4, transform_inv: Mat3x4)
 }
+
+
+

@@ -744,6 +744,7 @@ public:
 
         IG_LOG(L_DEBUG) << "Loading buffer '" << filename << "'" << std::endl;
         const auto vec = readBufferFile(filename);
+        IG_LOG(L_DEBUG) << "Finished loading buffer" << std::endl;
 
         if ((vec.size() % sizeof(int32_t)) != 0)
             IG_LOG(L_WARNING) << "Buffer '" << filename << "' is not properly sized!" << std::endl;

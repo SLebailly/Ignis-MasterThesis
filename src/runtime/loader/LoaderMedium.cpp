@@ -29,17 +29,24 @@ static void medium_heterogeneous(std::ostream& stream, const std::string& name, 
     // FIXME: The shading context is not available here! Texture & PExpr will produce errors
     tree.beginClosure(name);
 
-    const std::string filename = medium->property("filename").getString();
-    size_t res_id             = tree.context().registerExternalResource(filename);
+    const auto filename = tree.context().handlePath(medium->property("filename").getString(), *medium);
+    size_t res_id              = tree.context().registerExternalResource(filename);
 
     tree.addNumber("g", *medium, 0, true);
-    const auto transform = medium->property("transform").getTransform().linear(); // also compute inverse
-    //transform.makeAffine();
-    const auto transform_inv = transform.inverse();
+    
+    Transformf transform = medium->property("transform").getTransform();
+    transform.makeAffine();
+    const Transformf transform_inv = transform.inverse();
+
+    const Eigen::Matrix<float, 3, 4> trans_matrix     = transform.matrix().block<3, 4>(0, 0); //note: was 3x4 in LoaderEntity...? Why not 4x4?
+    const Eigen::Matrix<float, 3, 4> trans_matrix_inv = transform_inv.matrix().block<3, 4>(0, 0);
+
+    IG_LOG(L_DEBUG) << "Loading heterogeneous medium\n" << std::endl;
+
     const std::string media_id = tree.currentClosureID();
     stream << tree.pullHeader()
            << "  let medium_" << media_id << " = make_heterogeneous_medium( device.load_buffer_by_id(" << res_id << ")"
-           << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "), " << LoaderUtils::inlineMatrix(transform.matrix()) << "), " << LoaderUtils::inlineMatrix(transform_inv.matrix()) <<");" << std::endl;
+           << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "), " << LoaderUtils::inlineMatrix34(trans_matrix) << ", " << LoaderUtils::inlineMatrix34(trans_matrix_inv) <<");" << std::endl;
 
     tree.endClosure();
 }

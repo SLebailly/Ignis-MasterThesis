@@ -8,3 +8,12 @@ fn @make_vacuum_medium()-> Medium {
         is_homogeneous = true
     }
 }
+
+fn @optical_thickness_to_transmittance(optical_thickness: Color) -> Color {
+    make_color(
+        math_builtins::exp(-optical_thickness.r),
+        math_builtins::exp(-optical_thickness.g),
+        math_builtins::exp(-optical_thickness.b),
+        optical_thickness.a
+    )
+}
