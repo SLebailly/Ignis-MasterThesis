@@ -1,0 +1,106 @@
+struct VoxelIterator {
+    step_x:     Vec3,
+    step_y:     Vec3,
+    step_z:     Vec3,
+    t_delta_x:  Vec3,
+    t_delta_y:  Vec3,
+    t_delta_z:  Vec3,
+
+    total_t:    f32,
+    t_max:      Vec3,
+    current:    Vec3 //the current voxel the iterator is in
+}
+
+  
+struct VoxelIteratorResult {
+    coord:  Vec3, // the coordinate of the voxel
+    t:      f32   // the distance traveled in this voxel
+}
+
+//iterates through Voxels along the ray, returns a tuple with 
+fn @next_vxl_iterator(iterator: VoxelIterator) -> (VoxelIterator, VoxelIteratorResult) {
+
+    let (new_current, new_t_max) = if iterator.t_max.x < iterator.t_max.y {
+        if iterator.t_max.x < iterator.t_max.z {
+            (
+                vec3_add(iterator.current, iterator.step_x),
+                vec3_add(iterator.t_max, iterator.t_delta_x)
+            )
+        } else {
+            (
+                vec3_add(iterator.current, iterator.step_z),
+                vec3_add(iterator.t_max, iterator.t_delta_z)
+            )
+        }
+    } else {
+        if iterator.t_max.y < iterator.t_max.z {
+            (
+                vec3_add(iterator.current, iterator.step_y),
+                vec3_add(iterator.t_max, iterator.t_delta_y)
+            )
+        } else {
+            (
+                vec3_add(iterator.current, iterator.step_z),
+                vec3_add(iterator.t_max, iterator.t_delta_z)
+            )
+        }
+    };
+
+    let ntotal_t = math_builtins::fmin(new_t_max.x, math_builtins::fmin(new_t_max.y, new_t_max.z));
+    let t        = ntotal_t - iterator.total_t;
+
+    let new_iterator = VoxelIterator {
+        step_x         = iterator.step_x,
+        step_y         = iterator.step_y,
+        step_z         = iterator.step_z,
+        t_delta_x      = iterator.t_delta_x,
+        t_delta_y      = iterator.t_delta_y,
+        t_delta_z      = iterator.t_delta_z,
+
+        current        = new_current,
+        t_max          = new_t_max,
+        total_t        = ntotal_t
+    };
+
+    let result = VoxelIteratorResult {
+        coord = iterator.current,
+        t = t
+    };
+
+    (new_iterator, result)
+}
+
+
+fn @make_voxel_iterator(grid: VoxelGrid, local_start: Vec3, direction: Vec3) -> VoxelIterator {
+   
+    // can be negative (depending on direction)
+    let step_x = make_vec3(math_builtins::copysign(1:f32, direction.x), 0, 0);
+    let step_y = make_vec3(0, math_builtins::copysign(1:f32, direction.y), 0);
+    let step_z = make_vec3(0, 0, math_builtins::copysign(1:f32, direction.z));
+
+    // should never be negative (as negative * negative should cancel out)
+    let t_delta_x = make_vec3(if math_builtins::fabs(direction.x) > flt_eps { grid.vxl_width / (direction.x * step_x.x) } else { flt_max }, 0, 0);
+    let t_delta_y = make_vec3(0, if math_builtins::fabs(direction.y) > flt_eps { grid.vxl_height / (direction.y * step_y.y) } else { flt_max }, 0);
+    let t_delta_z = make_vec3(0, 0, if math_builtins::fabs(direction.z) > flt_eps { grid.vxl_depth / (direction.z * step_z.z) } else { flt_max });
+
+    let current = grid.to_vxl_coords(local_start);
+    
+    let t_max = make_vec3(
+        if math_builtins::fabs(direction.x) > flt_eps { math_builtins::fabs((current.x + step_x.x - local_start.x) / direction.x) } else { flt_max },
+        if math_builtins::fabs(direction.y) > flt_eps { math_builtins::fabs((current.y + step_y.y - local_start.y) / direction.y) } else { flt_max },
+        if math_builtins::fabs(direction.z) > flt_eps { math_builtins::fabs((current.z + step_z.z - local_start.z) / direction.z) } else { flt_max }
+    );
+    
+
+    VoxelIterator {
+        step_x         = step_x,
+        step_y         = step_y,
+        step_z         = step_z,
+        current        = current,
+        t_delta_x      = t_delta_x,
+        t_delta_y      = t_delta_y,
+        t_delta_z      = t_delta_z,
+        t_max          = t_max,
+        total_t        = 0
+    }
+}

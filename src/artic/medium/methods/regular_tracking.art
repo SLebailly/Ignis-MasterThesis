@@ -1,0 +1,146 @@
+
+// Implementation of Free-path sampling through Regular tracking
+// Sample the point of the next light-medium collision along the line of flight:
+// 1- compute random sampled value of transmittance between 0 and 1
+// 2- sweep along ray and compute the accumulated optical thickness until it first exceeds the sampled value
+// 3- coordinates where the accumulated optical thickness exceeds random variable is the sampled point.
+
+fn @make_regular_tracking_medium(buffer: DeviceBuffer, phase: PhaseFunction, transform: Mat3x4, transform_inv: Mat3x4) -> Medium { // check dimensions of matrix, give inverse of Matrix with it
+
+    let voxel_grid = make_voxel_grid(buffer, transform, transform_inv);
+
+    /**
+     * Evaluates the distance (and corresponding transmittance) travelled along the ray before reaching the sampled transmittance value in the medium
+     */
+    fn @eval_dist(grid: VoxelGrid, p_start: Vec3, dir: Vec3, sampled_value: f32) -> (f32, Color) {
+        fn @eval_dist_local(local_start: Vec3, direction: Vec3, sampled_value: f32) -> (f32, Color) {
+
+            let mut dist: f32 = 0; // the total distance so far
+            let mut acc_trans = make_gray_color(1.0);
+
+            let (mut iterator, mut current) = next_vxl_iterator(make_voxel_iterator(grid, local_start, direction));
+            
+            while (grid.lcoords_in_bounds(current.coord)) { // ensure that we are still within the grid
+                let current_vxl = grid.vxl_at_lcoords(current.coord);
+    
+                let sigma_t = color_add(current_vxl.sigma_a, current_vxl.sigma_s);
+                let opt_thickness_in_vxl = color_mulf(sigma_t, current.t);
+    
+                let nacc_trans = color_mul(acc_trans, optical_thickness_to_transmittance(opt_thickness_in_vxl));
+    
+                let min_trans = vec3_min_value(color_to_vec3(nacc_trans));
+                if (sampled_value >= min_trans) {
+                    let remaining_opt_thickness_minvalue = math_builtins::log(sampled_value / min_trans);
+                    let dist_delta = remaining_opt_thickness_minvalue / vec3_min_value(color_to_vec3(opt_thickness_in_vxl)); // compute how far to go in the current voxel before reaching the threshold
+                    let trans_delta = optical_thickness_to_transmittance(color_mulf(sigma_t, dist_delta));
+                    acc_trans = color_mul(acc_trans, trans_delta);
+
+                    return((dist + dist_delta, acc_trans))
+                } else {
+                    //continue the iteration
+                    dist += current.t;
+                    acc_trans = nacc_trans;
+                    let (new_iterator, new_current) = next_vxl_iterator(iterator);
+                    iterator = new_iterator;
+                    current  = new_current;
+                }
+            }
+    
+            (flt_max, acc_trans)
+        }
+
+    
+
+        let loc_start       = grid.to_local_point(p_start);
+        let loc_dir         = grid.to_local_dir(dir);
+        let (loc_dist, tr)  = eval_dist_local(loc_start, loc_dir, sampled_value);
+        let dist            = loc_dist * math_builtins::sqrt(vec3_len2(dir) / vec3_len2(loc_dir)); //transform the local_distance into global distance
+
+        (dist, tr)
+    }
+
+
+    /**
+     * Evaluates the transmittance between two points in the medium
+     */
+    fn @eval_tr(grid: VoxelGrid, p_start: Vec3, p_end: Vec3) -> Color {
+
+        fn @eval_tr_local(local_start: Vec3, local_end: Vec3) -> Color {
+    
+            let dir = vec3_sub(local_end, local_start);
+            let total_dist = vec3_len(dir);
+    
+            let mut dist: f32 = 0; // the total distance so far
+            let mut acc_trans = make_gray_color(1.0);
+
+            let (mut iterator, mut current) = next_vxl_iterator(make_voxel_iterator(grid, local_start, dir));
+
+            while (grid.lcoords_in_bounds(current.coord)) { // ensure that we are still within the grid
+                let current_vxl = grid.vxl_at_lcoords(current.coord);
+
+                let sigma_t = color_add(current_vxl.sigma_a, current_vxl.sigma_s);
+                let opt_thickness_in_vxl = color_mulf(sigma_t, current.t);
+    
+                let nacc_trans = color_mul(acc_trans, optical_thickness_to_transmittance(opt_thickness_in_vxl));
+    
+                if (grid.is_in_voxel(local_end, current.coord)) {
+                    let dist_delta = total_dist - dist; // compute how far to go in the current voxel before reaching the threshold
+                    let trans_delta = optical_thickness_to_transmittance(color_mulf(sigma_t, dist_delta));
+                    acc_trans = color_mul(acc_trans, trans_delta);
+    
+                    return(acc_trans)
+                } else {
+                    //continue the iteration
+                    dist += current.t;
+                    acc_trans = nacc_trans;
+                    
+                    let (new_iterator, new_current) = next_vxl_iterator(iterator);
+                    iterator = new_iterator;
+                    current  = new_current;
+                }
+                
+            }
+    
+            // leaving the grid?
+            acc_trans
+        }
+
+
+        let loc_start = grid.to_local_point(p_start);
+        let loc_end   = grid.to_local_point(p_end);
+
+        eval_tr_local(loc_start, loc_end)
+    }
+    
+    Medium {
+        phase = @|_| phase,
+        eval  = @|p_start, p_end| {
+            eval_tr(voxel_grid, p_start, p_end)
+        },
+        eval_inf = @|_, _| color_builtins::black,
+        pdf = |_, _, _| {
+            1:f32 //TODO: is this correct?
+        },
+        sample   = @|rnd, p_start, p_end| {
+            let dir_u = vec3_sub(p_end, p_start);
+            let dist  = vec3_len(dir_u);
+            let dir   = vec3_mulf(dir_u, safe_div(1, dist));
+
+            let sampled_value_tr = randf(rnd) * 0.99999;
+
+            let (mut ndist, trans) = eval_dist(voxel_grid, p_start, dir, sampled_value_tr);
+
+            ndist = math_builtins::fmin[f32](dist, ndist);
+
+            if math_builtins::fabs(dist - ndist) <= flt_eps { return(reject_medium_sample()) }
+
+            let pos = vec3_add(p_start, vec3_mulf(dir, ndist));
+            let pdf = 1:f32; // uniform
+
+            make_medium_sample(pos, pdf, color_divf(trans, pdf))
+        },
+        is_homogeneous = false
+    }
+}
+
+
