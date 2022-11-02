@@ -1,6 +1,9 @@
 build/
 CMakeSettings.json
 
+# Screenshots
+screenshot_*
+
 # Visual Studio stuff
 .vs/
 
@@ -66,3 +69,4 @@ scripts/docker/ignis/tmp/
 
 # Do not add backup files
 *.blend1
+imgui.ini
