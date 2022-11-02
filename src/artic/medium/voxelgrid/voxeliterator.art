@@ -86,9 +86,27 @@ fn @make_voxel_iterator(grid: VoxelGrid, local_start: Vec3, direction: Vec3) -> 
     let current = grid.to_vxl_coords(local_start);
     
     let t_max = make_vec3(
-        if math_builtins::fabs(direction.x) > flt_eps { math_builtins::fabs((current.x + step_x.x - local_start.x) / direction.x) } else { flt_max },
-        if math_builtins::fabs(direction.y) > flt_eps { math_builtins::fabs((current.y + step_y.y - local_start.y) / direction.y) } else { flt_max },
-        if math_builtins::fabs(direction.z) > flt_eps { math_builtins::fabs((current.z + step_z.z - local_start.z) / direction.z) } else { flt_max }
+        if math_builtins::fabs(direction.x) > flt_eps {
+            math_builtins::fabs((current.x + math_builtins::fmax(step_x.x, 0:f32) - local_start.x) / direction.x)
+        }
+        else
+        {
+            flt_max
+        },
+        if math_builtins::fabs(direction.y) > flt_eps {
+            math_builtins::fabs((current.y + math_builtins::fmax(step_y.y, 0:f32) - local_start.y) / direction.y)
+        }
+        else
+        {
+            flt_max
+        },
+        if math_builtins::fabs(direction.z) > flt_eps {
+            math_builtins::fabs((current.z + math_builtins::fmax(step_z.z, 0:f32) - local_start.z) / direction.z)
+        }
+        else
+        {
+            flt_max
+        }
     );
     
 

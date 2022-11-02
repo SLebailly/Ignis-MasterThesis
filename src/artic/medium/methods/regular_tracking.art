@@ -95,9 +95,9 @@ fn @make_regular_tracking_medium(buffer: DeviceBuffer, phase: PhaseFunction, tra
             (flt_max, acc_trans)
         }
 
-        /*
-        let (t1, _t2) = eval_dist_local(make_vec3(-0.75, 0.75, 0.75), make_vec3(1, 0, 0), 0.5, true);
         
+        //let (_t1, _t2) = eval_dist_local(make_vec3(0.75, 0.75, 0.75), make_vec3(-1, 0, 0), 0.5, true);
+        /*
         print_string("Returned distance:\n");
         print_f32(t1);
         print_string("\n");
