@@ -9,11 +9,12 @@ fn @make_regular_tracking_medium(buffer: DeviceBuffer, phase: PhaseFunction, tra
 
     let voxel_grid = make_voxel_grid(buffer, transform, transform_inv);
 
+
     /**
      * Evaluates the distance (and corresponding transmittance) travelled along the ray before reaching the sampled transmittance value in the medium
      */
     fn @eval_dist(grid: VoxelGrid, p_start: Vec3, dir: Vec3, sampled_value: f32) -> (f32, Color) {
-        fn @eval_dist_local(local_start: Vec3, direction: Vec3, sampled_value: f32) -> (f32, Color) {
+        fn @eval_dist_local(local_start: Vec3, direction: Vec3, sampled_value: f32, verbose: bool) -> (f32, Color) {
 
             let mut dist: f32 = 0; // the total distance so far
             let mut acc_trans = make_gray_color(1.0);
@@ -22,6 +23,20 @@ fn @make_regular_tracking_medium(buffer: DeviceBuffer, phase: PhaseFunction, tra
             
             while (grid.lcoords_in_bounds(current.coord)) { // ensure that we are still within the grid
                 let current_vxl = grid.vxl_at_lcoords(current.coord);
+
+                if (verbose) {
+                    print_string("New coords:\n");
+                    print_f32(current.coord.x);
+                    print_string(", ");
+                    print_f32(current.coord.y);
+                    print_string(", ");
+                    print_f32(current.coord.z);
+                    print_string("\n\n");
+                    print_string("Distance in vxl: ");
+                    print_f32(current.t);
+                    print_string("\n\n");
+                    print_flush();
+                }
     
                 let sigma_t = color_add(current_vxl.sigma_a, current_vxl.sigma_s);
                 let opt_thickness_in_vxl = color_mulf(sigma_t, current.t);
@@ -29,9 +44,35 @@ fn @make_regular_tracking_medium(buffer: DeviceBuffer, phase: PhaseFunction, tra
                 let nacc_trans = color_mul(acc_trans, optical_thickness_to_transmittance(opt_thickness_in_vxl));
     
                 let min_trans = vec3_min_value(color_to_vec3(nacc_trans));
+
+                if (verbose) {
+                    print_string("New transmittance:\n");
+                    print_f32(nacc_trans.r);
+                    print_string(", ");
+                    print_f32(nacc_trans.g);
+                    print_string(", ");
+                    print_f32(nacc_trans.b);
+                    print_string("\n\n");
+                    print_flush();
+                }
+
+                // transmittance goes from 1 (full transparency) down to 0
                 if (sampled_value >= min_trans) {
-                    let remaining_opt_thickness_minvalue = math_builtins::log(sampled_value / min_trans);
+                    let remaining_transmittance = sampled_value / vec3_min_value(color_to_vec3(acc_trans));
+                    let remaining_opt_thickness_minvalue = - math_builtins::log(remaining_transmittance);
+
+                    // problem is here
                     let dist_delta = remaining_opt_thickness_minvalue / vec3_min_value(color_to_vec3(opt_thickness_in_vxl)); // compute how far to go in the current voxel before reaching the threshold
+
+                    if (verbose) {
+                        print_string("Adding distance ");
+                        print_f32(dist_delta);
+                        print_string(" to total distance ");
+                        print_f32(dist);
+                        print_string("\n\n");
+                        print_flush();
+                    }
+
                     let trans_delta = optical_thickness_to_transmittance(color_mulf(sigma_t, dist_delta));
                     acc_trans = color_mul(acc_trans, trans_delta);
 
@@ -43,17 +84,30 @@ fn @make_regular_tracking_medium(buffer: DeviceBuffer, phase: PhaseFunction, tra
                     let (new_iterator, new_current) = next_vxl_iterator(iterator);
                     iterator = new_iterator;
                     current  = new_current;
+
+                    if (verbose) {
+                        print_string("Continuing...\n\n");
+                        print_flush();
+                    }
                 }
             }
     
             (flt_max, acc_trans)
         }
 
+        /*
+        let (t1, _t2) = eval_dist_local(make_vec3(-0.75, 0.75, 0.75), make_vec3(1, 0, 0), 0.5, true);
+        
+        print_string("Returned distance:\n");
+        print_f32(t1);
+        print_string("\n");
+        print_flush();
+        */
     
 
         let loc_start       = grid.to_local_point(p_start);
         let loc_dir         = grid.to_local_dir(dir);
-        let (loc_dist, tr)  = eval_dist_local(loc_start, loc_dir, sampled_value);
+        let (loc_dist, tr)  = eval_dist_local(loc_start, loc_dir, sampled_value, false);
         let dist            = loc_dist * math_builtins::sqrt(vec3_len2(dir) / vec3_len2(loc_dir)); //transform the local_distance into global distance
 
         (dist, tr)
@@ -129,7 +183,11 @@ fn @make_regular_tracking_medium(buffer: DeviceBuffer, phase: PhaseFunction, tra
             let sampled_value_tr = randf(rnd) * 0.99999;
 
             let (mut ndist, trans) = eval_dist(voxel_grid, p_start, dir, sampled_value_tr);
-
+/*
+            print_f32(ndist);
+            print_string("\n");
+            print_flush();
+*/
             ndist = math_builtins::fmin[f32](dist, ndist);
 
             if math_builtins::fabs(dist - ndist) <= flt_eps { return(reject_medium_sample()) }

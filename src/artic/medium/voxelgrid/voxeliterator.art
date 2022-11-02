@@ -46,7 +46,7 @@ fn @next_vxl_iterator(iterator: VoxelIterator) -> (VoxelIterator, VoxelIteratorR
         }
     };
 
-    let ntotal_t = math_builtins::fmin(new_t_max.x, math_builtins::fmin(new_t_max.y, new_t_max.z));
+    let ntotal_t = math_builtins::fmin(iterator.t_max.x, math_builtins::fmin(iterator.t_max.y, iterator.t_max.z));
     let t        = ntotal_t - iterator.total_t;
 
     let new_iterator = VoxelIterator {
@@ -70,18 +70,18 @@ fn @next_vxl_iterator(iterator: VoxelIterator) -> (VoxelIterator, VoxelIteratorR
     (new_iterator, result)
 }
 
-
+// direction needs to be normalized !!!
 fn @make_voxel_iterator(grid: VoxelGrid, local_start: Vec3, direction: Vec3) -> VoxelIterator {
    
     // can be negative (depending on direction)
-    let step_x = make_vec3(math_builtins::copysign(1:f32, direction.x), 0, 0);
-    let step_y = make_vec3(0, math_builtins::copysign(1:f32, direction.y), 0);
-    let step_z = make_vec3(0, 0, math_builtins::copysign(1:f32, direction.z));
+    let step_x = make_vec3(math_builtins::copysign(1:f32, direction.x) * grid.vxl_width, 0, 0);
+    let step_y = make_vec3(0, math_builtins::copysign(1:f32, direction.y) * grid.vxl_height, 0);
+    let step_z = make_vec3(0, 0, math_builtins::copysign(1:f32, direction.z) * grid.vxl_depth);
 
     // should never be negative (as negative * negative should cancel out)
-    let t_delta_x = make_vec3(if math_builtins::fabs(direction.x) > flt_eps { grid.vxl_width / (direction.x * step_x.x) } else { flt_max }, 0, 0);
-    let t_delta_y = make_vec3(0, if math_builtins::fabs(direction.y) > flt_eps { grid.vxl_height / (direction.y * step_y.y) } else { flt_max }, 0);
-    let t_delta_z = make_vec3(0, 0, if math_builtins::fabs(direction.z) > flt_eps { grid.vxl_depth / (direction.z * step_z.z) } else { flt_max });
+    let t_delta_x = make_vec3(if math_builtins::fabs(direction.x) > flt_eps { grid.vxl_width / math_builtins::fabs(direction.x) } else { flt_max }, 0, 0);
+    let t_delta_y = make_vec3(0, if math_builtins::fabs(direction.y) > flt_eps { grid.vxl_height / math_builtins::fabs(direction.y) } else { flt_max }, 0);
+    let t_delta_z = make_vec3(0, 0, if math_builtins::fabs(direction.z) > flt_eps { grid.vxl_depth / math_builtins::fabs(direction.z) } else { flt_max });
 
     let current = grid.to_vxl_coords(local_start);
     
