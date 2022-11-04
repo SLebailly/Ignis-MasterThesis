@@ -1,0 +1,4 @@
+struct Voxel {
+    sigma_a: Color,
+    sigma_s: Color
+}

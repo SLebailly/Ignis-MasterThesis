@@ -1,47 +1,43 @@
 struct VoxelIterator {
-    step_x:     Vec3,
-    step_y:     Vec3,
-    step_z:     Vec3,
-    t_delta_x:  Vec3,
-    t_delta_y:  Vec3,
-    t_delta_z:  Vec3,
+    step:    Ind3,
+    t_delta: Vec3,
+    t_max:   Vec3,
 
-    total_t:    f32,
-    t_max:      Vec3,
-    current:    Vec3 //the current voxel the iterator is in
+    total_t: f32,
+    current_ind: Ind3, // the indices of the current voxel
 }
 
   
 struct VoxelIteratorResult {
-    coord:  Vec3, // the coordinate of the voxel
-    t:      f32   // the distance traveled in this voxel
+    vxl_ind: Ind3, // the indices of the voxel
+    t:       f32     // the distance traveled in this voxel
 }
 
 //iterates through Voxels along the ray, returns a tuple with 
 fn @next_vxl_iterator(iterator: VoxelIterator) -> (VoxelIterator, VoxelIteratorResult) {
 
-    let (new_current, new_t_max) = if iterator.t_max.x < iterator.t_max.y {
+    let (new_ind, new_t_max) = if iterator.t_max.x < iterator.t_max.y {
         if iterator.t_max.x < iterator.t_max.z {
             (
-                vec3_add(iterator.current, iterator.step_x),
-                vec3_add(iterator.t_max, iterator.t_delta_x)
+                ind3_add(iterator.current_ind, make_ind3(iterator.step.x, 0, 0)),
+                vec3_add(iterator.t_max,   make_vec3(iterator.t_delta.x, 0, 0))
             )
         } else {
             (
-                vec3_add(iterator.current, iterator.step_z),
-                vec3_add(iterator.t_max, iterator.t_delta_z)
+                ind3_add(iterator.current_ind, make_ind3(0, 0, iterator.step.z)),
+                vec3_add(iterator.t_max,   make_vec3(0, 0, iterator.t_delta.z))
             )
         }
     } else {
         if iterator.t_max.y < iterator.t_max.z {
             (
-                vec3_add(iterator.current, iterator.step_y),
-                vec3_add(iterator.t_max, iterator.t_delta_y)
+                ind3_add(iterator.current_ind, make_ind3(0, iterator.step.y, 0)),
+                vec3_add(iterator.t_max,   make_vec3(0, iterator.t_delta.y, 0))
             )
         } else {
             (
-                vec3_add(iterator.current, iterator.step_z),
-                vec3_add(iterator.t_max, iterator.t_delta_z)
+                ind3_add(iterator.current_ind, make_ind3(0, 0, iterator.step.z)),
+                vec3_add(iterator.t_max,   make_vec3(0, 0, iterator.t_delta.z))
             )
         }
     };
@@ -50,20 +46,16 @@ fn @next_vxl_iterator(iterator: VoxelIterator) -> (VoxelIterator, VoxelIteratorR
     let t        = ntotal_t - iterator.total_t;
 
     let new_iterator = VoxelIterator {
-        step_x         = iterator.step_x,
-        step_y         = iterator.step_y,
-        step_z         = iterator.step_z,
-        t_delta_x      = iterator.t_delta_x,
-        t_delta_y      = iterator.t_delta_y,
-        t_delta_z      = iterator.t_delta_z,
+        step        = iterator.step,
+        t_delta     = iterator.t_delta,
+        t_max       = new_t_max,
 
-        current        = new_current,
-        t_max          = new_t_max,
-        total_t        = ntotal_t
+        current_ind = new_ind,
+        total_t     = ntotal_t
     };
 
     let result = VoxelIteratorResult {
-        coord = iterator.current,
+        vxl_ind = iterator.current_ind,
         t = t
     };
 
@@ -72,53 +64,44 @@ fn @next_vxl_iterator(iterator: VoxelIterator) -> (VoxelIterator, VoxelIteratorR
 
 // direction needs to be normalized !!!
 fn @make_voxel_iterator(grid: VoxelGrid, local_start: Vec3, direction: Vec3) -> VoxelIterator {
-   
-    // can be negative (depending on direction)
-    let step_x = make_vec3(math_builtins::copysign(1:f32, direction.x) * grid.vxl_width, 0, 0);
-    let step_y = make_vec3(0, math_builtins::copysign(1:f32, direction.y) * grid.vxl_height, 0);
-    let step_z = make_vec3(0, 0, math_builtins::copysign(1:f32, direction.z) * grid.vxl_depth);
-
-    // should never be negative (as negative * negative should cancel out)
-    let t_delta_x = make_vec3(if math_builtins::fabs(direction.x) > flt_eps { grid.vxl_width / math_builtins::fabs(direction.x) } else { flt_max }, 0, 0);
-    let t_delta_y = make_vec3(0, if math_builtins::fabs(direction.y) > flt_eps { grid.vxl_height / math_builtins::fabs(direction.y) } else { flt_max }, 0);
-    let t_delta_z = make_vec3(0, 0, if math_builtins::fabs(direction.z) > flt_eps { grid.vxl_depth / math_builtins::fabs(direction.z) } else { flt_max });
-
-    let current = grid.to_vxl_coords(local_start);
     
-    let t_max = make_vec3(
-        if math_builtins::fabs(direction.x) > flt_eps {
-            math_builtins::fabs((current.x + math_builtins::fmax(step_x.x, 0:f32) - local_start.x) / direction.x)
-        }
-        else
-        {
-            flt_max
-        },
-        if math_builtins::fabs(direction.y) > flt_eps {
-            math_builtins::fabs((current.y + math_builtins::fmax(step_y.y, 0:f32) - local_start.y) / direction.y)
-        }
-        else
-        {
-            flt_max
-        },
-        if math_builtins::fabs(direction.z) > flt_eps {
-            math_builtins::fabs((current.z + math_builtins::fmax(step_z.z, 0:f32) - local_start.z) / direction.z)
-        }
-        else
-        {
-            flt_max
-        }
+    let eps     = 1e-3 : f32;
+    let offset_local_start = grid.sanitize_lcoords(local_start, eps);
+
+    // can be negative (depending on direction)
+    let step = make_ind3(
+        if (direction.x > flt_eps) { 1 } else if (direction.x < flt_eps) { -1 } else { 0 },
+        if (direction.y > flt_eps) { 1 } else if (direction.y < flt_eps) { -1 } else { 0 },
+        if (direction.z > flt_eps) { 1 } else if (direction.z < flt_eps) { -1 } else { 0 }
     );
+
+    let t_delta = vec3_safediv(grid.vxl_dims, vec3_abs(direction));
+
+    //ASSERT
+    if (!grid.lcoords_in_bounds(offset_local_start)) {
+        print_string("Assertion failure: creating iterator outside boundaries: ");
+        print_vec3(offset_local_start);
+        print_string("\n");
+    }
+    
+    let current_ind = grid.to_vxl_indx(offset_local_start);
+
+    let next_vxl_bounds = grid.to_vxl_coords(
+        make_ind3(
+            if step.x > 0 { current_ind.x + 1 } else { current_ind.x },
+            if step.y > 0 { current_ind.y + 1 } else { current_ind.y },
+            if step.z > 0 { current_ind.z + 1 } else { current_ind.z }
+        )
+    );
+    
+    let t_max = vec3_abs(vec3_safediv(vec3_sub(next_vxl_bounds, local_start), direction));
     
 
     VoxelIterator {
-        step_x         = step_x,
-        step_y         = step_y,
-        step_z         = step_z,
-        current        = current,
-        t_delta_x      = t_delta_x,
-        t_delta_y      = t_delta_y,
-        t_delta_z      = t_delta_z,
-        t_max          = t_max,
-        total_t        = 0
+        step         = step,
+        t_delta      = t_delta,
+        t_max        = t_max,
+        total_t      = 0,
+        current_ind  = current_ind
     }
 }

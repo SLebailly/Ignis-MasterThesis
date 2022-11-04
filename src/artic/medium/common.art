@@ -17,3 +17,43 @@ fn @optical_thickness_to_transmittance(optical_thickness: Color) -> Color {
         optical_thickness.a
     )
 }
+
+fn @transmittance_to_optical_thickness(transmittance: Color) -> Color {
+    make_color(
+        - math_builtins::log(transmittance.r),
+        - math_builtins::log(transmittance.g),
+        - math_builtins::log(transmittance.b),
+        transmittance.a
+    )
+}
+
+fn print_vec3(vec: Vec3) {
+    print_string("(");
+    print_f32(vec.x);
+    print_string(", ");
+    print_f32(vec.y);
+    print_string(", ");
+    print_f32(vec.z);
+    print_string(")\n");
+}
+
+fn print_color(c: Color) {
+    print_string("(");
+    print_f32(c.r);
+    print_string(", ");
+    print_f32(c.g);
+    print_string(", ");
+    print_f32(c.b);
+    print_string(")\n");
+}
+
+fn print_ind3(ind: Ind3) {
+    print_string("(");
+    print_i32(ind.x);
+    print_string(", ");
+    print_i32(ind.y);
+    print_string(", ");
+    print_i32(ind.z);
+    print_string(")\n");
+}
+
