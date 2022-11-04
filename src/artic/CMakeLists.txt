@@ -81,6 +81,7 @@ set(ARTIC_MAIN_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/homogeneous.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/heterogeneous.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/methods/regular_tracking.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/voxelgrid/voxel.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/voxelgrid/voxelgrid.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/voxelgrid/voxeliterator.art
     ${CMAKE_CURRENT_SOURCE_DIR}/phase/common.art
