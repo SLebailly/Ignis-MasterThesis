@@ -1,6 +1,8 @@
 #pragma once
 
+#include "math/BoundingBox.h"
 #include "shape/PlaneShape.h"
+#include "shape/SphereShape.h"
 
 namespace IG {
 
@@ -31,13 +33,18 @@ struct TriMesh {
     void computeFaceNormals(bool* hasBadAreas = nullptr);
     void computeVertexNormals();
     void makeTexCoordsZero();
+    void makeTexCoordsNormalized();
     void setupFaceNormalsAsVertexNormals();
+
     [[nodiscard]] float computeArea() const;
+    [[nodiscard]] BoundingBox computeBBox() const;
 
     void transform(const Transformf& t);
 
     /// Returns PlaneShape if the given mesh can be approximated as a plane
     [[nodiscard]] std::optional<PlaneShape> getAsPlane() const;
+    /// Returns SphereShape if the given mesh can be approximated as a sphere
+    [[nodiscard]] std::optional<SphereShape> getAsSphere() const;
 
     [[nodiscard]] static TriMesh MakeUVSphere(const Vector3f& center, float radius, uint32 stacks, uint32 slices);
     [[nodiscard]] static TriMesh MakeIcoSphere(const Vector3f& center, float radius, uint32 subdivisions);
