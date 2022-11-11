@@ -64,7 +64,7 @@ fn @next_vxl_iterator(iterator: VoxelIterator) -> (VoxelIterator, VoxelIteratorR
 
 // direction needs to be normalized !!!
 fn @make_voxel_iterator(grid: VoxelGrid, local_start: Vec3, direction: Vec3) -> VoxelIterator {
-    
+
     let eps     = 1e-3 : f32;
     let offset_local_start = grid.sanitize_lcoords(local_start, eps);
 
@@ -76,14 +76,14 @@ fn @make_voxel_iterator(grid: VoxelGrid, local_start: Vec3, direction: Vec3) -> 
     );
 
     let t_delta = vec3_safediv(grid.vxl_dims, vec3_abs(direction));
-
+/*
     //ASSERT
     if (!grid.lcoords_in_bounds(offset_local_start)) {
         print_string("Assertion failure: creating iterator outside boundaries: ");
         print_vec3(offset_local_start);
         print_string("\n");
     }
-    
+*/ 
     let current_ind = grid.to_vxl_indx(offset_local_start);
 
     let next_vxl_bounds = grid.to_vxl_coords(
