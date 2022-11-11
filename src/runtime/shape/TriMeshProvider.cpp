@@ -251,9 +251,7 @@ void TriMeshProvider::handle(LoaderContext& ctx, LoaderResult& result, const std
         mesh.transform(elem.property("transform").getTransform());
 
     // Build bounding box
-    BoundingBox bbox = BoundingBox::Empty();
-    for (const auto& v : mesh.vertices)
-        bbox.extend(v);
+    BoundingBox bbox = mesh.computeBBox();
     bbox.inflate(1e-5f); // Make sure it has a volume
 
     IG_ASSERT(mesh.face_normals.size() == mesh.faceCount(), "Expected valid face normals!");
@@ -269,8 +267,9 @@ void TriMeshProvider::handle(LoaderContext& ctx, LoaderResult& result, const std
         bvh_offset = setup_bvh<8, 4>(mesh, result.Database, mBvhMutex);
     }
 
-    // Precompute if plane or not
-    const auto plane = mesh.getAsPlane();
+    // Precompute approximative shapes outside the lock region
+    const std::optional<PlaneShape> plane   = mesh.getAsPlane();
+    const std::optional<SphereShape> sphere = plane.has_value() ? std::nullopt : mesh.getAsSphere();
 
     // Setup internal shape object
     TriShape trishape;
@@ -289,10 +288,19 @@ void TriMeshProvider::handle(LoaderContext& ctx, LoaderResult& result, const std
     const size_t offset = table.currentOffset();
 
     VectorSerializer meshSerializer(meshData, false);
+    // Header
     meshSerializer.write((uint32)mesh.faceCount());
     meshSerializer.write((uint32)mesh.vertices.size());
     meshSerializer.write((uint32)mesh.normals.size());
     meshSerializer.write((uint32)mesh.texcoords.size());
+
+    // Local bounding box
+    meshSerializer.write(bbox.min);
+    meshSerializer.write((float)0);
+    meshSerializer.write(bbox.max);
+    meshSerializer.write((float)0);
+
+    // Data
     meshSerializer.writeAligned(mesh.vertices, DefaultAlignment, true);
     meshSerializer.writeAligned(mesh.normals, DefaultAlignment, true);
     meshSerializer.writeAligned(mesh.face_normals, DefaultAlignment, true);
@@ -305,8 +313,13 @@ void TriMeshProvider::handle(LoaderContext& ctx, LoaderResult& result, const std
     IG_ASSERT(id + 1 == table.entryCount(), "Expected id to be in sync with dyntable entry count");
 
     // Check if shape is actually just a simple plane
-    if (plane.has_value())
+    if (plane.has_value()) {
         ctx.Shapes->addPlaneShape(id, plane.value());
+    } else {
+        // If not a plane, it might be a simple sphere
+        if (sphere.has_value())
+            ctx.Shapes->addSphereShape(id, sphere.value());
+    }
 
     // Add internal shape structure to table for potential area light usage
     ctx.Shapes->addTriShape(id, trishape);

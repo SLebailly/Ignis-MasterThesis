@@ -28,11 +28,12 @@ namespace IG {
 
 constexpr size_t HISTOGRAM_SIZE                     = 100;
 static const char* const ToneMappingMethodOptions[] = {
-    "None", "Reinhard", "Mod. Reinhard", "ACES"
+    "None", "Reinhard", "Mod. Reinhard", "ACES", "Uncharted2"
 };
 
 static const char* const DebugModeOptions[] = {
-    "Normal", "Tangent", "Bitangent", "Geometric Normal", "Texture Coords", "Prim Coords", "Point", "Hit Distance", "Area",
+    "Normal", "Tangent", "Bitangent", "Geometric Normal", "Local Normal", "Local Tangent", "Local Bitangent", "Local Geometric Normal",
+    "Texture Coords", "Prim Coords", "Point", "Local Point", "Generated Coords", "Hit Distance", "Area",
     "Raw Prim ID", "Prim ID", "Raw Entity ID", "Entity ID", "Raw Material ID", "Material ID",
     "Is Emissive", "Is Specular", "Is Entering", "Check BSDF", "Albedo", "Medium Inner", "Medium Outer"
 };
@@ -873,9 +874,12 @@ UI::~UI()
     ImGuiSDL::Deinitialize();
 #endif
 
-    SDL_DestroyTexture(mInternal->Texture);
-    SDL_DestroyRenderer(mInternal->Renderer);
-    SDL_DestroyWindow(mInternal->Window);
+    if (mInternal->Texture)
+        SDL_DestroyTexture(mInternal->Texture);
+    if (mInternal->Renderer)
+        SDL_DestroyRenderer(mInternal->Renderer);
+    if(mInternal->Window)
+        SDL_DestroyWindow(mInternal->Window);
     SDL_Quit();
 
     mInternal->Buffer.clear();
