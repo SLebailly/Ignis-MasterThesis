@@ -4,6 +4,7 @@
 #include "Image.h"
 #include "Logger.h"
 #include "RuntimeStructs.h"
+#include "ShaderKey.h"
 #include "Statistics.h"
 #include "table/SceneDatabase.h"
 
@@ -122,9 +123,9 @@ struct CPUData {
     DeviceStream cpu_secondary;
     TemporaryStorageHostProxy temporary_storage_host;
     Statistics stats;
-    void* current_shader                       = nullptr;
     const ParameterSet* current_local_registry = nullptr;
-    std::unordered_map<void*, ShaderStats> shader_stats;
+    ShaderKey current_shader_key               = ShaderKey(0, ShaderType::Device, 0);
+    std::unordered_map<ShaderKey, ShaderStats, ShaderKeyHash> shader_stats;
 };
 thread_local CPUData* tlThreadData = nullptr;
 
@@ -161,12 +162,13 @@ public:
 
         anydsl::Array<uint32_t> tonemap_pixels;
 
-        void* current_shader                       = nullptr;
         const ParameterSet* current_local_registry = nullptr;
+        ShaderKey current_shader_key;
 
         inline DeviceData()
             : current_primary()
             , current_secondary()
+            , current_shader_key(0, ShaderType::Device, 0)
         {
             for (size_t i = 0; i < primary.size(); ++i)
                 current_primary[i] = &primary[i];
@@ -182,7 +184,7 @@ public:
     std::vector<std::unique_ptr<CPUData>> thread_data;
 
     tbb::concurrent_queue<CPUData*> available_thread_data;
-    std::unordered_map<void*, ShaderInfo> shader_infos;
+    std::unordered_map<ShaderKey, ShaderInfo, ShaderKeyHash> shader_infos;
 
     std::unordered_map<std::string, AOV> aovs;
     AOV host_pixels;
@@ -217,11 +219,19 @@ public:
         driver_settings.thread_count = (int)setup.target.threadCount();
         updateSettings(Device::RenderSettings{}); // Initialize with default values
 
-        setupFramebuffer();
+        ensureSetup();
         setupThreadData();
     }
 
     inline ~Interface() = default;
+
+    inline void ensureSetup()
+    {
+        if (host_pixels.Data.data())
+            return;
+
+        setupFramebuffer();
+    }
 
     inline int getDevID(size_t device) const
     {
@@ -288,8 +298,8 @@ public:
     inline anydsl::Array<T>& resizeArray(int32_t dev, anydsl::Array<T>& array, size_t size, size_t multiplier)
     {
         const auto capacity = (size & ~((1 << 5) - 1)) + 32; // round to 32
-        if (array.size() < (int64_t)capacity) {
-            size_t n  = capacity * multiplier;
+        const size_t n      = capacity * multiplier;
+        if (array.size() < (int64_t)n) {
             void* ptr = anydsl_alloc(dev, sizeof(T) * n);
             if (ptr == nullptr) {
                 IG_LOG(L_FATAL) << "Out of memory" << std::endl;
@@ -305,7 +315,8 @@ public:
         if (is_gpu) {
             tlThreadData = thread_data.emplace_back(std::make_unique<CPUData>()).get(); // Just one single data available...
         } else {
-            const static size_t max_threads = std::thread::hardware_concurrency() + 1 /* Host */;
+            const size_t req_threads = setup.target.threadCount() == 0 ? std::thread::hardware_concurrency() : setup.target.threadCount();
+            const size_t max_threads = req_threads + 1 /* Host */;
 
             for (size_t t = 0; t < max_threads; ++t) {
                 CPUData* ptr = thread_data.emplace_back(std::make_unique<CPUData>()).get();
@@ -328,24 +339,24 @@ public:
         shader_set = shaderSet;
 
         // Prepare cache data
-        shader_infos[shader_set.DeviceShader.Exec] = {};
+        shader_infos[ShaderKey(shader_set.ID, ShaderType::Device, 0)] = {};
         if (shader_set.TonemapShader.Exec) {
-            shader_infos[shader_set.TonemapShader.Exec]   = {};
-            shader_infos[shader_set.ImageinfoShader.Exec] = {};
+            shader_infos[ShaderKey(shader_set.ID, ShaderType::Tonemap, 0)]   = {};
+            shader_infos[ShaderKey(shader_set.ID, ShaderType::ImageInfo, 0)] = {};
         }
 
-        shader_infos[shader_set.PrimaryTraversalShader.Exec]   = {};
-        shader_infos[shader_set.SecondaryTraversalShader.Exec] = {};
-        shader_infos[shader_set.RayGenerationShader.Exec]      = {};
-        shader_infos[shader_set.MissShader.Exec]               = {};
-        for (const auto& clb : shader_set.HitShaders)
-            shader_infos[clb.Exec] = {};
-        for (const auto& clb : shader_set.AdvancedShadowHitShaders)
-            shader_infos[clb.Exec] = {};
-        for (const auto& clb : shader_set.AdvancedShadowMissShaders)
-            shader_infos[clb.Exec] = {};
-        for (const auto& clb : shader_set.CallbackShaders)
-            shader_infos[clb.Exec] = {};
+        shader_infos[ShaderKey(shader_set.ID, ShaderType::PrimaryTraversal, 0)]   = {};
+        shader_infos[ShaderKey(shader_set.ID, ShaderType::SecondaryTraversal, 0)] = {};
+        shader_infos[ShaderKey(shader_set.ID, ShaderType::RayGeneration, 0)]      = {};
+        shader_infos[ShaderKey(shader_set.ID, ShaderType::Miss, 0)]               = {};
+        for (size_t i = 0; i < shader_set.HitShaders.size(); ++i)
+            shader_infos[ShaderKey(shader_set.ID, ShaderType::Hit, (uint32)i)] = {};
+        for (size_t i = 0; i < shader_set.AdvancedShadowHitShaders.size(); ++i)
+            shader_infos[ShaderKey(shader_set.ID, ShaderType::AdvancedShadowHit, (uint32)i)] = {};
+        for (size_t i = 0; i < shader_set.AdvancedShadowMissShaders.size(); ++i)
+            shader_infos[ShaderKey(shader_set.ID, ShaderType::AdvancedShadowMiss, (uint32)i)] = {};
+        for (size_t i = 0; i < shader_set.CallbackShaders.size(); ++i)
+            shader_infos[ShaderKey(shader_set.ID, ShaderType::Callback, (uint32)i)] = {};
     }
 
     inline void registerThread()
@@ -378,20 +389,20 @@ public:
         return tlThreadData;
     }
 
-    inline void setCurrentShader(int32_t dev, int workload, const ShaderOutput<void*>& shader)
+    inline void setCurrentShader(int32_t dev, int workload, const ShaderKey& key, const ShaderOutput<void*>& shader)
     {
         if (is_gpu) {
-            devices[dev].current_shader         = shader.Exec;
             devices[dev].current_local_registry = &shader.LocalRegistry;
+            devices[dev].current_shader_key     = key;
             auto data                           = getThreadData();
-            data->shader_stats[shader.Exec].call_count++;
-            data->shader_stats[shader.Exec].workload_count += (size_t)workload;
+            data->shader_stats[key].call_count++;
+            data->shader_stats[key].workload_count += (size_t)workload;
         } else {
             auto data                    = getThreadData();
-            data->current_shader         = shader.Exec;
             data->current_local_registry = &shader.LocalRegistry;
-            data->shader_stats[shader.Exec].call_count++;
-            data->shader_stats[shader.Exec].workload_count += (size_t)workload;
+            data->current_shader_key     = key;
+            data->shader_stats[key].call_count++;
+            data->shader_stats[key].workload_count += (size_t)workload;
         }
     }
 
@@ -406,9 +417,9 @@ public:
     inline ShaderInfo& getCurrentShaderInfo(int32_t dev)
     {
         if (is_gpu)
-            return shader_infos[devices[dev].current_shader];
+            return shader_infos.at(devices[dev].current_shader_key);
         else
-            return shader_infos[getThreadData()->current_shader];
+            return shader_infos.at(getThreadData()->current_shader_key);
     }
 
     inline DeviceStream& getPrimaryStream(int32_t dev, size_t buffer, size_t size)
@@ -418,7 +429,7 @@ public:
         resizeArray(dev, stream.Data, size, elements);
         stream.BlockSize = size;
 
-        return getPrimaryStream(dev, buffer);
+        return stream;
     }
 
     inline DeviceStream& getPrimaryStream(int32_t dev, size_t buffer)
@@ -439,7 +450,7 @@ public:
         resizeArray(dev, stream.Data, size, elements);
         stream.BlockSize = size;
 
-        return getSecondaryStream(dev, buffer);
+        return stream;
     }
 
     inline DeviceStream& getSecondaryStream(int32_t dev, size_t buffer)
@@ -893,7 +904,7 @@ public:
         using Callback = decltype(ig_callback_shader);
         auto callback  = reinterpret_cast<Callback*>(shader_set.DeviceShader.Exec);
         IG_ASSERT(callback != nullptr, "Expected device shader to be valid");
-        setCurrentShader(0, 1, shader_set.DeviceShader);
+        setCurrentShader(0, 1, ShaderKey(shader_set.ID, ShaderType::Device, 0), shader_set.DeviceShader);
         callback(&driver_settings);
 
         checkDebugOutput();
@@ -914,7 +925,7 @@ public:
         using Callback = decltype(ig_tonemap_shader);
         auto callback  = reinterpret_cast<Callback*>(shader_set.TonemapShader.Exec);
         IG_ASSERT(callback != nullptr, "Expected tonemap shader to be valid");
-        setCurrentShader(0, 1, shader_set.TonemapShader);
+        setCurrentShader(0, 1, ShaderKey(shader_set.ID, ShaderType::Tonemap, 0), shader_set.TonemapShader);
         callback(&driver_settings, in_pixels, device_out_pixels, (int)film_width, (int)film_height, &settings);
 
         checkDebugOutput();
@@ -935,7 +946,7 @@ public:
         using Callback = decltype(ig_imageinfo_shader);
         auto callback  = reinterpret_cast<Callback*>(shader_set.ImageinfoShader.Exec);
         IG_ASSERT(callback != nullptr, "Expected imageinfo shader to be valid");
-        setCurrentShader(0, 1, shader_set.ImageinfoShader);
+        setCurrentShader(0, 1, ShaderKey(shader_set.ID, ShaderType::ImageInfo, 0), shader_set.ImageinfoShader);
 
         ::ImageInfoOutput output;
         callback(&driver_settings, in_pixels, (int)film_width, (int)film_height, &settings, &output);
@@ -960,7 +971,7 @@ public:
         using Callback = decltype(ig_traversal_shader);
         auto callback  = reinterpret_cast<Callback*>(shader_set.PrimaryTraversalShader.Exec);
         IG_ASSERT(callback != nullptr, "Expected primary traversal shader to be valid");
-        setCurrentShader(dev, size, shader_set.PrimaryTraversalShader);
+        setCurrentShader(dev, size, ShaderKey(shader_set.ID, ShaderType::PrimaryTraversal, 0), shader_set.PrimaryTraversalShader);
         callback(&driver_settings, size);
 
         checkDebugOutput();
@@ -981,7 +992,7 @@ public:
         using Callback = decltype(ig_traversal_shader);
         auto callback  = reinterpret_cast<Callback*>(shader_set.SecondaryTraversalShader.Exec);
         IG_ASSERT(callback != nullptr, "Expected secondary traversal shader to be valid");
-        setCurrentShader(dev, size, shader_set.SecondaryTraversalShader);
+        setCurrentShader(dev, size, ShaderKey(shader_set.ID, ShaderType::SecondaryTraversal, 0), shader_set.SecondaryTraversalShader);
         callback(&driver_settings, size);
 
         checkDebugOutput();
@@ -1002,7 +1013,7 @@ public:
         using Callback = decltype(ig_ray_generation_shader);
         auto callback  = reinterpret_cast<Callback*>(shader_set.RayGenerationShader.Exec);
         IG_ASSERT(callback != nullptr, "Expected ray generation shader to be valid");
-        setCurrentShader(dev, (xmax - xmin) * (ymax - ymin), shader_set.RayGenerationShader);
+        setCurrentShader(dev, (xmax - xmin) * (ymax - ymin), ShaderKey(shader_set.ID, ShaderType::RayGeneration, 0), shader_set.RayGenerationShader);
         const int ret = callback(&driver_settings, next_id, size, xmin, ymin, xmax, ymax);
 
         checkDebugOutput();
@@ -1024,7 +1035,7 @@ public:
         using Callback = decltype(ig_miss_shader);
         auto callback  = reinterpret_cast<Callback*>(shader_set.MissShader.Exec);
         IG_ASSERT(callback != nullptr, "Expected miss shader to be valid");
-        setCurrentShader(dev, last - first, shader_set.MissShader);
+        setCurrentShader(dev, last - first, ShaderKey(shader_set.ID, ShaderType::Miss, 0), shader_set.MissShader);
         callback(&driver_settings, first, last);
 
         checkDebugOutput();
@@ -1049,7 +1060,7 @@ public:
         const auto& output = shader_set.HitShaders.at(material_id);
         auto callback      = reinterpret_cast<Callback*>(output.Exec);
         IG_ASSERT(callback != nullptr, "Expected hit shader to be valid");
-        setCurrentShader(dev, last - first, output);
+        setCurrentShader(dev, last - first, ShaderKey(shader_set.ID, ShaderType::Hit, (uint32)material_id), output);
         callback(&driver_settings, entity_id, material_id, first, last);
 
         checkDebugOutput();
@@ -1080,7 +1091,7 @@ public:
             const auto& output = shader_set.AdvancedShadowHitShaders.at(material_id);
             auto callback      = reinterpret_cast<Callback*>(output.Exec);
             IG_ASSERT(callback != nullptr, "Expected advanced shadow hit shader to be valid");
-            setCurrentShader(dev, last - first, output);
+            setCurrentShader(dev, last - first, ShaderKey(shader_set.ID, ShaderType::AdvancedShadowHit, (uint32)material_id), output);
             callback(&driver_settings, material_id, first, last);
 
             checkDebugOutput();
@@ -1100,7 +1111,7 @@ public:
             const auto& output = shader_set.AdvancedShadowMissShaders.at(material_id);
             auto callback      = reinterpret_cast<Callback*>(output.Exec);
             IG_ASSERT(callback != nullptr, "Expected advanced shadow miss shader to be valid");
-            setCurrentShader(dev, last - first, output);
+            setCurrentShader(dev, last - first, ShaderKey(shader_set.ID, ShaderType::Miss, (uint32)material_id), output);
             callback(&driver_settings, material_id, first, last);
 
             checkDebugOutput();
@@ -1126,7 +1137,7 @@ public:
             if (setup.acquire_stats)
                 getThreadData()->stats.beginShaderLaunch(ShaderType::Callback, 1, type);
 
-            setCurrentShader(dev, 1, output);
+            setCurrentShader(dev, 1, ShaderKey(shader_set.ID, ShaderType::Callback, (uint32)type), output);
             callback(&driver_settings);
 
             checkDebugOutput();
@@ -1231,6 +1242,11 @@ public:
 
     inline Device::AOVAccessor getAOVImageForHost(const std::string& aov_name)
     {
+        if (!host_pixels.Data.data()) {
+            IG_LOG(L_ERROR) << "Framebuffer not yet initialized. Run a single iteration first" << std::endl;
+            return Device::AOVAccessor{ nullptr, 0 };
+        }
+
         if (is_gpu) {
             const int32_t dev = getDevID();
             if (aov_name.empty() || aov_name == "Color") {
@@ -1286,6 +1302,9 @@ public:
     /// Clear specific aov
     inline void clearAOV(const std::string& aov_name)
     {
+        if (!host_pixels.Data.data())
+            return;
+
         if (aov_name.empty() || aov_name == "Color") {
             host_pixels.IterationCount = 0;
             host_pixels.IterDiff       = 0;
@@ -1441,6 +1460,9 @@ Device::~Device()
 
 void Device::render(const TechniqueVariantShaderSet& shaderSet, const Device::RenderSettings& settings, const ParameterSet* parameterSet)
 {
+    // Make sure everything is initialized (lazy setup)
+    sInterface->ensureSetup();
+
     // Register host thread
     sInterface->registerThread();
 
@@ -1488,6 +1510,9 @@ const Statistics* Device::getStatistics()
 
 void Device::tonemap(uint32_t* out_pixels, const TonemapSettings& driver_settings)
 {
+    // Make sure everything is initialized (lazy setup)
+    sInterface->ensureSetup();
+
     // Register host thread
     sInterface->registerThread();
 
@@ -1516,6 +1541,9 @@ void Device::tonemap(uint32_t* out_pixels, const TonemapSettings& driver_setting
 
 ImageInfoOutput Device::imageinfo(const ImageInfoSettings& driver_settings)
 {
+    // Make sure everything is initialized (lazy setup)
+    sInterface->ensureSetup();
+
     // Register host thread
     sInterface->registerThread();
 

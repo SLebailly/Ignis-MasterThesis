@@ -21,7 +21,7 @@ fn @init_wireframe_raypayload(payload: RayPayload) = write_wireframeraypayload(p
 fn @make_wireframe_renderer(camera: Camera) -> Technique {
     let offset:f32 = 0.001;
 
-    fn is_edge_hit(pixel: i32, hit: Hit, surf: SurfaceElement, add_distance: f32) -> (bool, f32) {
+    fn is_edge_hit(pixel: PixelCoord, hit: Hit, surf: SurfaceElement, add_distance: f32) -> (bool, f32) {
         let (dx, dy)    = camera.differential(pixel);
         let footprint_u = vec3_len(vec3_cross(dx, dy));
         let edge_t      = vec3_min_value(make_vec3(hit.prim_coords.x, hit.prim_coords.y, clampf(0, 1, 1 - hit.prim_coords.x - hit.prim_coords.y)));
