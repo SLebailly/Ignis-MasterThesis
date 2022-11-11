@@ -37,6 +37,7 @@ set(SRC
   container/PositionGetter.h
   device/Device.cpp
   device/Device.h
+  device/ShaderKey.h
   device/ShallowArray.h
   device/Target.cpp
   device/Target.h
@@ -168,6 +169,7 @@ set(SRC
   shape/ShapeProvider.h
   shape/SphereProvider.cpp
   shape/SphereProvider.h
+  shape/SphereShape.h
   shape/TriMeshProvider.cpp
   shape/TriMeshProvider.h
   shape/TriShape.h

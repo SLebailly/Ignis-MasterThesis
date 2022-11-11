@@ -26,7 +26,7 @@
 		{"type":"external", "name":"Left", "filename":"meshes/Left.ply"},
 		{"type":"external", "name":"Right", "filename":"meshes/Right.ply"},
 		{"type":"external", "name":"Back", "filename":"meshes/Back.ply"},
-		{"type":"external", "name":"Object", "filename":"meshes/CubeInCube.obj", "face_normals": true, "transform": {"scale": 0.4, "translate": [0,-1.4,0]} }
+		{"type":"external", "name":"Object", "filename":"meshes/CubeInCube.obj", "face_normals": true }
 	],
 	"entities": [
 		{"name":"AreaLight", "shape":"AreaLight", "bsdf":"mat-Light"},
@@ -35,7 +35,7 @@
 		{"name":"Left","shape":"Left", "bsdf":"mat-ColoredWall"},
 		{"name":"Right","shape":"Right", "bsdf":"mat-ColoredWall"},
 		{"name":"Back","shape":"Back", "bsdf":"mat-GrayWall"},
-		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium"}
+		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium", "transform": {"scale": 0.4, "translate": [0,-1.4,0]}}
 	],
 	"lights": [
 		{"type":"area", "name":"AreaLight", "entity":"AreaLight", "radiance":[100,100,100]}
@@ -43,6 +43,7 @@
 	"media": [
 		// {"type": "homogeneous", "name": "Medium", "sigma_a": [0.0015333, 0.0046, 0.019933], "sigma_s": [4.5513, 5.8294, 7.136], "g": -0.6}
 		// {"type": "homogeneous", "name": "Medium", "sigma_a": [0,0,0], "sigma_s": [0,0,0], "g": 0}
-		{"type": "homogeneous", "name": "Medium", "sigma_a": [0.2,0.6,0.8], "sigma_s": [0.3,0.2,0.1], "g": 0}
+		// {"type": "homogeneous", "name": "Medium", "sigma_a": [0.2,0.6,0.8], "sigma_s": [0.3,0.2,0.1], "g": 0}
+		{"type": "homogeneous", "name": "Medium", "sigma_a": "color(0.2,0.6,0.8)*exp(-abs(V)).xyzz", "sigma_s": "color(0.3,0.2,0.1)*exp(-abs(V)).xyzz", "g": 0}
 	]
 }

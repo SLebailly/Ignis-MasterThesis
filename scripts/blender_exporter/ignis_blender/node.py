@@ -4,8 +4,7 @@ import os
 from .utils import *
 
 
-# Extend 2d vector to 3d, as VECTOR is always 3d
-TEXCOORD_UV = "vec3(uv.x, uv.y, 0)"
+TEXCOORD_UV = "uvw"
 
 
 class NodeContext:
@@ -443,24 +442,19 @@ def _curve_lookup(curve, t, interpolate, extrapolate):
         if curve.points[0].location[0] == 0 and curve.points[0].location[1] == 0 and curve.points[1].location[0] == 1 and curve.points[1].location[1] == 1:
             return t
 
-    if interpolate:
-        if extrapolate:
-            func = "lookup_linear_extrapolate"
-        else:
-            func = "lookup_linear"
-    else:
-        func = "lookup_constant"
+    lookup_type = "'linear'" if interpolate else "'constant'"
+    extrapolate = "true" if extrapolate else "false"
 
     args = ", ".join(
-        [f"{p.location[0]}, {p.location[1]}" for p in curve.points])
+        [f"vec2({p.location[0]}, {p.location[1]})" for p in curve.points])
 
-    return f"{func}({t}, {args})"
+    return f"lookup({lookup_type}, {extrapolate}, {t}, {args})"
 
 
 def _export_float_curve(ctx, node):
     mapping = node.mapping
 
-    fac = export_node(ctx, node.inputs["Fac"])
+    fac = export_node(ctx, node.inputs["Factor"])
     value = export_node(ctx, node.inputs["Value"])
 
     V = mapping.curves[0]
@@ -479,7 +473,7 @@ def _export_float_curve(ctx, node):
 def _export_rgb_curve(ctx, node):
     mapping = node.mapping
 
-    fac = export_node(ctx, node.inputs["Fac"])
+    fac = export_node(ctx, node.inputs["Factor"])
     color = export_node(ctx, node.inputs["Color"])
 
     C = mapping.curves[3]
@@ -508,7 +502,7 @@ def _export_rgb_curve(ctx, node):
 def _export_vector_curve(ctx, node):
     mapping = node.mapping
 
-    fac = export_node(ctx, node.inputs["Fac"])
+    fac = export_node(ctx, node.inputs["Factor"])
     vector = export_node(ctx, node.inputs["Vector"])
 
     X = mapping.curves[0]
@@ -700,11 +694,21 @@ def _export_vector_rotate(ctx, node):
 
 
 def _export_vector_transform(ctx, node):
-    # TODO: Maybe support it?
+    map_name = {"WORLD": "global", "OBJECT": "object", "CAMERA": "camera"}
+
     vec = export_node(ctx, node.inputs["Vector"])
-    if node.convert_from != node.convert_to:
+    if node.convert_from == 'CAMERA' or node.convert_to == 'CAMERA':
         print(
-            f"Transforming from {node.convert_from} to {node.convert_to} not supported")
+            f"Transforming from {node.convert_from} to {node.convert_to} is not supported")
+    elif node.convert_from != node.convert_to:
+        if node.type == 'Vector':
+            func = "transform_direction"
+        elif node.type == 'Normal':
+            func = "transform_normal"
+        else:
+            func = "transform_point"
+        return f"{func}({vec}, \"{map_name[node.convert_from]}\", \"{map_name[node.convert_to]}\")"
+
     return vec
 
 
@@ -1094,10 +1098,13 @@ def _export_surface_attributes(ctx, node, output_name):
 def _export_tex_coordinate(ctx, node, output_name):
     if output_name == 'UV':
         return TEXCOORD_UV
+    elif output_name == 'Generated':
+        return "Np"
     elif output_name == 'Normal':
-        return 'N'  # TODO: Map to object space!
+        return 'transform_normal(N, "global", "object")'
     elif output_name == 'Object':
-        return 'P'  # TODO: Map to object space!
+        # TODO: Handle other objects?
+        return 'transform_point(P, "global", "object")'
     elif output_name == 'Reflection':
         return 'reflect(V, N)'
     else:
@@ -1120,13 +1127,13 @@ def _export_object_info(ctx, node, output_name):
 
 
 def _export_light_path(ctx, node, output_name):
-    print(f"Light path output is not supported, returning default values")
+    print(f"Light path output not fully supported, returning default values if necessary")
     # No light paths supported, so just return some default values
     # This will work 90% of the time, but most likely will fail in some cases
     if output_name == "Is Camera Ray":
-        return 1
+        return "select(check_ray_flag(\"camera\"), 1, 0)"
     elif output_name == "Is Shadow Ray":
-        return 0  # Shadow Rays usually do not get feedback from the surface they hit
+        return "select(check_ray_flag(\"shadow\"), 1, 0)"
     elif output_name == "Is Diffuse Ray":
         return 1
     elif output_name == "Is Glossy Ray":
@@ -1134,9 +1141,9 @@ def _export_light_path(ctx, node, output_name):
     elif output_name == "Is Singular Ray":
         return 0  # Dielectrics & Conductors with roughness=0 are singular, but we ignore them
     elif output_name == "Is Reflection Ray":
-        return 1  # Everything is a reflection
+        return "select(check_ray_flag(\"bounce\"), 1, 0)"
     elif output_name == "Is Transmission Ray":
-        return 1  # Everything is a transmission
+        return "select(check_ray_flag(\"bounce\"), 1, 0)"
     elif output_name == "Ray Length":
         return 1
     elif output_name == "Ray Depth":
