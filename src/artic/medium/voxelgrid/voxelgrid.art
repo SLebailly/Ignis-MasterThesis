@@ -1,239 +1,121 @@
 static BUFFER_OFFSET: i32 = 4;
-static GRID_SIZE_X: f32   = 2;
-static GRID_SIZE_Y: f32   = 2;
-static GRID_SIZE_Z: f32   = 2;
-static GRID_ORIGIN_X: f32 = 0.5;
-static GRID_ORIGIN_Y: f32 = 0.5;
-static GRID_ORIGIN_Z: f32 = 0.5;
 
 
 //normalized to 1x1x1
 struct VoxelGrid {
     // variables
-    grid_dims:         Ind3,
-    vxl_dims:          Vec3,
+    width:  i32,
+    height: i32,
+    depth:  i32,
 
     // functions
-    vxl_at_coords:     fn (/* coord */ Vec3) -> Voxel,
-    vxl_at_lcoords:    fn (/* local_coord */ Vec3) -> Voxel,
-    vxl_at_indx:       fn (/* indx */ Ind3) -> Voxel,
-    to_local_dir:      fn (/* vector */ Vec3) -> Vec3,
-    to_local_point:    fn (/* point */ Vec3) -> Vec3,
-    to_global_dir:     fn (/* local_vector */ Vec3) -> Vec3,
-    to_global_point:   fn (/* local_point */ Vec3) -> Vec3,
-    to_vxl_indx:       fn (/* local_point */ Vec3) -> Ind3,
-    to_vxl_coords:     fn (/* indx */ Ind3) -> Vec3,
-    lcoords_in_bounds: fn (/* lcoord */ Vec3) -> bool,
-    coords_in_bounds:  fn (/* coord */ Vec3) -> bool,
-    is_in_voxel:       fn (/* lcoord */ Vec3, /* voxel_indx */ Ind3) -> bool,
-    sanitize_lcoords:  fn (/* lcoord */ Vec3, /* eps */ f32) -> Vec3
+    vxl_at_indx:       fn (/* x */ i32, /* y */ i32, /* z */ i32) -> Voxel,
+    vxl_at_coord:      fn (/* coord */ Vec3) -> Voxel,
+    vxl_at_coord_lerp: fn (/* coord */ Vec3) -> Voxel,
+    coord_to_indx:     fn (/* coord */ Vec3) -> (i32, i32, i32),
+    indx_to_coord:     fn (/* x */ i32, /* y */ i32, /* z */ i32) -> Vec3,
+    is_in_vxl:         fn (/* coord */ Vec3, /* x */ i32, /* y */ i32, /* z */ i32) -> bool
 }
 
+fn @make_voxel_grid(buffer: DeviceBuffer) -> VoxelGrid {
+   
+    let width  = buffer.load_i32_host(0);
+    let height = buffer.load_i32_host(1);
+    let depth  = buffer.load_i32_host(2);
+
+    let dimensions = make_vec3(width as f32, height as f32, depth as f32);
 
 
-fn @make_voxel_grid(buffer: DeviceBuffer, transform: Mat3x4, transform_inv: Mat3x4) -> VoxelGrid {
+    fn @is_in_vxl(coord: Vec3, x: i32, y: i32, z: i32) -> bool {
 
-    let grid_size      = make_vec3(GRID_SIZE_X, GRID_SIZE_Y, GRID_SIZE_Z);   // grid is a 2x2x2 cube (from -1 to 1 in each dimension)
-    let grid_origin    = make_vec3(GRID_ORIGIN_X, GRID_ORIGIN_Y, GRID_ORIGIN_Z); // origin is in the center (offset to the corner with lowest coordinates)
-    let grid_bound_min = vec3_mulf(vec3_mul(grid_origin, grid_size), -1);
-    let grid_bound_max = vec3_mul(vec3_sub(vec3_expand(1:f32), grid_origin), grid_size);//(1 - grid_origin) * grid_size;
-    
-    let grid_dims      = make_ind3(buffer.load_i32_host(0), buffer.load_i32_host(1), buffer.load_i32_host(2));
-    let vxl_dims       = vec3_div(grid_size, ind3_to_v(grid_dims));
+        let ncoord = vec3_mul(coord, dimensions); // map to coordinate between (0, 0, 0) and (width, height, depth), such that the distance between each voxel is 1
+        let lcoord = vec3_sub(ncoord, make_vec3(x as f32, y as f32, z as f32)); // the local coordinate inside the given voxel of the coordinate, between 0 and 1
 
-    fn @to_local_point(point: Vec3) -> Vec3 {
-        mat3x4_transform_point(transform_inv, point)
+        (lcoord.x >= 0:f32 && lcoord.x < 1:f32 && lcoord.y >= 0:f32 && lcoord.y < 1:f32 && lcoord.z >= 0:f32 && lcoord.z < 1:f32)
     }
 
-    fn @to_local_dir(dir: Vec3) -> Vec3 {
-        mat3x4_transform_direction(transform_inv, dir)
+
+    fn @coord_to_indx(coord: Vec3) -> (i32, i32, i32) {
+        
+        let x = math_builtins::floor(coord.x) as i32 * width;
+        let y = math_builtins::floor(coord.y) as i32 * height;
+        let z = math_builtins::floor(coord.z) as i32 * depth;
+
+        (x, y, z)
     }
 
-    fn @to_global_point(local_p: Vec3) -> Vec3 {
-        mat3x4_transform_point(transform, local_p)
+
+    fn @indx_to_coord(x: i32, y: i32, z: i32) -> Vec3 {
+        vec3_div(make_vec3((x as f32) + 0.5, (y as f32) + 0.5, (z as f32) + 0.5), dimensions)
     }
 
-    fn @to_global_dir(local_v: Vec3) -> Vec3 {
-        mat3x4_transform_direction(transform, local_v)
-    }
 
-    fn @to_vxl_coords(ind: Ind3) -> Vec3 {
-        vec3_add(grid_bound_min, vec3_mul(vxl_dims, ind3_to_v(ind)))
-    }
+    fn @vxl_at_indx(x: i32, y: i32, z: i32) -> Voxel {
 
-    fn @is_in_voxel(coord: Vec3, ind: Ind3) -> bool {
-        let bounds_min = to_vxl_coords(ind);
-        let bounds_max = to_vxl_coords(ind3_add(ind, make_ind3(1, 1, 1)));
+        if (x < 0 || x >= width || y < 0 || y >= height || z < 0 || z >= depth) {
+            
+            print_string("WARNING: Accessing out of bounds buffer index\n(");
+            print_i32(x);
+            print_string(", ");
+            print_i32(y);
+            print_string(", ");
+            print_i32(z);
+            print_string(")\n");
+            
+            return(Voxel {
+                sigma_a = make_gray_color(0),
+                sigma_s = make_gray_color(0)
+            })
+        }
 
-        coord.x >= bounds_min.x && coord.x < bounds_max.x && coord.y >= bounds_min.y && coord.y < bounds_max.y && coord.z >= bounds_min.z && coord.z < bounds_max.z
-    }
-
-    fn @vxl_at_indx(ind: Ind3) -> Voxel {
-
-        let i = ind.x + (ind.y * grid_dims.x) + (ind.z * grid_dims.x * grid_dims.y);
+        let i = x + (y * width) + (z * width * height);
 
         // every Voxel consists of 2 Vec3, which each take 4 spots (4th value is discarded)
         Voxel {
             sigma_a = vec3_to_color(buffer.load_vec3(BUFFER_OFFSET + (8*i))),
             sigma_s = vec3_to_color(buffer.load_vec3(BUFFER_OFFSET + (8*i) + 4))
-        }    
+        }   
     }
 
-    fn @to_vxl_indx(lcoord: Vec3) -> Ind3 {
 
-        let indx = vec3_to_i(vec3_floor(vec3_div(vec3_sub(lcoord, grid_bound_min), vxl_dims)));
-        indx
+    fn @vxl_at_coord(coord: Vec3) -> Voxel {
+
+        let (x, y, z) = coord_to_indx(coord);
+
+        vxl_at_indx(x, y, z) 
     }
 
-    fn @vxl_at_lcoords(lcoord: Vec3) -> Voxel {
-        if (!lcoords_in_bounds(lcoord)) {
-            print_string("WARNING: coords out of bound\n");
-            print_flush();
-        }
-        let indices = to_vxl_indx(lcoord);
 
-        vxl_at_indx(indices)
+    fn @vxl_at_coord_lerp(coord: Vec3) -> Voxel {
+
+        let (ind_x, ind_y, ind_z) = coord_to_indx(coord);
+
+        let ncoord = vec3_mul(coord, dimensions); // map to coordinate between (0, 0, 0) and (width, height, depth), such that the distance between each voxel is 1
+        let lcoord = vec3_sub(ncoord, make_vec3(ind_x as f32, ind_y as f32, ind_z as f32)); // the local coordinate inside the given voxel of the coordinate, between 0 and 1
+
+        let vxl_00 = vxl_lerp(vxl_at_indx(ind_x, ind_y, ind_z), vxl_at_indx(if (ind_x + 1 < width) { ind_x + 1 } else { ind_x }, ind_y, ind_z), lcoord.x);
+        let vxl_01 = vxl_lerp(vxl_at_indx(ind_x, ind_y, ind_z + 1), vxl_at_indx(if (ind_x + 1 < width) { ind_x + 1 } else { ind_x }, ind_y, if (ind_z + 1 < depth) { ind_z + 1 } else { ind_z }), lcoord.x);
+        let vxl_10 = vxl_lerp(vxl_at_indx(ind_x, if (ind_y + 1 < height) { ind_y + 1 } else { ind_y }, ind_z), vxl_at_indx(if (ind_x + 1 < width) { ind_x + 1 } else { ind_x }, if (ind_y + 1 < height) { ind_y + 1 } else { ind_y }, ind_z), lcoord.x);
+        let vxl_11 = vxl_lerp(vxl_at_indx(ind_x, if (ind_y + 1 < height) { ind_y + 1 } else { ind_y }, ind_z + 1), vxl_at_indx(if (ind_x + 1 < width) { ind_x + 1 } else { ind_x }, if (ind_y + 1 < height) { ind_y + 1 } else { ind_y }, if (ind_z + 1 < depth) { ind_z + 1 } else { ind_z }), lcoord.x);
+
+        let vxl_0 = vxl_lerp(vxl_00, vxl_01, lcoord.y);
+        let vxl_1 = vxl_lerp(vxl_10, vxl_11, lcoord.y);
+
+        vxl_lerp(vxl_0, vxl_1, lcoord.z)
     }
 
-    fn @vxl_at_coords(coord: Vec3) -> Voxel {
-        let local_coord = to_local_point(coord);
 
-        vxl_at_lcoords(local_coord)
-    }
-
-    fn @lcoords_in_bounds(lcoord: Vec3) -> bool {
-        (lcoord.x >= grid_bound_min.x && lcoord.x < grid_bound_max.x) && (lcoord.y >= grid_bound_min.y && lcoord.y < grid_bound_max.y) && (lcoord.z >= grid_bound_min.z && lcoord.z < grid_bound_max.z)
-    }
-
-    fn @coords_in_bounds(coord: Vec3) -> bool {
-        let local_coord = to_local_point(coord);
-
-        lcoords_in_bounds(local_coord)
-    }
-
-    // pushes the coordinate inside the grid if it is just on the edge
-    fn @sanitize_lcoords(lcoord: Vec3, eps: f32) -> Vec3 {
-        make_vec3(
-            if math_builtins::fabs(lcoord.x - grid_bound_min.x) < eps {
-                grid_bound_min.x + eps
-            } else if math_builtins::fabs(lcoord.x - grid_bound_max.x) < eps{
-                grid_bound_max.x - eps
-            } else {
-                lcoord.x
-            },
-            if math_builtins::fabs(lcoord.y - grid_bound_min.y) < eps {
-                grid_bound_min.y + eps
-            } else if math_builtins::fabs(lcoord.y - grid_bound_max.y) < eps{
-                grid_bound_max.y - eps
-            } else {
-                lcoord.y
-            },
-            if math_builtins::fabs(lcoord.z - grid_bound_min.z) < eps {
-                grid_bound_min.z + eps
-            } else if math_builtins::fabs(lcoord.z - grid_bound_max.z) < eps{
-                grid_bound_max.z - eps
-            } else {
-                lcoord.z
-            }
-        )
-    }
-/*
-    fn test_to_indx() {
-        
-        let vec_1 = make_vec3( 0,  0,  0);
-        let vec_2 = make_vec3(-1, -1, -1);
-        let vec_3 = make_vec3( 0.999,  0.999,  0.999);
-        let vec_4 = make_vec3(-0.1, -0.1, -0.1);
-        let vec_5 = make_vec3( 0.9,  0.9,  0.9);
-
-        let ind1 = to_vxl_indx(vec_1);
-        let ind2 = to_vxl_indx(vec_2);
-        let ind3 = to_vxl_indx(vec_3);
-        let ind4 = to_vxl_indx(vec_4);
-        let ind5 = to_vxl_indx(vec_5);
-
-        let is_correct_1 = (ind1.x == 5 && ind1.y == 5 && ind1.z == 5);
-        let is_correct_2 = (ind2.x == 0 && ind2.y == 0 && ind2.z == 0);
-        let is_correct_3 = (ind3.x == 9 && ind3.y == 9 && ind3.z == 9);
-        let is_correct_4 = (ind4.x == 4 && ind4.y == 4 && ind4.z == 4);
-        let is_correct_5 = (ind5.x == 9 && ind5.y == 9 && ind5.z == 9);
-
-        if (!is_correct_1) {
-            print_string("!is_correct_1: ");
-            print_i32(ind1.x);
-            print_string(", ");
-            print_i32(ind1.y);
-            print_string(", ");
-            print_i32(ind1.z);
-            print_string("\n");
-            print_flush();
-        }
-
-        if (!is_correct_2) {
-            print_string("!is_correct_2: ");
-            print_i32(ind2.x);
-            print_string(", ");
-            print_i32(ind2.y);
-            print_string(", ");
-            print_i32(ind2.z);
-            print_string("\n");
-            print_flush();
-        }
-
-        if (!is_correct_3) {
-            print_string("!is_correct_3: ");
-            print_i32(ind3.x);
-            print_string(", ");
-            print_i32(ind3.y);
-            print_string(", ");
-            print_i32(ind3.z);
-            print_string("\n");
-            print_flush();
-        }
-
-        if (!is_correct_4) {
-            print_string("!is_correct_4");
-            print_i32(ind4.x);
-            print_string(", ");
-            print_i32(ind4.y);
-            print_string(", ");
-            print_i32(ind4.z);
-            print_string("\n");
-            print_flush();
-        }
-
-        if (!is_correct_5) {
-            print_string("!is_correct_5");
-            print_i32(ind5.x);
-            print_string(", ");
-            print_i32(ind5.y);
-            print_string(", ");
-            print_i32(ind5.z);
-            print_string("\n");
-            print_flush();
-        }
-    }
-    
-    test_to_indx();
-*/
-    
     VoxelGrid {
-        grid_dims     = grid_dims,
-        vxl_dims      = vxl_dims,
+        width  = width,
+        height = height,
+        depth  = depth,
 
-        vxl_at_lcoords    = vxl_at_lcoords,
-        vxl_at_coords     = vxl_at_coords,
+        coord_to_indx     = coord_to_indx,
+        indx_to_coord     = indx_to_coord,
         vxl_at_indx       = vxl_at_indx,
-        to_local_dir      = to_local_dir,
-        to_local_point    = to_local_point,
-        to_global_dir     = to_global_dir,
-        to_global_point   = to_global_point,
-        to_vxl_indx       = to_vxl_indx,
-        to_vxl_coords     = to_vxl_coords,
-        lcoords_in_bounds = lcoords_in_bounds,
-        coords_in_bounds  = coords_in_bounds,
-        is_in_voxel       = is_in_voxel,
-        sanitize_lcoords  = sanitize_lcoords
+        vxl_at_coord      = vxl_at_coord,
+        vxl_at_coord_lerp = vxl_at_coord_lerp,
+        is_in_vxl         = is_in_vxl
     }
 
 }

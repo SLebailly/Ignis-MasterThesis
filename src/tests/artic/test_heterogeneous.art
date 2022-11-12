@@ -1,0 +1,109 @@
+fn  @make_dummy_buffer(dims: i32, sigma: Vec3) = DeviceBuffer {
+    add_atomic_i32 = @|_, _| 0:i32,
+    add_atomic_f32 = @|_, _| 0:f32,
+    min_atomic_i32 = @|_, _| 0:i32,
+    max_atomic_i32 = @|_, _| 0:i32,
+    load_i32_host  = @|_| dims,
+    store_i32_host = @|_, _| {},
+    copy_from_host = @|_, _, _| {},
+    copy_to_host   = @|_, _, _| {},
+    load_i32       = @|_| 0:i32,
+    load_f32       = @|_| 0:f32,
+    load_vec2      = @|_| make_vec2(0,0),
+    load_vec3      = @|_| sigma,
+    load_vec4      = @|_| make_vec4(0,0,0,0),
+    load_int2      = @|_| (0,0),
+    load_int3      = @|_| (0,0,0),
+    load_int4      = @|_| (0,0,0,0),
+    load_mat3x3    = @|_| mat3x3_identity(),
+    load_mat3x4    = @|_| mat3x4_identity(),
+    load_mat4x4    = @|_| mat4x4_identity(),
+    store_i32      = @|_, _| {},
+    store_f32      = @|_, _| {},
+    store_vec2     = @|_, _| {},
+    store_vec3     = @|_, _| {},
+    store_vec4     = @|_, _| {},
+    store_int2     = @|_, _, _| {},
+    store_int3     = @|_, _, _, _| {},
+    store_int4     = @|_, _, _, _, _| {},
+    store_mat3x3   = @|_, _| {},
+    store_mat3x4   = @|_, _| {},
+    store_mat4x4   = @|_, _| {},
+    pointer        = @|_| 0 as &[u8],
+    count          = 0,
+    has_alignment  = true
+}
+
+
+
+fn test_grid_to_coord() {
+   
+    let mut err = 0;
+
+    let buff = make_dummy_buffer(2, make_vec3(0.2, 0.2, 0.2));
+    let grid = make_voxel_grid(buff);
+    
+    let coord_1 = grid.indx_to_coord(0, 0, 0);
+    if !eq_vec3(coord_1, make_vec_3(0.25, 0.25, 0.25)) {
+        ++err;
+        ignis_test_fail("Index (0, 0, 0) has wrong coordinates!");
+    }
+
+    let coord_2 = grid.indx_to_coord(1, 1, 1);
+    if !eq_vec3(coord_2, make_vec_3(0.75, 0.75, 0.75)) {
+        ++err;
+        ignis_test_fail("Index (1, 1, 1) has wrong coordinates!");
+    }
+
+    err  
+}
+
+
+fn test_grid_to_indx() {
+
+    let mut err = 0;
+
+    let dims: i32 = 5;
+    let buff = make_dummy_buffer(dims, make_vec3(0.2, 0.2, 0.2));
+    let grid = make_voxel_grid(buff);
+    
+    let (x1, y1, z1) = grid.coord_to_indx(make_vec3(0:f32, 0:f32, 0:f32));
+    if (x1 != 0 || y1 != 0 || z1 != 0) {
+        ++err;
+        ignis_test_fail("Coords (0, 0, 0) has wrong indices!");
+    }
+
+    let (x2, y2, z2) = grid.coord_to_indx(make_vec3(0.999, 0.999, 0.999));
+    if (x2 != dims-1 || y2 != dims-1 || z2 != dims-1) {
+        ++err;
+        ignis_test_fail("Coords (1, 1, 1) has wrong indices!");
+    }
+
+    err  
+}
+
+fn test_grid_is_in_vxl() {
+
+    let mut err = 0;
+
+    let dims: i32 = 5;
+    let buff = make_dummy_buffer(dims, make_vec3(0.2, 0.2, 0.2));
+    let grid = make_voxel_grid(buff);
+    
+    if !grid.is_in_vxl(make_vec3(0:f32, 0:f32, 0:f32), 0, 0, 0) {
+        ++err;
+        ignis_test_fail("Coords (0, 0, 0) is not in voxel (0, 0, 0)!");
+    }
+
+    if !grid.is_in_vxl(make_vec3(0.9999, 0.9999, 0.9999), dims-1, dims-1, dims-1) {
+        ++err;
+        ignis_test_fail("Coords (1, 1, 1) is not in voxel (4, 4, 4)!");
+    }
+
+    if grid.is_in_vxl(make_vec3(1.1, 0.9999, 0.9999), dims-1, dims-1, dims-1) {
+        ++err;
+        ignis_test_fail("Coords (1.1, 1, 1) should not be in voxel (4, 4, 4)!");
+    }
+
+    err  
+}

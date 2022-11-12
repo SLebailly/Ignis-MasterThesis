@@ -25,27 +25,21 @@ static void medium_homogeneous(std::ostream& stream, const std::string& name, co
 
 static void medium_heterogeneous(std::ostream& stream, const std::string& name, const std::shared_ptr<Parser::Object>& medium, ShadingTree& tree)
 {
-    // FIXME: The shading context is not available here! Texture & PExpr will produce errors
     tree.beginClosure(name);
 
-    const auto filename = tree.context().handlePath(medium->property("filename").getString(), *medium);
-    size_t res_id              = tree.context().registerExternalResource(filename);
+    const auto filename    = tree.context().handlePath(medium->property("filename").getString(), *medium);
+    size_t res_id          = tree.context().registerExternalResource(filename);
+    const bool interpolate = medium->property("interpolate").getBool(false);
 
     tree.addNumber("g", *medium, 0, true);
     
-    Transformf transform = medium->property("transform").getTransform();
-    transform.makeAffine();
-    const Transformf transform_inv = transform.inverse();
-
-    const Eigen::Matrix<float, 3, 4> trans_matrix     = transform.matrix().block<3, 4>(0, 0); //note: was 3x4 in LoaderEntity...? Why not 4x4?
-    const Eigen::Matrix<float, 3, 4> trans_matrix_inv = transform_inv.matrix().block<3, 4>(0, 0);
-
     IG_LOG(L_DEBUG) << "Loading heterogeneous medium\n" << std::endl;
 
     const std::string media_id = tree.currentClosureID();
     stream << tree.pullHeader()
-           << "  let medium_" << media_id << " = make_heterogeneous_medium( device.load_buffer_by_id(" << res_id << ")"
-           << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "), " << LoaderUtils::inlineMatrix34(trans_matrix) << ", " << LoaderUtils::inlineMatrix34(trans_matrix_inv) <<");" << std::endl;
+           << "  let medium_" << media_id << "_grid = make_voxel_grid(device.load_buffer_by_id(" << res_id << "));" << std::endl
+           << "  let medium_" << media_id << " : MediumGenerator= @|ctx| { make_heterogeneous_medium(ctx, medium_" << media_id << "_grid"
+           << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ") };" << std::endl;
 
     tree.endClosure();
 }
