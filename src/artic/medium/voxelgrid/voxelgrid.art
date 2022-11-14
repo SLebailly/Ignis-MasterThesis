@@ -14,7 +14,8 @@ struct VoxelGrid {
     vxl_at_coord_lerp: fn (/* coord */ Vec3) -> Voxel,
     coord_to_indx:     fn (/* coord */ Vec3) -> (i32, i32, i32),
     indx_to_coord:     fn (/* x */ i32, /* y */ i32, /* z */ i32) -> Vec3,
-    is_in_vxl:         fn (/* coord */ Vec3, /* x */ i32, /* y */ i32, /* z */ i32) -> bool
+    is_in_vxl:         fn (/* coord */ Vec3, /* x */ i32, /* y */ i32, /* z */ i32) -> bool,
+    bounds:            fn (/* x */ i32, /* y */ i32, /* z */ i32) -> (/* lower */ Vec3, /* upper */ Vec3)
 }
 
 fn @make_voxel_grid(buffer: DeviceBuffer) -> VoxelGrid {
@@ -23,37 +24,47 @@ fn @make_voxel_grid(buffer: DeviceBuffer) -> VoxelGrid {
     let height = buffer.load_i32_host(1);
     let depth  = buffer.load_i32_host(2);
 
-    let dimensions = make_vec3(width as f32, height as f32, depth as f32);
+    let vxl_dimensions = vec3_div(vec3_expand(1:f32), make_vec3(width as f32, height as f32, depth as f32));
 
 
     fn @is_in_vxl(coord: Vec3, x: i32, y: i32, z: i32) -> bool {
+        let vxl_coord = indx_to_coord(x, y, z);
+        let diff      = vec3_abs(vec3_sub(coord, vxl_coord));
 
-        let ncoord = vec3_mul(coord, dimensions); // map to coordinate between (0, 0, 0) and (width, height, depth), such that the distance between each voxel is 1
-        let lcoord = vec3_sub(ncoord, make_vec3(x as f32, y as f32, z as f32)); // the local coordinate inside the given voxel of the coordinate, between 0 and 1
-
-        (lcoord.x >= 0:f32 && lcoord.x < 1:f32 && lcoord.y >= 0:f32 && lcoord.y < 1:f32 && lcoord.z >= 0:f32 && lcoord.z < 1:f32)
+        (diff.x < vxl_dimensions.x && diff.y < vxl_dimensions.y && diff.z < vxl_dimensions.z)
     }
 
+    fn @bounds(x: i32, y: i32, z: i32) -> (Vec3, Vec3) {
+        let lower = indx_to_coord(x, y, z);
+        let upper = vec3_add(lower, vxl_dimensions);
+
+        (lower, upper)
+    }
 
     fn @coord_to_indx(coord: Vec3) -> (i32, i32, i32) {
+
+        let scaled_coords = vec3_div(coord, vxl_dimensions);
         
-        let x = math_builtins::floor(coord.x) as i32 * width;
-        let y = math_builtins::floor(coord.y) as i32 * height;
-        let z = math_builtins::floor(coord.z) as i32 * depth;
+        let x = math_builtins::floor(scaled_coords.x) as i32;
+        let y = math_builtins::floor(scaled_coords.y) as i32; 
+        let z = math_builtins::floor(scaled_coords.z) as i32;
 
         (x, y, z)
     }
 
-
     fn @indx_to_coord(x: i32, y: i32, z: i32) -> Vec3 {
-        vec3_div(make_vec3((x as f32) + 0.5, (y as f32) + 0.5, (z as f32) + 0.5), dimensions)
+        vec3_mul(make_vec3((x as f32), (y as f32), (z as f32)), vxl_dimensions)
+    }
+
+    fn @indx_to_coord_center(x: i32, y: i32, z: i32) -> Vec3 {
+        vec3_mul(make_vec3((x as f32) + 0.5, (y as f32) + 0.5, (z as f32) + 0.5), vxl_dimensions)
     }
 
 
     fn @vxl_at_indx(x: i32, y: i32, z: i32) -> Voxel {
 
         if (x < 0 || x >= width || y < 0 || y >= height || z < 0 || z >= depth) {
-            
+            /*
             print_string("WARNING: Accessing out of bounds buffer index\n(");
             print_i32(x);
             print_string(", ");
@@ -61,7 +72,7 @@ fn @make_voxel_grid(buffer: DeviceBuffer) -> VoxelGrid {
             print_string(", ");
             print_i32(z);
             print_string(")\n");
-            
+            */
             return(Voxel {
                 sigma_a = make_gray_color(0),
                 sigma_s = make_gray_color(0)
@@ -71,10 +82,14 @@ fn @make_voxel_grid(buffer: DeviceBuffer) -> VoxelGrid {
         let i = x + (y * width) + (z * width * height);
 
         // every Voxel consists of 2 Vec3, which each take 4 spots (4th value is discarded)
-        Voxel {
+        let vxl = Voxel {
             sigma_a = vec3_to_color(buffer.load_vec3(BUFFER_OFFSET + (8*i))),
             sigma_s = vec3_to_color(buffer.load_vec3(BUFFER_OFFSET + (8*i) + 4))
-        }   
+        };
+
+        //print_color(vxl.sigma_a);
+        //print_color(vxl.sigma_s);
+        vxl
     }
 
 
@@ -89,19 +104,23 @@ fn @make_voxel_grid(buffer: DeviceBuffer) -> VoxelGrid {
     fn @vxl_at_coord_lerp(coord: Vec3) -> Voxel {
 
         let (ind_x, ind_y, ind_z) = coord_to_indx(coord);
+        
+        let vxl_center = indx_to_coord_center(ind_x, ind_y, ind_z);
+        let diff       = vec3_sub(coord, vxl_center);       
 
-        let ncoord = vec3_mul(coord, dimensions); // map to coordinate between (0, 0, 0) and (width, height, depth), such that the distance between each voxel is 1
-        let lcoord = vec3_sub(ncoord, make_vec3(ind_x as f32, ind_y as f32, ind_z as f32)); // the local coordinate inside the given voxel of the coordinate, between 0 and 1
+        let (x_0, x_1, t_x) = if diff.x < 0 { (ind_x - 1, ind_x, ((vxl_center.x - coord.x) / vxl_dimensions.x) + 1:f32) } else { (ind_x, ind_x + 1, (coord.x - vxl_center.x) / vxl_dimensions.x) };
+        let (y_0, y_1, t_y) = if diff.y < 0 { (ind_y - 1, ind_y, ((vxl_center.y - coord.y) / vxl_dimensions.y) + 1:f32) } else { (ind_y, ind_y + 1, (coord.y - vxl_center.y) / vxl_dimensions.y) };
+        let (z_0, z_1, t_z) = if diff.z < 0 { (ind_y - 1, ind_y, ((vxl_center.z - coord.z) / vxl_dimensions.z) + 1:f32) } else { (ind_z, ind_z + 1, (coord.z - vxl_center.z) / vxl_dimensions.z) };
+        
+        let vxl_00 = vxl_lerp(vxl_at_indx(x_0, y_0, z_0), vxl_at_indx(x_1, y_0, z_0), t_x);
+        let vxl_01 = vxl_lerp(vxl_at_indx(x_0, y_0, z_1), vxl_at_indx(x_1, y_0, z_1), t_x);
+        let vxl_10 = vxl_lerp(vxl_at_indx(x_0, y_1, z_0), vxl_at_indx(x_1, y_1, z_0), t_x);
+        let vxl_11 = vxl_lerp(vxl_at_indx(x_0, y_1, z_1), vxl_at_indx(x_1, y_1, z_1), t_x);
 
-        let vxl_00 = vxl_lerp(vxl_at_indx(ind_x, ind_y, ind_z), vxl_at_indx(if (ind_x + 1 < width) { ind_x + 1 } else { ind_x }, ind_y, ind_z), lcoord.x);
-        let vxl_01 = vxl_lerp(vxl_at_indx(ind_x, ind_y, ind_z + 1), vxl_at_indx(if (ind_x + 1 < width) { ind_x + 1 } else { ind_x }, ind_y, if (ind_z + 1 < depth) { ind_z + 1 } else { ind_z }), lcoord.x);
-        let vxl_10 = vxl_lerp(vxl_at_indx(ind_x, if (ind_y + 1 < height) { ind_y + 1 } else { ind_y }, ind_z), vxl_at_indx(if (ind_x + 1 < width) { ind_x + 1 } else { ind_x }, if (ind_y + 1 < height) { ind_y + 1 } else { ind_y }, ind_z), lcoord.x);
-        let vxl_11 = vxl_lerp(vxl_at_indx(ind_x, if (ind_y + 1 < height) { ind_y + 1 } else { ind_y }, ind_z + 1), vxl_at_indx(if (ind_x + 1 < width) { ind_x + 1 } else { ind_x }, if (ind_y + 1 < height) { ind_y + 1 } else { ind_y }, if (ind_z + 1 < depth) { ind_z + 1 } else { ind_z }), lcoord.x);
+        let vxl_0 = vxl_lerp(vxl_00, vxl_01, t_y);
+        let vxl_1 = vxl_lerp(vxl_10, vxl_11, t_y);
 
-        let vxl_0 = vxl_lerp(vxl_00, vxl_01, lcoord.y);
-        let vxl_1 = vxl_lerp(vxl_10, vxl_11, lcoord.y);
-
-        vxl_lerp(vxl_0, vxl_1, lcoord.z)
+        vxl_lerp(vxl_0, vxl_1, t_z)
     }
 
 
@@ -115,7 +134,8 @@ fn @make_voxel_grid(buffer: DeviceBuffer) -> VoxelGrid {
         vxl_at_indx       = vxl_at_indx,
         vxl_at_coord      = vxl_at_coord,
         vxl_at_coord_lerp = vxl_at_coord_lerp,
-        is_in_vxl         = is_in_vxl
+        is_in_vxl         = is_in_vxl,
+        bounds            = bounds
     }
 
 }

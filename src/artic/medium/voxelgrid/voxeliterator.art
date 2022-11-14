@@ -42,7 +42,7 @@ fn @next_vxl_iterator(iterator: VoxelIterator) -> (VoxelIterator, VoxelIteratorR
                 iterator.ind_x,
                 iterator.ind_y,
                 iterator.ind_z + iterator.step_z,
-                vec3_add(iterator.t_max,   make_vec3(0, 0, iterator.t_delta.z))
+                vec3_add(iterator.t_max, make_vec3(0, 0, iterator.t_delta.z))
             )
         }
     } else {
@@ -51,14 +51,14 @@ fn @next_vxl_iterator(iterator: VoxelIterator) -> (VoxelIterator, VoxelIteratorR
                 iterator.ind_x,
                 iterator.ind_y + iterator.step_y,
                 iterator.ind_z,
-                vec3_add(iterator.t_max,   make_vec3(0, iterator.t_delta.y, 0))
+                vec3_add(iterator.t_max, make_vec3(0, iterator.t_delta.y, 0))
             )
         } else {
             (
                 iterator.ind_x,
                 iterator.ind_y,
                 iterator.ind_z + iterator.step_z,
-                vec3_add(iterator.t_max,   make_vec3(0, 0, iterator.t_delta.z))
+                vec3_add(iterator.t_max, make_vec3(0, 0, iterator.t_delta.z))
             )
         }
     };
@@ -127,10 +127,11 @@ fn @make_voxel_iterator(grid: VoxelGrid, start: Vec3, ndir: Vec3) -> VoxelIterat
     }
 */ 
 
-    let next_vxl_bounds = grid.indx_to_coord(
-        if step_x > 0 { ind_x + 1 } else { ind_x },
-        if step_y > 0 { ind_y + 1 } else { ind_y },
-        if step_z > 0 { ind_z + 1 } else { ind_z }
+    let (lower_bounds, upper_bounds) = grid.bounds(ind_x, ind_y, ind_z);
+    let next_vxl_bounds = make_vec3(
+        if step_x > 0 { math_builtins::fmin[f32](upper_bounds.x, 1) } else { math_builtins::fmax[f32](lower_bounds.x, 0) },
+        if step_y > 0 { math_builtins::fmin[f32](upper_bounds.y, 1) } else { math_builtins::fmax[f32](lower_bounds.y, 0) },
+        if step_z > 0 { math_builtins::fmin[f32](upper_bounds.z, 1) } else { math_builtins::fmax[f32](lower_bounds.z, 0) }
     );
     
     let t_max = vec3_abs(vec3_safediv(vec3_sub(next_vxl_bounds, start), ndir));

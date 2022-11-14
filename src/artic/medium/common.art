@@ -34,7 +34,7 @@ fn print_vec3(vec: Vec3) {
     print_f32(vec.y);
     print_string(", ");
     print_f32(vec.z);
-    print_string(")\n");
+    print_string(")");
 }
 
 fn print_color(c: Color) {
@@ -44,7 +44,7 @@ fn print_color(c: Color) {
     print_f32(c.g);
     print_string(", ");
     print_f32(c.b);
-    print_string(")\n");
+    print_string(")");
 }
 
 fn print_ind3(ind: Ind3) {
