@@ -7,6 +7,28 @@
 
 fn @make_regular_tracking_medium(ctx: ShadingContext, grid: VoxelGrid, phase: PhaseFunction, interpolate: bool) -> Medium { // check dimensions of matrix, give inverse of Matrix with it
 
+    /*
+    
+    // Iterator Tests
+
+    print_string("make\n");
+
+    let (mut iterator_test, mut current_test) = next_vxl_iterator(make_voxel_iterator(grid, make_vec3(0, 0, 0), make_vec3(0, 1, 0)));
+    while (current_test.ind_x >= 0 && current_test.ind_x < grid.width && current_test.ind_y >= 0 && current_test.ind_y < grid.height && current_test.ind_z >= 0 && current_test.ind_z < grid.depth) {
+        print_f32(current_test.t);
+        print_string(" (");
+        print_i32(current_test.ind_x);
+        print_string(", ");
+        print_i32(current_test.ind_y);
+        print_string(", ");
+        print_i32(current_test.ind_z);
+        print_string(")\n");
+        let (new_iterator_test, new_current_test) = next_vxl_iterator(iterator_test);
+        iterator_test = new_iterator_test;
+        current_test  = new_current_test;
+    }
+    */
+
     /**
      * Evaluates the distance (and corresponding optical thickness) travelled along the ray before reaching the sampled transmittance value in the medium
      */
@@ -99,6 +121,14 @@ fn @make_regular_tracking_medium(ctx: ShadingContext, grid: VoxelGrid, phase: Ph
         let dist                = loc_dist * scale_diff; //transform the local_distance into global distance
         let opt                 = color_mulf(loc_opt, scale_diff);
 
+        if (loc_start.x < -0.01 || loc_start.x >= 1.01 || loc_start.y < -0.01 || loc_start.y >= 1.01 || loc_start.z < -0.01 || loc_start.z >= 1.01) {
+            //print_string("Start position (eval_dist): ");
+            //print_vec3(p_start);
+            //print_string(" -> ");
+            //print_vec3(loc_start);
+            //print_string("\n");
+            return((flt_max, make_color(0.5, 0, 0, 1)))
+        }
         //eval_dist_local(make_vec3(0, 0, 0), make_vec3(1, 0, 0), 0.8, true);
 
         (dist, opt)
@@ -157,6 +187,29 @@ fn @make_regular_tracking_medium(ctx: ShadingContext, grid: VoxelGrid, phase: Ph
         let ldir       = vec3_sub(loc_end, loc_start);
         let scale_diff = math_builtins::sqrt(vec3_len2(dir) / vec3_len2(ldir));
 
+        if (loc_start.x < -0.1 || loc_start.x >= 1.1 || loc_start.y < -0.1 || loc_start.y >= 1.1 || loc_start.z < -0.1 || loc_start.z >= 1.1) {
+            /*
+            print_string("Start position (eval_tr): ");
+            print_vec3(p_start);
+            print_string(" -> ");
+            print_vec3(loc_start);
+            print_string("\n");
+            */
+            return(make_color(0, 0.5, 0, 1))
+        }
+
+        if (loc_end.x < -0.1 || loc_end.x >= 1.1 || loc_end.y < -0.1 || loc_end.y >= 1.1 || loc_end.z < -0.1 || loc_end.z >= 1.1) {
+            /*
+            print_string("End position (eval_tr): ");
+            print_vec3(p_end);
+            print_string(" -> ");
+            print_vec3(loc_end);
+            print_string("\n");
+            */
+            
+            return(make_color(0, 0, 0.5, 1))
+        }
+
         let local_opt  = eval_opt_local(loc_start, loc_end);
 
         optical_thickness_to_transmittance(color_mulf(local_opt, scale_diff))
@@ -165,6 +218,10 @@ fn @make_regular_tracking_medium(ctx: ShadingContext, grid: VoxelGrid, phase: Ph
     Medium {
         phase = @|_| phase,
         eval  = @|p_start, p_end| {
+            if (ctx.coord.to_normalized_point(p_start).x > 1.01) {
+                print_string("eval\n");
+            }
+
             eval_tr(p_start, p_end)
         },
         eval_inf = @|_, _| color_builtins::black,
@@ -172,6 +229,9 @@ fn @make_regular_tracking_medium(ctx: ShadingContext, grid: VoxelGrid, phase: Ph
             1:f32
         },
         sample   = @|rnd, p_start, p_end| {
+            if (ctx.coord.to_normalized_point(p_start).x > 1.01) {
+                print_string("sample\n");
+            }
             let dir_u = vec3_sub(p_end, p_start);
             let dist  = vec3_len(dir_u);
             let dir   = vec3_mulf(dir_u, safe_div(1, dist));
