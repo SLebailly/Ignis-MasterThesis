@@ -189,6 +189,10 @@ fn @vec2_max(a: Vec2, b: Vec2) = vec2_zip(a, b, @|x, y| select(x > y, x, y));
 fn @vec3_max(a: Vec3, b: Vec3) = vec3_zip(a, b, @|x, y| select(x > y, x, y));
 fn @vec4_max(a: Vec4, b: Vec4) = vec4_zip(a, b, @|x, y| select(x > y, x, y));
 
+fn @vec2_clamp(a: Vec2, min: Vec2, max: Vec2) = vec2_min(vec2_max(a, min), max);
+fn @vec3_clamp(a: Vec3, min: Vec3, max: Vec3) = vec3_min(vec3_max(a, min), max);
+fn @vec4_clamp(a: Vec4, min: Vec4, max: Vec4) = vec4_min(vec4_max(a, min), max);
+
 fn @vec2_at(a: Vec2, i: i32) = match(i) {
     0 => a.x,
     _ => a.y
