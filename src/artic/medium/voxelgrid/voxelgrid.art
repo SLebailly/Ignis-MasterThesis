@@ -63,33 +63,18 @@ fn @make_voxel_grid(buffer: DeviceBuffer) -> VoxelGrid {
 
     fn @vxl_at_indx(x: i32, y: i32, z: i32) -> Voxel {
 
-        if (x < 0 || x >= width || y < 0 || y >= height || z < 0 || z >= depth) {
-            /*
-            print_string("WARNING: Accessing out of bounds buffer index\n(");
-            print_i32(x);
-            print_string(", ");
-            print_i32(y);
-            print_string(", ");
-            print_i32(z);
-            print_string(")\n");
-            */
-            return(Voxel {
-                sigma_a = make_gray_color(0),
-                sigma_s = make_gray_color(0)
-            })
-        }
+        //clamp between 0 and width-height-depth
+        let xs = if x < 0 { 0 } else if x >= width  { width  - 1 } else { x };
+        let ys = if y < 0 { 0 } else if y >= height { height - 1 } else { y };
+        let zs = if z < 0 { 0 } else if z >= depth  { depth  - 1 } else { z };
 
-        let i = x + (y * width) + (z * width * height);
+        let i = xs + (ys * width) + (zs * width * height);
 
         // every Voxel consists of 2 Vec3, which each take 4 spots (4th value is discarded)
-        let vxl = Voxel {
+        Voxel {
             sigma_a = vec3_to_color(buffer.load_vec3(BUFFER_OFFSET + (8*i))),
             sigma_s = vec3_to_color(buffer.load_vec3(BUFFER_OFFSET + (8*i) + 4))
-        };
-
-        //print_color(vxl.sigma_a);
-        //print_color(vxl.sigma_s);
-        vxl
+        }
     }
 
 
@@ -106,11 +91,11 @@ fn @make_voxel_grid(buffer: DeviceBuffer) -> VoxelGrid {
         let (ind_x, ind_y, ind_z) = coord_to_indx(coord);
         
         let vxl_center = indx_to_coord_center(ind_x, ind_y, ind_z);
-        let diff       = vec3_sub(coord, vxl_center);       
+        let lcoord     = vec3_div(vec3_sub(coord, vxl_center), vxl_dimensions);
 
-        let (x_0, x_1, t_x) = if diff.x < 0 { (ind_x - 1, ind_x, ((vxl_center.x - coord.x) / vxl_dimensions.x) + 1:f32) } else { (ind_x, ind_x + 1, (coord.x - vxl_center.x) / vxl_dimensions.x) };
-        let (y_0, y_1, t_y) = if diff.y < 0 { (ind_y - 1, ind_y, ((vxl_center.y - coord.y) / vxl_dimensions.y) + 1:f32) } else { (ind_y, ind_y + 1, (coord.y - vxl_center.y) / vxl_dimensions.y) };
-        let (z_0, z_1, t_z) = if diff.z < 0 { (ind_y - 1, ind_y, ((vxl_center.z - coord.z) / vxl_dimensions.z) + 1:f32) } else { (ind_z, ind_z + 1, (coord.z - vxl_center.z) / vxl_dimensions.z) };
+        let (x_0, x_1, t_x) = if lcoord.x < 0 { (ind_x - 1, ind_x, 1:f32 + lcoord.x) } else { (ind_x, ind_x + 1, lcoord.x) };
+        let (y_0, y_1, t_y) = if lcoord.y < 0 { (ind_y - 1, ind_y, 1:f32 + lcoord.y) } else { (ind_y, ind_y + 1, lcoord.y) };
+        let (z_0, z_1, t_z) = if lcoord.z < 0 { (ind_y - 1, ind_y, 1:f32 + lcoord.z) } else { (ind_z, ind_z + 1, lcoord.z) };
         
         let vxl_00 = vxl_lerp(vxl_at_indx(x_0, y_0, z_0), vxl_at_indx(x_1, y_0, z_0), t_x);
         let vxl_01 = vxl_lerp(vxl_at_indx(x_0, y_0, z_1), vxl_at_indx(x_1, y_0, z_1), t_x);
