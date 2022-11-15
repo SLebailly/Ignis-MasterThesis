@@ -47,13 +47,4 @@ fn print_color(c: Color) {
     print_string(")");
 }
 
-fn print_ind3(ind: Ind3) {
-    print_string("(");
-    print_i32(ind.x);
-    print_string(", ");
-    print_i32(ind.y);
-    print_string(", ");
-    print_i32(ind.z);
-    print_string(")\n");
-}
 
