@@ -33,8 +33,6 @@ static void medium_heterogeneous(std::ostream& stream, const std::string& name, 
 
     tree.addNumber("g", *medium, 0, true);
     
-    IG_LOG(L_DEBUG) << "Loading heterogeneous medium\n" << std::endl;
-
     const std::string media_id = tree.currentClosureID();
     stream << tree.pullHeader()
            << "  let medium_" << media_id << "_grid = make_voxel_grid(device.load_buffer_by_id(" << res_id << "));" << std::endl

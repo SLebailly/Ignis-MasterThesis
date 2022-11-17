@@ -1,14 +1,14 @@
 struct VoxelIterator {
-    start:  Vec3, // the start coord
-    ndir:   Vec3, // the normalized direction
+    start: Vec3, // the start coord
+    ndir:  Vec3, // the normalized direction
 
     ind_x: i32,  // the indices of the current voxel
     ind_y: i32,  // the indices of the current voxel
     ind_z: i32,  // the indices of the current voxel
 
-    step_x:  i32,
-    step_y:  i32,
-    step_z:  i32,
+    step_x: i32,
+    step_y: i32,
+    step_z: i32,
 
     t_delta: Vec3,
     t_max:   Vec3,
@@ -18,12 +18,12 @@ struct VoxelIterator {
 
   
 struct VoxelIteratorResult {
-    ind_x:   i32,  // the indx of the voxel
-    ind_y:   i32,  // the indx of the voxel
-    ind_z:   i32,  // the indx of the voxel
-    entry:   Vec3, // the entry point of the voxel
-    exit:    Vec3, // the exit  point of the voxel
-    t:       f32   // the distance traveled in this voxel
+    ind_x: i32,  // the indx of the voxel
+    ind_y: i32,  // the indx of the voxel
+    ind_z: i32,  // the indx of the voxel
+    entry: Vec3, // the entry point of the voxel
+    exit:  Vec3, // the exit  point of the voxel
+    t:     f32   // the distance traveled in this voxel
 }
 
 //iterates through Voxels along the ray, returns a tuple with 
@@ -138,20 +138,20 @@ fn @make_voxel_iterator(grid: VoxelGrid, start: Vec3, ndir: Vec3) -> VoxelIterat
     
 
     VoxelIterator {
-        start        = start,
-        ndir         = ndir,
+        start = start,
+        ndir  = ndir,
 
-        ind_x    = ind_x,
-        ind_y    = ind_y,
-        ind_z    = ind_z,
+        ind_x = ind_x,
+        ind_y = ind_y,
+        ind_z = ind_z,
 
-        step_x       = step_x,
-        step_y       = step_y,
-        step_z       = step_z,
+        step_x = step_x,
+        step_y = step_y,
+        step_z = step_z,
 
-        t_delta      = t_delta,
-        t_max        = t_max,
+        t_delta = t_delta,
+        t_max   = t_max,
 
-        total_t      = 0:f32
+        total_t = 0:f32
     }
 }

@@ -41,6 +41,6 @@
 		{"type":"area", "name":"AreaLight", "entity":"AreaLight", "radiance":[100,100,100]}
 	],
 	"media": [
-		{"type": "heterogeneous", "name": "Medium", "filename": "media/homogeneous.bin", "g": 0, "transform": {"scale": 0.4, "translate": [0,-1.4, 0]}}
+		{"type": "heterogeneous", "name": "Medium", "filename": "media/homogeneous.bin", "g": 0 }
 	]
 }
