@@ -4,6 +4,9 @@ CMakeSettings.json
 # Screenshots
 screenshot_*
 
+# Heterogeneous Media grids
+scenes/media/*.json
+
 # Visual Studio stuff
 .vs/
 
