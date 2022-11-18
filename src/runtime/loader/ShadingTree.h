@@ -88,6 +88,7 @@ public:
     void addColor(const std::string& name, const Parser::Object& obj, const Vector3f& def = Vector3f::Zero(), bool hasDef = true, const ColorOptions& options = ColorOptions::Full());
     void addVector(const std::string& name, const Parser::Object& obj, const Vector3f& def = Vector3f::Zero(), bool hasDef = true, const VectorOptions& options = VectorOptions::Full());
     void addTexture(const std::string& name, const Parser::Object& obj, bool hasDef = true, const TextureOptions& options = TextureOptions::Default());
+    //void addVoxelGrid(const std::string& name, const Parser::Object& obj, const Vector3f& def, bool hasDef = true, const VectorOptions& options);
 
     // Approximation
     float computeNumber(const std::string& name, const Parser::Object& obj, float def = 0) const;

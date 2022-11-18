@@ -3,6 +3,7 @@ set(ARTIC_TEST_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/test_bbox.art
     ${CMAKE_CURRENT_SOURCE_DIR}/test_cdf.art
     ${CMAKE_CURRENT_SOURCE_DIR}/test_common.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_heterogeneous.art
     ${CMAKE_CURRENT_SOURCE_DIR}/test_intersection.art
     ${CMAKE_CURRENT_SOURCE_DIR}/test_interval.art
     ${CMAKE_CURRENT_SOURCE_DIR}/test_main.art

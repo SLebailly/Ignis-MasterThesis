@@ -1,0 +1,12 @@
+struct Voxel {
+    sigma_a: Color,
+    sigma_s: Color
+}
+
+fn @vxl_lerp(a: Voxel, b: Voxel, t: f32) -> Voxel {
+    
+    Voxel {
+        sigma_a = color_lerp(a.sigma_a, b.sigma_a, t),
+        sigma_s = color_lerp(a.sigma_s, b.sigma_s, t)
+    }
+}

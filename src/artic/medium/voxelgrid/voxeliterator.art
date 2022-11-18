@@ -1,0 +1,157 @@
+struct VoxelIterator {
+    start: Vec3, // the start coord
+    ndir:  Vec3, // the normalized direction
+
+    ind_x: i32,  // the indices of the current voxel
+    ind_y: i32,  // the indices of the current voxel
+    ind_z: i32,  // the indices of the current voxel
+
+    step_x: i32,
+    step_y: i32,
+    step_z: i32,
+
+    t_delta: Vec3,
+    t_max:   Vec3,
+
+    total_t: f32,
+}
+
+  
+struct VoxelIteratorResult {
+    ind_x: i32,  // the indx of the voxel
+    ind_y: i32,  // the indx of the voxel
+    ind_z: i32,  // the indx of the voxel
+    entry: Vec3, // the entry point of the voxel
+    exit:  Vec3, // the exit  point of the voxel
+    t:     f32   // the distance traveled in this voxel
+}
+
+//iterates through Voxels along the ray, returns a tuple with 
+fn @next_vxl_iterator(iterator: VoxelIterator) -> (VoxelIterator, VoxelIteratorResult) {
+
+    let (new_x, new_y, new_z, nt_max) = if iterator.t_max.x < iterator.t_max.y {
+        if iterator.t_max.x < iterator.t_max.z {
+            (
+                iterator.ind_x + iterator.step_x,
+                iterator.ind_y,
+                iterator.ind_z,
+                vec3_add(iterator.t_max, make_vec3(iterator.t_delta.x, 0, 0))
+            )
+        } else {
+            (
+                iterator.ind_x,
+                iterator.ind_y,
+                iterator.ind_z + iterator.step_z,
+                vec3_add(iterator.t_max, make_vec3(0, 0, iterator.t_delta.z))
+            )
+        }
+    } else {
+        if iterator.t_max.y < iterator.t_max.z {
+            (
+                iterator.ind_x,
+                iterator.ind_y + iterator.step_y,
+                iterator.ind_z,
+                vec3_add(iterator.t_max, make_vec3(0, iterator.t_delta.y, 0))
+            )
+        } else {
+            (
+                iterator.ind_x,
+                iterator.ind_y,
+                iterator.ind_z + iterator.step_z,
+                vec3_add(iterator.t_max, make_vec3(0, 0, iterator.t_delta.z))
+            )
+        }
+    };
+
+    let ntotal_t = math_builtins::fmin(iterator.t_max.x, math_builtins::fmin(iterator.t_max.y, iterator.t_max.z));
+    let t        = ntotal_t - iterator.total_t;
+
+    let new_iterator = VoxelIterator {
+        start   = iterator.start,
+        ndir    = iterator.ndir,
+        
+        ind_x   = new_x,
+        ind_y   = new_y,
+        ind_z   = new_z,
+
+        step_x      = iterator.step_x,
+        step_y      = iterator.step_y,
+        step_z      = iterator.step_z,
+
+        t_delta     = iterator.t_delta,
+        t_max       = nt_max,
+
+        total_t     = ntotal_t
+    };
+
+    let result = VoxelIteratorResult {
+        ind_x = iterator.ind_x,
+        ind_y = iterator.ind_y,
+        ind_z = iterator.ind_z,
+
+        entry = vec3_add(iterator.start, vec3_mulf(iterator.ndir, iterator.total_t)),
+        exit  = vec3_add(iterator.start, vec3_mulf(iterator.ndir, ntotal_t)),
+
+        t = t
+    };
+
+    (new_iterator, result)
+}
+
+// direction needs to be normalized !!!
+fn @make_voxel_iterator(grid: VoxelGrid, start: Vec3, ndir: Vec3) -> VoxelIterator {
+
+    let (ind_x, ind_y, ind_z) = grid.coord_to_indx(vec3_min(start, vec3_expand(0.99999)));
+    
+    // can be negative (depending on direction)
+    let step_x = if (ndir.x > flt_eps) { 1 } else { -1 };
+    let step_y = if (ndir.y > flt_eps) { 1 } else { -1 };
+    let step_z = if (ndir.z > flt_eps) { 1 } else { -1 };
+
+    let t_delta = vec3_abs(
+        vec3_safediv(
+            make_vec3(
+                (1:f32 / (grid.width  as f32)),
+                (1:f32 / (grid.height as f32)),
+                (1:f32 / (grid.depth  as f32)),
+            ),
+            ndir
+        )
+    );
+/*
+    //ASSERT
+    if (!grid.lcoords_in_bounds(offset_local_start)) {
+        print_string("Assertion failure: creating iterator outside boundaries: ");
+        print_vec3(offset_local_start);
+        print_string("\n");
+    }
+*/ 
+
+    let (lower_bounds, upper_bounds) = grid.bounds(ind_x, ind_y, ind_z);
+    let next_vxl_bounds = make_vec3(
+        if step_x > 0 { math_builtins::fmin[f32](upper_bounds.x, 1) } else { math_builtins::fmax[f32](lower_bounds.x, 0) },
+        if step_y > 0 { math_builtins::fmin[f32](upper_bounds.y, 1) } else { math_builtins::fmax[f32](lower_bounds.y, 0) },
+        if step_z > 0 { math_builtins::fmin[f32](upper_bounds.z, 1) } else { math_builtins::fmax[f32](lower_bounds.z, 0) }
+    );
+    
+    let t_max = vec3_abs(vec3_safediv(vec3_sub(next_vxl_bounds, start), ndir));
+    
+
+    VoxelIterator {
+        start = start,
+        ndir  = ndir,
+
+        ind_x = ind_x,
+        ind_y = ind_y,
+        ind_z = ind_z,
+
+        step_x = step_x,
+        step_y = step_y,
+        step_z = step_z,
+
+        t_delta = t_delta,
+        t_max   = t_max,
+
+        total_t = 0:f32
+    }
+}

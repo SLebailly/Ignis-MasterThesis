@@ -1,8 +1,0 @@
-{
-	"externals": [
-        {"filename":"base.json"}
-    ],
-	"lights": [
-		{"type":"cie_cloudy", "name":"Light"}
-	]
-}

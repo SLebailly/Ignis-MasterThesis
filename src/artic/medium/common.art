@@ -8,3 +8,43 @@ fn @make_vacuum_medium()-> Medium {
         is_homogeneous = true
     }
 }
+
+fn @optical_thickness_to_transmittance(optical_thickness: Color) -> Color {
+    make_color(
+        math_builtins::exp(-optical_thickness.r),
+        math_builtins::exp(-optical_thickness.g),
+        math_builtins::exp(-optical_thickness.b),
+        optical_thickness.a
+    )
+}
+
+fn @transmittance_to_optical_thickness(transmittance: Color) -> Color {
+    make_color(
+        - math_builtins::log(transmittance.r),
+        - math_builtins::log(transmittance.g),
+        - math_builtins::log(transmittance.b),
+        transmittance.a
+    )
+}
+
+fn print_vec3(vec: Vec3) {
+    print_string("(");
+    print_f32(vec.x);
+    print_string(", ");
+    print_f32(vec.y);
+    print_string(", ");
+    print_f32(vec.z);
+    print_string(")");
+}
+
+fn print_color(c: Color) {
+    print_string("(");
+    print_f32(c.r);
+    print_string(", ");
+    print_f32(c.g);
+    print_string(", ");
+    print_f32(c.b);
+    print_string(")");
+}
+
+

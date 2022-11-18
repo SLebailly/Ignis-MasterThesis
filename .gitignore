@@ -1,6 +1,12 @@
 build/
 CMakeSettings.json
 
+# Screenshots
+screenshot_*
+
+# Heterogeneous Media grids
+scenes/media/*.json
+
 # Visual Studio stuff
 .vs/
 
@@ -41,12 +47,9 @@ CMakeSettings.json
 # Python cache
 __pycache__/
 
-<<<<<<< HEAD
 # Python env
 ignis_env
 
-=======
->>>>>>> 0b87b77528540883b44f4a389044af8300353d5c
 # glTF cache
 _ignis_cache*/
 
@@ -69,3 +72,4 @@ scripts/docker/ignis/tmp/
 
 # Do not add backup files
 *.blend1
+imgui.ini

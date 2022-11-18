@@ -1,8 +1,0 @@
-{
-	"externals": [
-        {"filename":"base.json"}
-    ],
-	"lights": [
-		{"type":"sky", "name":"Light"}
-	]
-}

@@ -23,6 +23,25 @@ static void medium_homogeneous(std::ostream& stream, const std::string& name, co
     tree.endClosure();
 }
 
+static void medium_heterogeneous(std::ostream& stream, const std::string& name, const std::shared_ptr<Parser::Object>& medium, ShadingTree& tree)
+{
+    tree.beginClosure(name);
+
+    const auto filename    = tree.context().handlePath(medium->property("filename").getString(), *medium);
+    size_t res_id          = tree.context().registerExternalResource(filename);
+    const bool interpolate = medium->property("interpolate").getBool(false);
+
+    tree.addNumber("g", *medium, 0, true);
+    
+    const std::string media_id = tree.currentClosureID();
+    stream << tree.pullHeader()
+           << "  let medium_" << media_id << "_grid = make_voxel_grid(device.load_buffer_by_id(" << res_id << "));" << std::endl
+           << "  let medium_" << media_id << " : MediumGenerator= @|ctx| { make_heterogeneous_medium(ctx, medium_" << media_id << "_grid"
+           << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ") };" << std::endl;
+
+    tree.endClosure();
+}
+
 // It is recommended to not define the medium, instead of using vacuum
 static void medium_vacuum(std::ostream& stream, const std::string& name, const std::shared_ptr<Parser::Object>&, ShadingTree& tree)
 {
@@ -41,6 +60,7 @@ static const struct {
     MediumLoader Loader;
 } _generators[] = {
     { "homogeneous", medium_homogeneous },
+    { "heterogeneous", medium_heterogeneous },
     { "constant", medium_homogeneous },
     { "vacuum", medium_vacuum },
     { "", nullptr }
