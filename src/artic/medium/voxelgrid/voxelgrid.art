@@ -19,7 +19,9 @@ struct VoxelGrid {
 }
 
 fn @make_voxel_grid(buffer: DeviceBuffer) -> VoxelGrid {
-   
+
+    print_string("making vxl grid\n");
+    
     let width  = buffer.load_i32_host(0);
     let height = buffer.load_i32_host(1);
     let depth  = buffer.load_i32_host(2);

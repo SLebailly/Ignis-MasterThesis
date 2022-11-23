@@ -1,0 +1,47 @@
+
+// Implementation of the Delta Tracking (Woordcock Tracking, Pseudo Scattering,...) null collision method
+// Sample the point of the next light-medium collision along the line of flight:
+// 1- determine majorant pdf to make volume homogenenous
+// 2- sample a random point along the ray proportionally to said pdf
+// 3- at this point, use rejection sampling to determine if the collision is with a real or fictuous particla:
+//    a. If fictuous, sample next random point along the ray
+//    b. If real, this is the next ray-medium intersection point
+
+// Question 1: How to determine majorant? Is it for the whole medium or for the ray?
+//      - Good question! Look for answers in papers
+// Question 2: How to determine transmittance at sampled point?
+//      - Calculation of transmittance is not defined in this method (at least not necessarily) but CAN be used as a stepwise function: cf. J. Novak - "Residual Ratio Trakcing for Estimating Attenuation in Participating Media" 2.3 Free-flight Sampling & Delta Tracking
+fn @make_delta_tracking_medium(_ctx: ShadingContext, _grid: VoxelGrid, phase: PhaseFunction, _interpolate: bool) -> Medium {
+
+    
+    
+    Medium {
+        phase = @|_| phase,
+        eval  = @|_, _| {
+            make_gray_color(0:f32)
+        },
+        eval_inf = @|_, _| color_builtins::black,
+        pdf = |_, _, _| {
+            0:f32 // Note: Delta Tracking CANNOT be combined with MIS, which is what a pdf of 0 signifies in this case
+        },
+        sample = @|_, _, _| {
+            reject_medium_sample()
+        },
+        is_homogeneous = false
+    }
+}
+
+/*
+
+struct DeltaTrackingGrid {
+    grid: VoxelGrid,
+    get_majorant: @|Vec3, Vec3| -> f32,
+
+}
+
+
+fn @make_delta_tracking_grid(grid: VoxelGrid, ) {
+
+}
+
+*/

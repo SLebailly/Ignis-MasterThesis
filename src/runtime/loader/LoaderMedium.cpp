@@ -27,16 +27,18 @@ static void medium_heterogeneous(std::ostream& stream, const std::string& name, 
 {
     tree.beginClosure(name);
 
-    const auto filename    = tree.context().handlePath(medium->property("filename").getString(), *medium);
-    size_t res_id          = tree.context().registerExternalResource(filename);
+    //const auto filename    = tree.context().handlePath(medium->property("filename").getString(), *medium);
+    //size_t res_id          = tree.context().registerExternalResource(filename);
     const bool interpolate = medium->property("interpolate").getBool(false);
 
     tree.addNumber("g", *medium, 0, true);
-    
+    tree.addVoxelGrid("filename", *medium);
+
+    //TODO: find a way to only create the voxel grid ONCE per medium, not every ray
     const std::string media_id = tree.currentClosureID();
     stream << tree.pullHeader()
-           << "  let medium_" << media_id << "_grid = make_voxel_grid(device.load_buffer_by_id(" << res_id << "));" << std::endl
-           << "  let medium_" << media_id << " : MediumGenerator= @|ctx| { make_heterogeneous_medium(ctx, medium_" << media_id << "_grid"
+           //<< "  let medium_" << media_id << "_grid = make_voxel_grid(device.load_buffer_by_id(" << res_id << "));" << std::endl
+           << "  let medium_" << media_id << " : MediumGenerator= @|ctx| { make_heterogeneous_medium(ctx, "<< tree.getInline("filename")
            << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ") };" << std::endl;
 
     tree.endClosure();

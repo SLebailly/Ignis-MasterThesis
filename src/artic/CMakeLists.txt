@@ -84,6 +84,8 @@ set(ARTIC_MAIN_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/common.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/homogeneous.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/heterogeneous.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/methods/common.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/methods/delta_tracking.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/methods/regular_tracking.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/voxelgrid/voxel.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/voxelgrid/voxelgrid.art
