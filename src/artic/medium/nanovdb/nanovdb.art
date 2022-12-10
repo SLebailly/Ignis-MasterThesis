@@ -285,14 +285,14 @@ struct NanoVDBTree[ValueT, StatsT] {
 
 
 fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_size: i32, read_value: fn (/* buffer */ DeviceBuffer, /* index */ i32) -> ValueT, read_stats: fn (/* buffer */ DeviceBuffer, /* index */ i32) -> StatsT) -> NanoVDBTree[ValueT, StatsT] {
-/*
+
     // ASSERT VARIABLES
     // TODO: remove these for speedup
     let node_address_leaf  = access_tree_data().get_node_address_leaf();
     let node_address_lower = access_tree_data().get_node_address_lower();
     let node_address_upper = access_tree_data().get_node_address_upper();
     let node_address_root  = access_tree_data().get_node_address_root();
-*/
+
 
     fn @access_grid_data() = GridDataAccessor {
         get_grid_class = @|| buffer.load_i32(convert_address(GRID_DATA_OFFSET + 632)),
@@ -316,7 +316,7 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
     };
 
     fn @access_root_node(data_address: i32) -> RootNodeAccessor[ValueT, StatsT] {
-/*
+
         // ASSERT
         // TODO: remove for speed up
         if (data_address < node_address_root || data_address >= node_address_upper) {
@@ -332,13 +332,13 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
         // ASSERT
         // TODO: remove this for speedup
         if (data_address % 32 != 0) {
-            print_string("Internal node address is not 32B aligned: ");
+            print_string("Root node address is not 32B aligned: ");
             print_i32(data_address);
             print_string("\n");
         }
-*/
+
         let root_data_size: i32 = 24 + 4 + (3 * value_size) + (2 * stats_size); // 48B
-        let root_tile_size: i32 =  8 + 8 + 4 + value_size;
+        let root_tile_size: i32 =  align_32(8 + 8 + 4 + value_size);
         let first_tile_address = align_32(data_address + root_data_size);
 
         // make tile accessor for a certain tile_address
@@ -357,12 +357,7 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
 
         // check if a tile of address tile_address has the same key
         fn @probe_tile(tile_address: i32, key: u64) -> bool {
-            /*
-            print_u64(key);
-            print_string(" ?= ");
-            print_u64(buffer_load_u64(buffer, convert_address(tile_address)));
-            print_string("\n");
-            */
+            
             key == buffer_load_u64(buffer, convert_address(tile_address))
         }
 
@@ -381,6 +376,9 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
                     let tile_address = first_tile_address + (n * root_tile_size);
 
                     if (probe_tile(tile_address, key)) {
+                        //print_string("Found tile: ");
+                        //print_i32(tile_address);
+                        //print_string("\n");
                         return(Option[RootTileAccessor[ValueT]]::Some(make_tile_accessor(tile_address)))
                     }
                 }
@@ -395,7 +393,7 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
         
         let internal_tile_size: i32 = if value_size > 8 { value_size } else { 8 }; // 8B (union in c++, meaning size of its largest member)
         let tiles_address = align_32(data_address + 24 + 8 + (2 * size_of_mask) + value_size + value_size + stats_size + stats_size); // Upper: align_32(data_address + 8240) // 832 -> 9088 (=2380Hex)
-/*
+
         // ASSERT
         // TODO: remove this for speedup
         if (data_address % 32 != 0) {
@@ -403,7 +401,7 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
             print_i32(data_address);
             print_string("\n");
         }
-*/
+
         InternalNodeAccessor[ValueT, StatsT] {
             //get_bbox
             //get_flags  = @|| buffer.load_i32(convert_address(data_address + 24)),
@@ -431,7 +429,7 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
     }
 
     fn @access_upper_node(data_address: i32) -> InternalNodeAccessor[ValueT, StatsT] {
-/*
+
         // ASSERT
         // TODO: remove for speed up
         if (data_address < node_address_upper || data_address >= node_address_lower) {
@@ -443,12 +441,12 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
             print_i32(node_address_lower);
             print_string("\n");
         }
-*/
+
         make_internal_node_accessor(data_address, 4096)        
     }
 
     fn @access_lower_node(data_address: i32) -> InternalNodeAccessor[ValueT, StatsT] {
-/*
+
         // ASSERT
         // TODO: remove for speed up
         if (data_address < node_address_lower || data_address >= node_address_leaf) {
@@ -460,12 +458,12 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
             print_i32(node_address_leaf);
             print_string("\n");
         }
-*/
+
         make_internal_node_accessor(data_address, 512)      
     }
     
     fn @access_leaf(data_address: i32) -> LeafNodeAccessor[ValueT, StatsT] {
-/*
+
         // ASSERT
         // TODO: remove this for speedup
         if (data_address % 32 != 0) {
@@ -483,7 +481,7 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
             print_i32(data_address);
             print_string("\n");
         }
-*/        
+      
         let value_mask_address = data_address + 12 + 3 + 1;
         let values_address     = align_32(value_mask_address + 64 + value_size + value_size + stats_size + stats_size);
         

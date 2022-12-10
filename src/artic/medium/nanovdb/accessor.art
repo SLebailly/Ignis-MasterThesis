@@ -35,10 +35,16 @@ fn @make_access_path(root_address: i32, root_key: u64, upper_address: i32, upper
     let root_tiles_amount  = tree_accessor.get_node_count_upper();
     let root_node_accessor = tree.access_root_node(root_address);
     let root_tile_key      = root_indices_to_key(i, j, k);
-
+/*
+    print_string("Root Address: ");
+    print_i32(root_address);
+    print_string("\n");
+*/
     // If no tile was found with the key, return background color
     if let Option[RootTileAccessor[ValueT]]::Some(root_tile_accessor) = root_node_accessor.access_tile_by_key(root_tile_key, root_tiles_amount) { // = 800 (320 Hex)#
+        //print_string("pass root tile\n");
         if let Option[i32]::Some(upper_node_address) = root_tile_accessor.get_child_address() {
+            //print_string("pass upper tile\n");
             // =============== Upper Node Level ===============
             let upper_node_accessor = tree.access_upper_node(upper_node_address);
             let upper_tile_index    = upper_indices_to_array_index(i, j, k);
@@ -82,10 +88,10 @@ fn @make_access_path(root_address: i32, root_key: u64, upper_address: i32, upper
             // =============== Leaf Node Level ===============
             let leaf_node_accessor = tree.access_leaf_node(lower_node_accessor.access_tile(lower_tile_index).get_child_address());
             let voxel_index        = leaf_indices_to_array_index(i, j, k);
-/*
-            print_string("leaf address:");
-            print_i32(lower_node_accessor.access_tile(lower_tile_index).get_child_address());
-*/
+
+            //rint_string("leaf address:");
+            //print_i32(lower_node_accessor.access_tile(lower_tile_index).get_child_address());
+
 /*
             // ASSERT
             // TODO: remove this for speed up
@@ -158,6 +164,7 @@ fn @make_access_path(root_address: i32, root_key: u64, upper_address: i32, upper
             
         };
         // child offset of root tile was 0
+        //print_string("Warning: Child offset of root tile was 0 or negative\n");
         return(root_tile_accessor.get_value())
     };
     // no root tile matching the computed key was found
@@ -236,6 +243,7 @@ fn @make_nvdb_voxel_grid_f32(buffer: DeviceBuffer, principled_volume_shader: Vol
         let js = if j < 0 { 0 } else if j >= height { height - 1 } else { j };
         let ks = if k < 0 { 0 } else if k >= depth  { depth  - 1 } else { k };
 
+        //(is, js, ks)
         (is + x_min, js + y_min, ks + z_min)
     }
 
