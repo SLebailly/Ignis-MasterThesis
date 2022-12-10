@@ -42,6 +42,11 @@ fn @make_access_path(root_address: i32, root_key: u64, upper_address: i32, upper
 */
     // If no tile was found with the key, return background color
     if let Option[RootTileAccessor[ValueT]]::Some(root_tile_accessor) = root_node_accessor.access_tile_by_key(root_tile_key, root_tiles_amount) { // = 800 (320 Hex)#
+        /*
+        if (i < 0 || j < 0 || k < 0) {
+            print_string("Tile was found for key with negative indices\n");
+        }
+        */
         //print_string("pass root tile\n");
         if let Option[i32]::Some(upper_node_address) = root_tile_accessor.get_child_address() {
             //print_string("pass upper tile\n");
@@ -168,7 +173,13 @@ fn @make_access_path(root_address: i32, root_key: u64, upper_address: i32, upper
         return(root_tile_accessor.get_value())
     };
     // no root tile matching the computed key was found
-    //print_string("Warning: no matching tile was found for key\n");
+    /*
+    if (i < 0 || j < 0 || k < 0) {
+        print_string("Warning: no matching tile was found for key with negative indices\n");
+    } else {
+        print_string("Warning: no matching tile was found for key with positive indices\n");
+    }
+    */
     root_node_accessor.get_background()
 }
 

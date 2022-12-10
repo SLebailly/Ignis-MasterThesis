@@ -63,7 +63,7 @@ static SIZE_OF_GRID_DATA:       i32 = 672;
 
 fn @root_indices_to_key(i: i32, j: i32, k: i32) -> u64 {
     let child_total = 12 as u64;
-    (k as u64 >> child_total) | ((j as u64 >> child_total) << 21) | ((i as u64 >> child_total) << 42)
+    (bitcast[u32](k) as u64 >> child_total) | ((bitcast[u32](j) as u64 >> child_total) << 21) | ((bitcast[u32](i) as u64 >> child_total) << 42)
 }
 
 fn @upper_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
@@ -71,7 +71,7 @@ fn @upper_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
     let log2dim_u64 = 5 as u64; // 4 = lower internal,  5 = upper internal
     let child_total = 7 as u64; // 3 = leaf, 7 = lower internal, 12 = upper internal
 
-    ((((i as u64 & mask) >> child_total) << (2 * log2dim_u64)) | (((j as u64 & mask) >> child_total) << log2dim_u64) | ((k as u64 & mask) >> child_total)) as i32
+    ((((bitcast[u32](i) as u64 & mask) >> child_total) << (2 * log2dim_u64)) | (((bitcast[u32](j) as u64 & mask) >> child_total) << log2dim_u64) | ((bitcast[u32](k) as u64 & mask) >> child_total)) as i32
 }
 
 fn @lower_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
@@ -79,14 +79,14 @@ fn @lower_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
     let log2dim_u64 = 4 as u64; // 4 = lower internal,  5 = upper internal
     let child_total = 3 as u64; // 3 = leaf, 7 = lower internal, 12 = upper internal
 
-    ((((i as u64 & mask) >> child_total) << (2 * log2dim_u64)) | (((j as u64 & mask) >> child_total) << log2dim_u64) | ((k as u64 & mask) >> child_total)) as i32
+    ((((bitcast[u32](i) as u64 & mask) >> child_total) << (2 * log2dim_u64)) | (((bitcast[u32](j) as u64 & mask) >> child_total) << log2dim_u64) | ((bitcast[u32](k) as u64 & mask) >> child_total)) as i32
 }
 
 fn @leaf_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
     let log2dim_u64 = 3 as u64;
     let mask = (1:u64 << log2dim_u64) - 1:u64;
 
-    (((i as u64 & mask) << (2:u64 * log2dim_u64)) | ((j as u64 & mask) << log2dim_u64) | (k as u64 & mask)) as i32
+    (((bitcast[u32](i) as u64 & mask) << (2:u64 * log2dim_u64)) | ((bitcast[u32](j) as u64 & mask) << log2dim_u64) | (bitcast[u32](k) as u64 & mask)) as i32
 }
 
 
