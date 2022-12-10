@@ -447,28 +447,6 @@ std::string ShadingTree::acquireVector(const std::string& prop_name, const Vecto
     }
 }
 
-std::string ShadingTree::acquireBuffer(const std::string& prop_name, string filename, const NumberOptions& options)
-{
-    //TODO: what is the point of checkIfEmbed ?
-    const std::string id                       = currentClosureID() + "_" + LoaderUtils::escapeIdentifier(prop_name);
-    mContext.LocalRegistry.FloatParameters[id] = number;
-
-    mHeaderLines.push_back("  let var_buff_" + id + " = device.load_buffer_by_id(\"" + id + "\");\n");
-    return "var_buff_" + id;
-}
-
-
-std::string ShadingTree::acquireBuffer(const std::string& prop_name, string filename, const NumberOptions& options)
-{
-    //TODO: what is the point of checkIfEmbed ?
-    const std::string id                       = currentClosureID() + "_" + LoaderUtils::escapeIdentifier(prop_name);
-    mContext.LocalRegistry.FloatParameters[id] = number;
-
-    mHeaderLines.push_back("  let var_buff_" + id + " = device.load_buffer_by_id(\"" + id + "\");\n");
-    return "var_buff_" + id;
-}
-
-
 std::string ShadingTree::getClosureID(const std::string& name)
 {
     auto it = mIDMap.find(name);
