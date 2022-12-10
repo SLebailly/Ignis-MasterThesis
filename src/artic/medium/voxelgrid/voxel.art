@@ -1,12 +1,52 @@
-struct Voxel {
-    sigma_a: Color,
-    sigma_s: Color
+// TODO: Combine the following two structs (one contains values the other functions, seperation is not needed)
+// struct to read the relevant values for a volume voxel
+struct VolumeVoxel {
+    transmittance:     fn (/* dist */ f32) -> Color,
+    optical_thickness: fn (/* dist */ f32) -> Color,
+}
+// struct containing the defining parameters for a volume voxel
+struct VolumeCoefficients {
+    coeff_scattering: Color,
+    coeff_absorption: Color,
+    coeff_emission:   Color, //TODO: add emission support
 }
 
-fn @vxl_lerp(a: Voxel, b: Voxel, t: f32) -> Voxel {
-    
-    Voxel {
-        sigma_a = color_lerp(a.sigma_a, b.sigma_a, t),
-        sigma_s = color_lerp(a.sigma_s, b.sigma_s, t)
+fn @make_volume_coefficients(coeff_scattering: Color, coeff_absorption: Color, coeff_emission: Color) = VolumeCoefficients {
+    coeff_scattering = coeff_scattering,
+    coeff_absorption = coeff_absorption,
+    coeff_emission   = coeff_emission
+};
+
+fn @make_voxel(coefficients: VolumeCoefficients) {
+
+    fn @get_extinction() -> Color {
+        color_add(coefficients.coeff_absorption, coefficients.coeff_scattering)
+    }
+
+    fn @optical_thickness(t: f32) -> Color {
+        color_mulf(get_extinction(), t)
+    }
+
+    VolumeVoxel {
+        transmittance     = @|t| optical_thickness_to_transmittance(optical_thickness(t)),
+        optical_thickness = @|t| optical_thickness(t),
+    }
+}
+
+fn @make_simple_voxel(sigma_a: Color, sigma_s: Color, shader: VolumeShader[SimpleVolumeVoxelValue]) -> VolumeVoxel {
+
+    let coefficients = shader.volume_coefficients(make_simple_volume_voxel_value(sigma_a, sigma_s));
+
+    fn @get_extinction() -> Color {
+        color_add(coefficients.coeff_absorption, coefficients.coeff_scattering)
+    }
+
+    fn @optical_thickness(t: f32) -> Color {
+        color_mulf(get_extinction(), t)
+    }
+
+    VolumeVoxel {
+        transmittance     = @|t| optical_thickness_to_transmittance(optical_thickness(t)),
+        optical_thickness = @|t| optical_thickness(t),
     }
 }

@@ -1,0 +1,82 @@
+
+// aligns a buffer index to the next 32B-aligned address
+fn @align_32(index: i32) -> i32 {
+    let offset = (32 - (index % 32));
+    let result = if offset == 32 { index } else { index + offset };
+    
+    result
+}
+
+// loads an u64 out of the buffer
+fn @buffer_load_u64(buffer: DeviceBuffer, data_address: i32) -> u64 {
+    let data_1 = buffer.load_i32(data_address) as u64;
+    let data_2 = buffer.load_i32(data_address + 1) as u64;
+    (data_2 << 32 | data_1)
+}
+
+// Converts a buffer address to the Ignise Buffer ID (= divide by 4)
+fn @convert_address(address: i32) -> i32 {
+    //ASSERT
+    //TODO remove for speed up
+    if address % 4 != 0 {
+        print_string("Incorrect buffer address: \"");
+        print_i32(address);
+        print_string("\" is not a multiple of 4!\n");
+        return(0)
+    }
+    (address >> 2) // divide by 4
+}
+
+
+/*
+fn @load_word_i32(buffer:DeviceBuffer, mask_addres: i32, n: i32) -> i32 {
+    buffer.load_i32(mask_address + n)
+}
+*/
+  
+fn @check_mask(buffer: DeviceBuffer, mask_address: i32, bit: i32) -> bool {
+    // 32 bit word size
+    //                                                         bit  / 32
+    let word = buffer.load_i32(convert_address(mask_address) + (bit >> 5));
+    //                   modulo
+    (word & (1:i32 << (bit & 31))) != 0
+
+/*
+    let test = 5:i32;
+    print_i32(test);
+    print_string(":i32 = ");
+    print_bits(test);
+    print_string("\n");
+
+    let test2 = 6:i32;
+    print_i32(test2);
+    print_string(":i32 = ");
+    print_bits(test2);
+    print_string("\n");
+
+    //let result_str = if ((byte & (1 << (32 - bit_offset))) != 0) { "true " } else { "false"};
+*/
+/*
+    print_string("mask address: ");
+    print_i32(mask_address);
+    print_string(", bit: ");
+    print_i32(bit);
+    print_string(", loaded byte #");
+    print_i32(byte_offset);
+    print_string(" ");
+    print_i32(byte);
+    print_string(", reading bit #");
+    print_i32(bit_offset);
+    print_string(": ");
+    print_string(result_str);
+    print_string("\n");
+*/
+}
+/*
+fn @print_bits(input: i32) {
+    for n in unroll(0, 31) {
+        let result = if check_bit(input, n) { 1 } else { 0 };
+        print_i32(result);
+    }
+}
+*/

@@ -2,6 +2,7 @@ fn @make_heterogeneous_medium(ctx: ShadingContext, grid: VoxelGrid, phase: Phase
     //regular tracking
     //TODO: implement more methods and  add variable to pick between them
     make_regular_tracking_medium(ctx, grid, phase, interpolate)
+    //make_ray_marching_medium(ctx, grid, phase, interpolate, 0.001)
 }
 
 

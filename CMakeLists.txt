@@ -59,6 +59,7 @@ option(IG_WITH_PYTHON_API    "Build python API" ON)
 option(IG_WITH_TOOLS         "Build tools" ON)
 option(IG_WITH_DOCUMENTATION "Build the documentation if Sphinx is available on the system" ON)
 option(IG_WITH_ASSERTS       "Build with asserts even in release. It is always enabled on debug" OFF)
+option(IG_WITH_NANOVDB       "Integrate NanoVDB if available" ON)
 option(IG_WITH_DENOISER      "Integrate Intel Open Image Denoise if available" ON)
 option(IG_USE_LTO 			 "Use linked time optimization if available in release" ON)
 
@@ -124,6 +125,11 @@ find_package(ZLIB REQUIRED)
 
 if(IG_WITH_DENOISER)
 	find_package(OpenImageDenoise)
+endif()
+
+# NanoVDB
+if(IG_WITH_NANOVDB)
+	find_package(NanoVDB REQUIRED)
 endif()
 
 include(cmake/GetDependencies.cmake)

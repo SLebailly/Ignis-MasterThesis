@@ -246,32 +246,6 @@ void ShadingTree::addTexture(const std::string& name, const Parser::Object& obj,
     currentClosure().Parameters[name] = inline_str;
 }
 
-void ShadingTree::addVoxelGrid(const std::string& filename, const Parser::Object& obj)
-{
-    if (hasParameter(filename)) {
-        IG_LOG(L_ERROR) << "Multiple use of parameter '" << filename << "'" << std::endl;
-        signalError();
-    }
-
-    const auto prop = obj.property(filename);
-
-    std::string inline_str;
-    switch (prop.type()) {
-    default:
-        IG_LOG(L_ERROR) << "Parameter '" << filename << "' has invalid type" << std::endl;
-        [[fallthrough]];
-    case Parser::PT_STRING:
-        IG_LOG(L_ERROR) << "Test '" << prop.getString() << "' test" << std::endl;
-        size_t res_id = context().registerExternalResource(prop.getString());
-        std::stringstream res_strstream;
-        res_strstream << res_id;
-        inline_str = "@|ctx:ShadingContext|-> VoxelGrid { maybe_unused(ctx); make_voxel_grid(device.load_buffer_by_id(" + res_strstream.str() + ")) }";
-        break;
-    }
-
-    currentClosure().Parameters[filename] = inline_str;
-}
-
 bool ShadingTree::beginClosure(const std::string& name)
 {
     mClosures.emplace_back(Closure{ name, getClosureID(name), {} });
@@ -472,6 +446,17 @@ std::string ShadingTree::acquireVector(const std::string& prop_name, const Vecto
         return "var_vec_" + id;
     }
 }
+
+std::string ShadingTree::acquireBuffer(const std::string& prop_name, string filename, const NumberOptions& options)
+{
+    //TODO: what is the point of checkIfEmbed ?
+    const std::string id                       = currentClosureID() + "_" + LoaderUtils::escapeIdentifier(prop_name);
+    mContext.LocalRegistry.FloatParameters[id] = number;
+
+    mHeaderLines.push_back("  let var_buff_" + id + " = device.load_buffer_by_id(\"" + id + "\");\n");
+    return "var_buff_" + id;
+}
+
 
 std::string ShadingTree::acquireBuffer(const std::string& prop_name, string filename, const NumberOptions& options)
 {

@@ -9,20 +9,28 @@ fn @make_vacuum_medium()-> Medium {
     }
 }
 
+fn @optical_thickness_to_transmittance_f32(optical_thickness: f32) -> f32 {
+    math_builtins::exp(-optical_thickness)
+}
+
 fn @optical_thickness_to_transmittance(optical_thickness: Color) -> Color {
     make_color(
-        math_builtins::exp(-optical_thickness.r),
-        math_builtins::exp(-optical_thickness.g),
-        math_builtins::exp(-optical_thickness.b),
+        optical_thickness_to_transmittance_f32(optical_thickness.r),
+        optical_thickness_to_transmittance_f32(optical_thickness.g),
+        optical_thickness_to_transmittance_f32(optical_thickness.b),
         optical_thickness.a
     )
 }
 
+fn @transmittance_to_optical_thickness_f32(transmittance: f32) -> f32 {
+    - math_builtins::log(transmittance)
+}
+
 fn @transmittance_to_optical_thickness(transmittance: Color) -> Color {
     make_color(
-        - math_builtins::log(transmittance.r),
-        - math_builtins::log(transmittance.g),
-        - math_builtins::log(transmittance.b),
+        transmittance_to_optical_thickness_f32(transmittance.r),
+        transmittance_to_optical_thickness_f32(transmittance.g),
+        transmittance_to_optical_thickness_f32(transmittance.b),
         transmittance.a
     )
 }

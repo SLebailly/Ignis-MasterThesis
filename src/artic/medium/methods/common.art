@@ -1,5 +1,7 @@
-fn @eval_optical_thickness(grid: VoxelGrid, local_start: Vec3, local_end: Vec3, interpolate: bool) -> Color {
+fn @eval_optical_thickness(grid: VoxelGrid, local_start: Vec3, local_end: Vec3, _interpolate: bool) -> Color {
     
+    let grid_accessor = grid.access_data();
+
     let dir_u      = vec3_sub(local_end, local_start);
     let total_dist = vec3_len(dir_u);
     let dir_norm   = vec3_map(dir_u, @|x| safe_div(x, total_dist));
@@ -9,15 +11,13 @@ fn @eval_optical_thickness(grid: VoxelGrid, local_start: Vec3, local_end: Vec3, 
     let (mut iterator, mut current) = next_vxl_iterator(make_voxel_iterator(grid, local_start, dir_norm));
     while (current.ind_x >= 0 && current.ind_x < grid.width && current.ind_y >= 0 && current.ind_y < grid.height && current.ind_z >= 0 && current.ind_z < grid.depth) { // ensure that we are still within the grid
         
-        let current_vxl = if interpolate { grid.vxl_at_coord_lerp(vec3_lerp(current.entry, current.exit, 0.5)) } else { grid.vxl_at_indx(current.ind_x, current.ind_y, current.ind_z) };
+        let current_vxl = grid_accessor.vxl_at_indx(current.ind_x, current.ind_y, current.ind_z);//if interpolate { grid.vxl_at_coord_lerp(vec3_lerp(current.entry, current.exit, 0.5)) } else { grid.access_data().vxl_at_indx(current.ind_x, current.ind_y, current.ind_z) };
 
-        let sigma_t  = color_add(current_vxl.sigma_a, current_vxl.sigma_s);
-        let nacc_opt = color_add(acc_opt, color_mulf(sigma_t, current.t));
+        let nacc_opt = color_add(acc_opt, current_vxl.optical_thickness(current.t));
 
         if (grid.is_in_vxl(local_end, current.ind_x, current.ind_y, current.ind_z)) {
             let overstep  = iterator.total_t - total_dist; // compute how far we went past the point in the current voxel
-            let opt_delta = color_mulf(sigma_t, overstep);
-            acc_opt       = color_sub(nacc_opt, opt_delta); // remove the optical thickness that is too much
+            acc_opt       = color_sub(nacc_opt, current_vxl.optical_thickness(overstep)); // remove the optical thickness that is too much
 
             return(acc_opt)
         } else {

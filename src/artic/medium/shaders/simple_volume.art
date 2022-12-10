@@ -1,0 +1,18 @@
+// For simple voxel grids (custom format defined by bin file)
+
+struct SimpleVolumeVoxelValue {
+    sigma_a: Color,
+    sigma_s: Color
+}
+
+fn @make_simple_volume_voxel_value(sigma_a: Color, sigma_s: Color) = SimpleVolumeVoxelValue {
+    sigma_a = sigma_a,
+    sigma_s = sigma_s
+};
+
+fn @make_simple_volume_shader(scalar: f32) -> VolumeShader[SimpleVolumeVoxelValue] {
+    
+    VolumeShader[SimpleVolumeVoxelValue] {
+        volume_coefficients = @|values: SimpleVolumeVoxelValue| make_volume_coefficients(color_mulf(values.sigma_s, scalar), color_mulf(values.sigma_a, scalar), make_gray_color(0:f32))
+    }
+}

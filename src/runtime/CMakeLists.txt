@@ -107,6 +107,8 @@ set(SRC
   math/Triangle.h
   measured/KlemsLoader.cpp
   measured/KlemsLoader.h
+  measured/NanoVDBLoader.cpp
+  measured/NanoVDBLoader.h
   measured/TensorTreeLoader.cpp
   measured/TensorTreeLoader.h
   measured/powitacq_rgb.inl

@@ -41,7 +41,7 @@ fn test_grid_to_coord() {
     let mut err = 0;
 
     let buff = make_dummy_buffer(2, make_vec3(0.2, 0.2, 0.2));
-    let grid = make_voxel_grid(buff);
+    let grid = make_simple_voxel_grid(buff);
     
     let coord_1 = grid.indx_to_coord(0, 0, 0);
     if !eq_vec3(coord_1, make_vec_3(0.25, 0.25, 0.25)) {
@@ -65,7 +65,7 @@ fn test_grid_to_indx() {
 
     let dims: i32 = 5;
     let buff = make_dummy_buffer(dims, make_vec3(0.2, 0.2, 0.2));
-    let grid = make_voxel_grid(buff);
+    let grid = make_simple_voxel_grid(buff);
     
     let (x1, y1, z1) = grid.coord_to_indx(make_vec3(0:f32, 0:f32, 0:f32));
     if (x1 != 0 || y1 != 0 || z1 != 0) {
@@ -88,7 +88,7 @@ fn test_grid_is_in_vxl() {
 
     let dims: i32 = 5;
     let buff = make_dummy_buffer(dims, make_vec3(0.2, 0.2, 0.2));
-    let grid = make_voxel_grid(buff);
+    let grid = make_simple_voxel_grid(buff);
     
     if !grid.is_in_vxl(make_vec3(0:f32, 0:f32, 0:f32), 0, 0, 0) {
         ++err;

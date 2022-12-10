@@ -1,0 +1,511 @@
+/*
+    Memory layout:
+
+    It's important to emphasize that all the grid data (defined below) are explicitly 32 byte
+    aligned, which implies that any memory buffer that contains a NanoVDB grid must also be at
+    32 byte aligned. That is, the memory address of the beginning of a buffer (see ascii diagram below)
+    must be divisible by 32, i.e. uintptr_t(&buffer)%32 == 0! If this is not the case, the C++ standard
+    says the behaviour is undefined! Normally this is not a concerns on GPUs, because they use 256 byte
+    aligned allocations, but the same cannot be said about the CPU.
+
+    GridData is always at the very beginning of the buffer immediately followed by TreeData!
+    The remaining nodes and blind-data are allowed to be scattered throughout the buffer,
+    though in practice they are arranged as:
+
+    GridData: 672 bytes (e.g. magic, checksum, major, flags, index, count, size, name, map, world bbox, voxel size, class, type, offset, count)
+
+    TreeData: 64 bytes (node counts and byte offsets)
+
+    ... optional padding ...
+
+    RootData: size depends on ValueType (index bbox, voxel count, tile count, min/max/avg/standard deviation)
+
+    Array of: RootData::Tile
+
+    ... optional padding ...
+
+    Array of: Upper InternalNodes of size 32^3:  bbox, two bit masks, 32768 tile values, and min/max/avg/standard deviation values
+
+    ... optional padding ...
+
+    Array of: Lower InternalNodes of size 16^3:  bbox, two bit masks, 4096 tile values, and min/max/avg/standard deviation values
+
+    ... optional padding ...
+
+    Array of: LeafNodes of size 8^3: bbox, bit masks, 512 voxel values, and min/max/avg/standard deviation values
+
+
+    Notation: "]---[" implies it has optional padding, and "][" implies zero padding
+
+    [GridData(672B)][TreeData(64B)]---[RootData][N x Root::Tile]---[NodeData<5>]---[ModeData<4>]---[LeafData<3>]---[BLINDMETA...]---[BLIND0]---[BLIND1]---etc.
+    ^                                 ^         ^                  ^               ^               ^
+    |                                 |         |                  |               |               |
+    +-- Start of 32B aligned buffer   |         |                  |               |               +-- Node0::DataType* leafData
+        GridType::DataType* gridData  |         |                  |               |
+                                      |         |                  |               +-- Node1::DataType* lowerData
+       RootType::DataType* rootData --+         |                  |
+                                                |                  +-- Node2::DataType* upperData
+                                                |
+                                                +-- RootType::DataType::Tile* tile
+*/
+
+// Guidelines for Tree Access:
+// - Never return a whole object, as we rarely need multiple values and this results in buffer read overhead
+// - Never return a Tile address. TileAccessor is accessible over NodeAccessor
+// - Nodes are accessed by address
+// - Tiles are accessed by NodeAccessor(node_address).access_tile(index/key)
+// - Tiles always return the child address, no accessor to the child. This way the address of the nodes can be saved for later reuse and a node can be accessed directly without having to navigate through the tree
+
+static GRID_DATA_OFFSET:        i32 = 0;
+static SIZE_OF_GRID_DATA:       i32 = 672;
+
+
+
+fn @root_indices_to_key(i: i32, j: i32, k: i32) -> u64 {
+    let child_total = 12 as u64;
+    (k as u64 >> child_total) | ((j as u64 >> child_total) << 21) | ((i as u64 >> child_total) << 42)
+}
+
+fn @upper_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
+    let mask = (1:u64 << (12 as u64)) - 1;
+    let log2dim_u64 = 5 as u64; // 4 = lower internal,  5 = upper internal
+    let child_total = 7 as u64; // 3 = leaf, 7 = lower internal, 12 = upper internal
+
+    ((((i as u64 & mask) >> child_total) << (2 * log2dim_u64)) | (((j as u64 & mask) >> child_total) << log2dim_u64) | ((k as u64 & mask) >> child_total)) as i32
+}
+
+fn @lower_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
+    let mask = (1:u64 << (7 as u64)) - 1;
+    let log2dim_u64 = 4 as u64; // 4 = lower internal,  5 = upper internal
+    let child_total = 3 as u64; // 3 = leaf, 7 = lower internal, 12 = upper internal
+
+    ((((i as u64 & mask) >> child_total) << (2 * log2dim_u64)) | (((j as u64 & mask) >> child_total) << log2dim_u64) | ((k as u64 & mask) >> child_total)) as i32
+}
+
+fn @leaf_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
+    let log2dim_u64 = 3 as u64;
+    let mask = (1:u64 << log2dim_u64) - 1:u64;
+
+    (((i as u64 & mask) << (2:u64 * log2dim_u64)) | ((j as u64 & mask) << log2dim_u64) | (k as u64 & mask)) as i32
+}
+
+
+/* ============================== Grid Data ============================== */
+/*
+struct GridData {
+    //max_name_size: i32, // due to NULL termination the maximum length is one less (static 256)
+    //mMagic:        ui64, // 8B (0) magic to validate it is valid grid data.
+    //uint64_t         mChecksum; // 8B (8). Checksum of grid buffer.
+    //Version          mVersion;// 4B (16) major, minor, and patch version numbers
+    //uint32_t         mFlags; // 4B (20). flags for grid.
+    //uint32_t         mGridIndex; // 4B (24). Index of this grid in the buffer
+    //uint32_t         mGridCount; // 4B (28). Total number of grids in the buffer
+    //uint64_t         mGridSize; // 8B (32). byte count of this entire grid occupied in the buffer.
+    //char             mGridName[MaxNameSize]; // 256B (40)
+    //Map              mMap; // 264B (296). affine transformation between index and world space in both single and double precision
+    //BBox<Vec3R>      mWorldBBox; // 48B (560). floating-point AABB of active values in WORLD SPACE (2 x 3 doubles)
+    //Vec3R            mVoxelSize; // 24B (608). size of a voxel in world units
+    grid_class: u32, // 4B (632) 0: Unknown, 1: LevelSet, 2: FogVolume, 3: Staggered, 4: PointIndex, 5: PointData, 6: Topology, 7: VoxelVolume, 8: IndexGrid    // Note: only Fog Volume is currently supported by Ignis
+    grid_type:  u32, // 4B (636) 1: Float, 2: Double, 3: Int16, 4: Int32, 5: Int64, 6: Vec3f, ...                                                               // Note: only Float (and Vec3f?) are currently supported by Ignis
+    //int64_t          mBlindMetadataOffset; // 8B (640). offset of GridBlindMetaData structures that follow this grid.
+    //uint32_t         mBlindMetadataCount; // 4B (648). count of GridBlindMetaData structures that follow this grid.
+    //uint32_t         mData0;// 4B (652)
+    //uint64_t         mData1, mData2;// 2x8B (656) padding to 32 B alignment. mData1 is use for the total number of values indexed by an IndexGrid
+}
+*/
+
+struct GridDataAccessor {
+    get_grid_class: fn () -> i32,
+    get_grid_type:  fn () -> i32
+}
+
+/* ============================== Tree Data ============================== */
+/*
+struct TreeData {
+    node_offset_leaf:  u64, // 8B, byte offset from this tree to first leaf node
+    node_offset_lower: u64, // 8B, byte offset from this tree to first lower node
+    node_offset_upper: u64, // 8B, byte offset from this tree to first upper node
+    node_offset_root:  u64, // 8B, byte offset from this tree to root node          // total 32B
+
+    node_count_leaf:   u32, // 4B, total number of nodes of type: leaf, lower internal, upper internal
+    node_count_lower:  u32, // 4B, total number of nodes of type: leaf, lower internal, upper internal
+    node_count_upper:  u32, // 4B, total number of nodes of type: leaf, lower internal, upper internal // total 12B
+
+    active_tile_count_lower:  u32, // 4B, total number of active tile values at the lower internal node levels
+    active_tile_count_upper:  u32, // 4B, total number of active tile values at the upper internal node levels
+    active_tile_count_root:   u32, // 4B, total number of active tile values at the root node levels           // total 12B
+    active_voxel_count:       u64 // 8B, total number of active voxels in the root and all its child nodes.
+}
+*/
+
+struct TreeDataAccessor {
+    // Note: for the sake of simplicity, we always return an i32 instead of u64/u32. This means it may break for very large files
+    get_node_address_leaf:  fn () -> i32,
+    get_node_address_lower: fn () -> i32,
+    get_node_address_upper: fn () -> i32,
+    get_node_address_root:  fn () -> i32,
+
+    get_node_count_leaf:   fn () -> i32,
+    get_node_count_lower:  fn () -> i32,
+    get_node_count_upper:  fn () -> i32,
+
+    get_active_tile_count_lower:  fn () -> i32,
+    get_active_tile_count_upper:  fn () -> i32,
+    get_active_tile_count_root:   fn () -> i32,
+    get_active_voxel_count:       fn () -> i32
+}
+
+/* ============================== RootData ============================== */
+
+// Total: 48B
+// (index bbox, voxel count, tile count, min/max/avg/standard deviation)
+/*
+struct RootData_f32 {
+    bbox_min: (i32, i32, i32),
+    bbox_max: (i32, i32, i32),  // total 24B, AABB of active values in index space.
+    table_size: u32, // 4B, number of tiles and child pointers in the root node
+
+    background: f32, // in this case: 4B (f32) background value, i.e. value of any unset voxel                     // ValueT
+    minimum:    f32, // typically 4B, minimum of all the active values                                             // ValueT
+    maximum:    f32, // typically 4B, maximum of all the active values                                             // ValueT
+    average:    f32, // typically 4B, average of all the active values in this node and its child nodes            // StatsT
+    std_devi:   f32  // typically 4B, standard deviation of all the active values in this node and its child nodes // StatsT
+}
+*/
+
+struct RootNodeAccessor[ValueT, StatsT] {        
+    //BBox mBBox,    // 24B, AABB of active values in index space.
+    get_bounding_box: fn () -> ((i32, i32, i32), (i32, i32, i32)),
+    get_table_size:   fn () -> i32, // 4B, number of tiles and child pointers in the root node
+
+    get_background:   fn () -> ValueT, // in this case: 4B (f32) background value, i.e. value of any unset voxel                     // ValueT
+    get_minimum:      fn () -> ValueT, // typically 4B, minimum of all the active values                                             // ValueT
+    get_maximum:      fn () -> ValueT, // typically 4B, maximum of all the active values                                             // ValueT
+    get_average:      fn () -> StatsT, // typically 4B, average of all the active values in this node and its child nodes            // StatsT
+    get_std_devi:     fn () -> StatsT, // typically 4B, standard deviation of all the active values in this node and its child nodes // StatsT
+
+    access_tile_by_key: fn (/* key */ u64, /* tile_amount */ i32) -> Option[RootTileAccessor[ValueT]]
+}
+
+/* ============================== RootData::Tile ============================== */
+/*
+struct RootDataTile_f32 {
+    key:          u64, // USE_SINGLE_ROOT_KEY ? 8B (u64) : 12B (Vec3f) // Note: only u64 is supported atm for Ignis
+    child_offset: i64, // 8B. signed byte offset from this node to the child node.  0 means it is a constant tile, so use value.
+    state:        u32, // 4B. state of tile value
+    value:        f32  // value of tile (i.e. no child node)
+}
+*/
+
+struct RootTileAccessor[ValueT] {
+    get_key:           fn () -> u64,   // USE_SINGLE_ROOT_KEY ? 8B (u64) : 12B (Vec3f) // Note: only u64 is supported atm for Ignis
+    get_child_address: fn () -> Option[i32],   // 8B. signed byte offset from this node to the child node.  0 means it is a constant tile, so use value.
+    get_state:         fn () -> i32,   // 4B. state of tile value
+    get_value:         fn () -> ValueT // value of tile (i.e. no child node)
+}
+
+
+/* ============================== InternalData ============================== */
+/*
+struct InternalData_[ValueT, StatsT] {
+    //BBox mBBox; // 24B. node bounding box.              |
+    flags:    u64, // 8B. node flags.                     | 32B aligned
+    //value_mask; // LOG2DIM(5): 4096B, LOG2DIM(4): 512B  | 32B aligned
+    //child_mask; // LOG2DIM(5): 4096B, LOG2DIM(4): 512B  | 32B aligned
+
+    minimum:  ValueT, // typically 4B
+    maximum:  ValueT, // typically 4B
+    average:  StatsT, // typically 4B, average of all the active values in this node and its child nodes
+    std_devi: StatsT  // typically 4B, standard deviation of all the active values in this node and its child nodes
+    // possible padding
+    //table (32bit aligned) of 32768 (upper) or 4096 (lower) Tiles
+}
+
+struct InternalTile[ValueT] { // Union in c++, hence it takes the size of its LARGEST member
+    value: ValueT,       // sizeof(ValueT)
+    child_offset: i64    // 8B ( offset relative to InternalData)
+}
+*/
+
+
+struct InternalTileAccessor[ValueT] {
+    get_value:         fn () -> ValueT,
+    get_child_address: fn () -> i32
+}
+
+struct InternalNodeAccessor[ValueT, StatsT] {
+    //get_flags:    fn () -> u64,
+    get_minimum:  fn () -> ValueT,
+    get_maximum:  fn () -> ValueT,
+    get_average:  fn () -> StatsT,
+    get_std_devi: fn () -> StatsT,
+    
+    tile_has_children: fn (/* n */ i32) -> bool,
+    tile_has_value:    fn (/* n */ i32) -> bool,
+
+    access_tile: fn (/* n */ i32) -> InternalTileAccessor[ValueT],
+}
+
+/* ============================== LeafData ============================== */
+/*
+struct LeafData_f32 {
+    //CoordT         mBBoxMin;    // 12B.
+    //uint8_t        mBBoxDif[3]; // 3B.
+    flags:    u8,  // 1B. bit0: skip render?, bit1: has bbox?, bit3: unused, bit4: is sparse ValueIndex, bits5,6,7: bit-width for FpN
+    //MaskT<LOG2DIM> mValueMask; // LOG2DIM(3): 64B.
+    minimum:  f32, // typically 4B
+    maximum:  f32, // typically 4B
+    average:  f32, // typically 4B, average of all the active values in this node and its child nodes
+    std_devi: f32, // typically 4B, standard deviation of all the active values in this node and its child nodes
+    //mvalues (32bit aligned) // 64B //TODO: in this position? => bc otherwise not 32B aligned
+}
+*/
+
+struct LeafNodeAccessor[ValueT, StatsT] {
+    //get_flags:    fn () -> u8,
+    get_minimum:  fn () -> ValueT,
+    get_maximum:  fn () -> ValueT,
+    get_average:  fn () -> StatsT,
+    get_std_devi: fn () -> StatsT,
+
+    //is_active:    fn (/* n */ i32) -> bool,
+    get_value:    fn (/* n */ i32) -> ValueT
+}
+
+
+struct NanoVDBTree[ValueT, StatsT] {
+    access_grid_data:  fn () -> GridDataAccessor,
+    access_tree_data:  fn () -> TreeDataAccessor,
+    access_root_node:  fn (/* data_address */ i32) -> RootNodeAccessor[ValueT, StatsT],
+    access_upper_node: fn (/* data_address */ i32) -> InternalNodeAccessor[ValueT, StatsT],
+    access_lower_node: fn (/* data_address */ i32) -> InternalNodeAccessor[ValueT, StatsT],
+    access_leaf_node:  fn (/* data_address */ i32) -> LeafNodeAccessor[ValueT, StatsT]
+    
+}
+
+
+fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_size: i32, read_value: fn (/* buffer */ DeviceBuffer, /* index */ i32) -> ValueT, read_stats: fn (/* buffer */ DeviceBuffer, /* index */ i32) -> StatsT) -> NanoVDBTree[ValueT, StatsT] {
+/*
+    // ASSERT VARIABLES
+    // TODO: remove these for speedup
+    let node_address_leaf  = access_tree_data().get_node_address_leaf();
+    let node_address_lower = access_tree_data().get_node_address_lower();
+    let node_address_upper = access_tree_data().get_node_address_upper();
+    let node_address_root  = access_tree_data().get_node_address_root();
+*/
+
+    fn @access_grid_data() = GridDataAccessor {
+        get_grid_class = @|| buffer.load_i32(convert_address(GRID_DATA_OFFSET + 632)),
+        get_grid_type  = @|| buffer.load_i32(convert_address(GRID_DATA_OFFSET + 636))
+    };
+
+    fn @access_tree_data() = TreeDataAccessor {
+        get_node_address_leaf   = @|| SIZE_OF_GRID_DATA + buffer.load_i32(convert_address(SIZE_OF_GRID_DATA)),
+        get_node_address_lower  = @|| SIZE_OF_GRID_DATA + buffer.load_i32(convert_address(SIZE_OF_GRID_DATA + 8)),
+        get_node_address_upper  = @|| SIZE_OF_GRID_DATA + buffer.load_i32(convert_address(SIZE_OF_GRID_DATA + (8 * 2))),
+        get_node_address_root   = @|| SIZE_OF_GRID_DATA + buffer.load_i32(convert_address(SIZE_OF_GRID_DATA + (8 * 3))),
+
+        get_node_count_leaf   = @|| buffer.load_i32(convert_address(SIZE_OF_GRID_DATA + 32)),
+        get_node_count_lower  = @|| buffer.load_i32(convert_address(SIZE_OF_GRID_DATA + 32 + 4)),
+        get_node_count_upper  = @|| buffer.load_i32(convert_address(SIZE_OF_GRID_DATA + 32 + (4 * 2))),
+
+        get_active_tile_count_lower = @|| buffer.load_i32(convert_address(SIZE_OF_GRID_DATA + 44)),
+        get_active_tile_count_upper = @|| buffer.load_i32(convert_address(SIZE_OF_GRID_DATA + 44 + 4)),
+        get_active_tile_count_root  = @|| buffer.load_i32(convert_address(SIZE_OF_GRID_DATA + 44 + (4 * 2))),
+        get_active_voxel_count      = @|| buffer.load_i32(convert_address(SIZE_OF_GRID_DATA + 44 + (4 * 3)))
+    };
+
+    fn @access_root_node(data_address: i32) -> RootNodeAccessor[ValueT, StatsT] {
+/*
+        // ASSERT
+        // TODO: remove for speed up
+        if (data_address < node_address_root || data_address >= node_address_upper) {
+            print_string("[ASSERTION ERROR] -  Incorrect root node address: ");
+            print_i32(node_address_root);
+            print_string(" <= ");
+            print_i32(data_address);
+            print_string(" < ");
+            print_i32(node_address_upper);
+            print_string("\n");
+        }
+
+        // ASSERT
+        // TODO: remove this for speedup
+        if (data_address % 32 != 0) {
+            print_string("Internal node address is not 32B aligned: ");
+            print_i32(data_address);
+            print_string("\n");
+        }
+*/
+        let root_data_size: i32 = 24 + 4 + (3 * value_size) + (2 * stats_size); // 48B
+        let root_tile_size: i32 =  8 + 8 + 4 + value_size;
+        let first_tile_address = align_32(data_address + root_data_size);
+
+        // make tile accessor for a certain tile_address
+        fn @make_tile_accessor(tile_address: i32) = RootTileAccessor[ValueT] {
+            get_key           = @|| buffer_load_u64(buffer, convert_address(tile_address)),
+            get_child_address = @|| {
+                let offset = buffer.load_i32(convert_address(tile_address + 8));
+                if offset <= 0 {
+                    return(Option[i32]::None)
+                }
+                Option[i32]::Some(data_address + offset)
+            },
+            get_state         = @|| buffer.load_i32(convert_address(tile_address + 8 + 4)),
+            get_value         = @|| read_value(buffer, convert_address(tile_address + 8 + 4 + 4))
+        };
+
+        // check if a tile of address tile_address has the same key
+        fn @probe_tile(tile_address: i32, key: u64) -> bool {
+            /*
+            print_u64(key);
+            print_string(" ?= ");
+            print_u64(buffer_load_u64(buffer, convert_address(tile_address)));
+            print_string("\n");
+            */
+            key == buffer_load_u64(buffer, convert_address(tile_address))
+        }
+
+
+        RootNodeAccessor[ValueT, StatsT] {
+            get_bounding_box = @|| (buffer.load_int3(convert_address(data_address)), buffer.load_int3(convert_address(data_address + 12))),
+            get_table_size   = @|| buffer.load_i32(convert_address(data_address + 24)),
+            get_background   = @|| read_value(buffer, convert_address(data_address + 24 + 4)),
+            get_minimum      = @|| read_value(buffer, convert_address(data_address + 24 + 4 + (1 * value_size))),
+            get_maximum      = @|| read_value(buffer, convert_address(data_address + 24 + 4 + (2 * value_size))),
+            get_average      = @|| read_stats(buffer, convert_address(data_address + 24 + 4 + (3 * value_size))),
+            get_std_devi     = @|| read_stats(buffer, convert_address(data_address + 24 + 4 + (4 * value_size) + stats_size)),
+
+            access_tile_by_key = @|key, root_tiles_amount| {
+                for n in unroll(0, root_tiles_amount) {
+                    let tile_address = first_tile_address + (n * root_tile_size);
+
+                    if (probe_tile(tile_address, key)) {
+                        return(Option[RootTileAccessor[ValueT]]::Some(make_tile_accessor(tile_address)))
+                    }
+                }
+                
+                Option[RootTileAccessor[ValueT]]::None
+            }
+        }
+    }
+
+    // private
+    fn @make_internal_node_accessor(data_address: i32, size_of_mask: i32) -> InternalNodeAccessor[ValueT, StatsT] {
+        
+        let internal_tile_size: i32 = if value_size > 8 { value_size } else { 8 }; // 8B (union in c++, meaning size of its largest member)
+        let tiles_address = align_32(data_address + 24 + 8 + (2 * size_of_mask) + value_size + value_size + stats_size + stats_size); // Upper: align_32(data_address + 8240) // 832 -> 9088 (=2380Hex)
+/*
+        // ASSERT
+        // TODO: remove this for speedup
+        if (data_address % 32 != 0) {
+            print_string("Internal node address is not 32B aligned: ");
+            print_i32(data_address);
+            print_string("\n");
+        }
+*/
+        InternalNodeAccessor[ValueT, StatsT] {
+            //get_bbox
+            //get_flags  = @|| buffer.load_i32(convert_address(data_address + 24)),
+            //value_mask; // LOG2DIM(5): 4096B, LOG2DIM(4): 512B  | 32B aligned
+            //child_mask; // LOG2DIM(5): 4096B, LOG2DIM(4): 512B  | 32B aligned
+            get_minimum  = @|| read_value(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask))),
+            get_maximum  = @|| read_value(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask) + value_size)),
+            get_average  = @|| read_stats(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask) + value_size + value_size)),
+            get_std_devi = @|| read_stats(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask) + value_size + value_size + stats_size)),
+
+            tile_has_value    = @|n| check_mask(buffer, data_address + 32, n),
+            tile_has_children = @|n| check_mask(buffer, data_address + 32 + size_of_mask, n),
+
+            access_tile =  @|n| {
+                let tile_address = tiles_address + (n * internal_tile_size);
+                InternalTileAccessor[ValueT] {
+                    get_value         = @|| read_value(buffer, convert_address(tile_address)),
+                    get_child_address = @|| {
+                        let offset = buffer.load_i32(convert_address(tile_address));
+                        data_address + offset
+                    }
+                }
+            }
+        }
+    }
+
+    fn @access_upper_node(data_address: i32) -> InternalNodeAccessor[ValueT, StatsT] {
+/*
+        // ASSERT
+        // TODO: remove for speed up
+        if (data_address < node_address_upper || data_address >= node_address_lower) {
+            print_string("[ASSERTION ERROR] -  Incorrect upper node address: ");
+            print_i32(node_address_upper);
+            print_string(" <= ");
+            print_i32(data_address);
+            print_string(" < ");
+            print_i32(node_address_lower);
+            print_string("\n");
+        }
+*/
+        make_internal_node_accessor(data_address, 4096)        
+    }
+
+    fn @access_lower_node(data_address: i32) -> InternalNodeAccessor[ValueT, StatsT] {
+/*
+        // ASSERT
+        // TODO: remove for speed up
+        if (data_address < node_address_lower || data_address >= node_address_leaf) {
+            print_string("[ASSERTION ERROR] -  Incorrect lower node address: ");
+            print_i32(node_address_lower);
+            print_string(" <= ");
+            print_i32(data_address);
+            print_string(" < ");
+            print_i32(node_address_leaf);
+            print_string("\n");
+        }
+*/
+        make_internal_node_accessor(data_address, 512)      
+    }
+    
+    fn @access_leaf(data_address: i32) -> LeafNodeAccessor[ValueT, StatsT] {
+/*
+        // ASSERT
+        // TODO: remove this for speedup
+        if (data_address % 32 != 0) {
+            print_string("Leaf node address is not 32B aligned: ");
+            print_i32(data_address);
+            print_string("\n");
+        }
+      
+        // ASSERT
+        // TODO: remove for speed up
+        if (data_address < node_address_leaf) {
+            print_string("[ASSERTION ERROR] -  Incorrect lower node address: ");
+            print_i32(node_address_leaf);
+            print_string(" <= ");
+            print_i32(data_address);
+            print_string("\n");
+        }
+*/        
+        let value_mask_address = data_address + 12 + 3 + 1;
+        let values_address     = align_32(value_mask_address + 64 + value_size + value_size + stats_size + stats_size);
+        
+        LeafNodeAccessor[ValueT, StatsT]  {
+            //get_flags     = @|| buffer.load_u8(data_address + 12 + 3),
+            get_minimum   = @|| read_value(buffer, convert_address(value_mask_address + 64)),
+            get_maximum   = @|| read_value(buffer, convert_address(value_mask_address + 64 + value_size)),
+            get_average   = @|| read_stats(buffer, convert_address(value_mask_address + 64 + value_size + value_size)),
+            get_std_devi  = @|| read_stats(buffer, convert_address(value_mask_address + 64 + value_size + value_size + stats_size)),
+
+            get_value     = @|n| read_value(buffer, convert_address(values_address + (n * value_size))),
+        }
+    }
+
+    NanoVDBTree[ValueT, StatsT] {
+        access_grid_data  = access_grid_data,
+        access_tree_data  = access_tree_data,
+        access_root_node  = access_root_node,
+        access_upper_node = access_upper_node,
+        access_lower_node = access_lower_node,
+        access_leaf_node  = access_leaf
+    }
+}
+
+
