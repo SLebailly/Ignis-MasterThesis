@@ -1,0 +1,105 @@
+/*struct KeyAddressPair[KeyT] {
+    key:     KeyT,
+    address: i32,
+}
+
+struct AccessPath {
+    root_tile:  Option[KeyAddressPair[u64]],
+    upper_tile: Option[KeyAddressPair[i32]],
+    lower_tile: Option[KeyAddressPair[i32]],
+    leaf_tile:  Option[KeyAddressPair[i32]]
+}
+
+fn @make_key_address_pair(key: KeyT, address: i32) = KeyAddressPair[KeyT] {
+    key     = key,
+    address = address
+};
+
+fn @make_empty_path() = AccessPath {
+    root_tile  = Option[KeyAddressPair[u64]]::None,
+    upper_tile = Option[KeyAddressPair[i32]]::None,
+    lower_tile = Option[KeyAddressPair[i32]]::None,
+    leaf_tile  = Option[KeyAddressPair[i32]]::None
+};
+
+fn @make_root_tile_path(root_tile: KeyAddressPair[u64]) = AccessPath {
+    root_tile  = Option[KeyAddressPair[u64]]::Some(root_tile),
+    upper_tile = Option[KeyAddressPair[i32]]::None,
+    lower_tile = Option[KeyAddressPair[i32]]::None,
+    leaf_tile  = Option[KeyAddressPair[i32]]::None
+};
+
+fn @make_upper_tile_path(root_tile: KeyAddressPair[u64], upper_tile: KeyAddressPair[i32]) = AccessPath {
+    root_tile  = Option[KeyAddressPair[u64]]::Some(root_tile),
+    upper_tile = Option[KeyAddressPair[i32]]::Some(upper_tile),
+    lower_tile = Option[KeyAddressPair[i32]]::None,
+    leaf_tile  = Option[KeyAddressPair[i32]]::None
+};
+
+fn @make_lower_tile_path(root_tile: KeyAddressPair[u64], upper_tile: KeyAddressPair[i32], lower_tile: KeyAddressPair[i32]) = AccessPath {
+    root_tile  = Option[KeyAddressPair[u64]]::Some(root_tile),
+    upper_tile = Option[KeyAddressPair[i32]]::Some(upper_tile),
+    lower_tile = Option[KeyAddressPair[i32]]::Some(lower_tile),
+    leaf_tile  = Option[KeyAddressPair[i32]]::None
+};
+
+fn @make_leaf_tile_path(root_tile: KeyAddressPair[u64], upper_tile: KeyAddressPair[i32], lower_tile: KeyAddressPair[i32], leaf_tile: KeyAddressPair[i32]) = AccessPath {
+    root_tile  = Option[KeyAddressPair[u64]]::Some(root_tile),
+    upper_tile = Option[KeyAddressPair[i32]]::Some(upper_tile),
+    lower_tile = Option[KeyAddressPair[i32]]::Some(lower_tile),
+    leaf_tile  = Option[KeyAddressPair[i32]]::Some(leaf_tile)
+};
+*/
+
+// traverse the tree from the root to the bottom to find the value of the Voxel
+fn @top_down_get_value[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32, j: i32, k: i32)) -> ValueT {
+
+    let tree_accessor = tree.access_tree_data();
+
+    // =============== Root level ===============
+    let root_address       = tree_accessor.get_node_address_root(false);
+    let root_tiles_amount  = tree_accessor.get_node_count_upper();
+    let root_node_accessor = tree.access_root_node(root_address);
+    let root_tile_key      = root_indices_to_key(i, j, k);
+
+    // If no root tile was found with the key, return background color
+    if let Option[RootTileAccessor[ValueT]]::Some(root_tile_accessor) = root_node_accessor.access_tile_by_key(root_tile_key, root_tiles_amount) { // = 800 (320 Hex)
+        if let Option[i32]::Some(upper_node_address) = root_tile_accessor.get_child_address() {
+            // =============== Upper Node Level ===============
+            let upper_node_accessor   = tree.access_upper_node(upper_node_address);
+            let upper_tile_index      = upper_indices_to_array_index(i, j, k);
+            
+            // If the upper tile has no children, return the tile value (if it has one) else return the background value
+            if !upper_node_accessor.tile_has_children(upper_tile_index) {
+                if upper_node_accessor.tile_has_value(upper_tile_index) {
+                    return(upper_node_accessor.access_tile(upper_tile_index).get_value())
+                } else {
+                    return(root_node_accessor.get_background())
+                }
+            }
+            // =============== Lower Node Level ===============
+            let lower_node_address  = upper_node_accessor.access_tile(upper_tile_index).get_child_address();
+            let lower_node_accessor = tree.access_lower_node(lower_node_address);
+            let lower_tile_index    = lower_indices_to_array_index(i, j, k);
+            // If the lower tile has no children, return the tile value (if it has one) else return the background value
+            if !lower_node_accessor.tile_has_children(lower_tile_index) {
+                if lower_node_accessor.tile_has_value(lower_tile_index) {
+                    return(lower_node_accessor.access_tile(lower_tile_index).get_value())
+                } else {
+                    return(root_node_accessor.get_background())
+                }
+            }
+
+            // =============== Leaf Node Level ===============
+            let leaf_node_accessor = tree.access_leaf_node(lower_node_accessor.access_tile(lower_tile_index).get_child_address());
+            let voxel_index        = leaf_indices_to_array_index(i, j, k);
+
+            // return the value of the leaf node
+            return(leaf_node_accessor.get_value(voxel_index))
+            
+        };
+        // child offset of root tile was 0 => Root tile / Upper node was sparse
+        return(root_tile_accessor.get_value())
+    };
+    root_node_accessor.get_background()
+}

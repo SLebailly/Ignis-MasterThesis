@@ -98,7 +98,7 @@ static void medium_heterogeneous(std::ostream& stream, const std::string& name, 
         
         // Principled Volume Shader Parameters
         const float scalar_density   = medium->property("scalar_density" ).getNumber(1.0f);
-        const float scalar_emission  = medium->property("scalar_emission").getNumber(1.0f);
+        const float scalar_emission  = medium->property("scalar_emission").getNumber(0.0f);
         const Vector3f color_scattering = medium->property("color_scattering").getVector3(Vector3f(0.5f, 0.5f, 0.5f));
         const Vector3f color_absorption = medium->property("color_absorption").getVector3(Vector3f(0.8f, 0.8f, 0.8f));
         const Vector3f color_emission   = medium->property("color_emission"  ).getVector3(Vector3f(1.0f, 1.0f, 1.0f));
@@ -110,7 +110,8 @@ static void medium_heterogeneous(std::ostream& stream, const std::string& name, 
             << "      make_principled_volume_parameters(" << scalar_density << ", " << scalar_emission << ", " << LoaderUtils::inlineColor(color_scattering) << ", " << LoaderUtils::inlineColor(color_absorption) << ", " << LoaderUtils::inlineColor(color_emission) << ")"
             << "  );" << std::endl
             << "  let medium_" << media_id << "_buffer = device.load_buffer_by_id(" << res_id << ");" << std::endl
-            << "  let medium_" << media_id << " : MediumGenerator= @|ctx| { make_heterogeneous_medium(ctx, "<< "make_nvdb_voxel_grid_f32(medium_" << media_id << "_buffer, shader_" << media_id << ")"
+            << "  let medium_" << media_id << "_volume = make_nvdb_volume_f32(medium_" << media_id << "_buffer, shader_" << media_id << ");" << std::endl
+            << "  let medium_" << media_id << " : MediumGenerator= @|ctx| { make_heterogeneous_medium(ctx, "<< "medium_" << media_id << "_volume"
             << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ") };" << std::endl;
 
         tree.endClosure();
@@ -121,7 +122,7 @@ static void medium_heterogeneous(std::ostream& stream, const std::string& name, 
         
         const std::string media_id = tree.currentClosureID();
         stream << tree.pullHeader()
-            << "  let medium_" << media_id << "_grid = make_simple_voxel_grid(device.load_buffer_by_id(" << res_id << "));" << std::endl
+            << "  let medium_" << media_id << "_grid = make_voxel_grid(device.load_buffer_by_id(" << res_id << "));" << std::endl
             << "  let medium_" << media_id << " : MediumGenerator= @|ctx| { make_heterogeneous_medium(ctx, "<< "medium_" << media_id << "_grid"
             << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ") };" << std::endl;
             
@@ -134,8 +135,8 @@ static void medium_heterogeneous(std::ostream& stream, const std::string& name, 
 
         const std::string media_id = tree.currentClosureID();
         stream << tree.pullHeader()
-            << "  let medium_" << media_id << "_grid = make_simple_voxel_grid(device.load_buffer_by_id(" << res_id << "));" << std::endl
-            << "  let medium_" << media_id << " : MediumGenerator= @|ctx| { make_heterogeneous_medium(ctx, "<< "medium_" << media_id << "_grid"
+            << "  let medium_" << media_id << "_volume = make_voxel_grid(device.load_buffer_by_id(" << res_id << "), make_simple_volume_shader(1));" << std::endl
+            << "  let medium_" << media_id << " : MediumGenerator= @|ctx| { make_heterogeneous_medium(ctx, "<< "medium_" << media_id << "_volume"
             << ", make_henyeygreenstein_phase(" << tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ") };" << std::endl;
 
         tree.endClosure();

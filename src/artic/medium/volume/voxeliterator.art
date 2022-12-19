@@ -1,3 +1,5 @@
+//TODO: rework this file to the hdda methods in volume_marcher
+
 struct VoxelIterator {
     start: Vec3, // the start coord
     ndir:  Vec3, // the normalized direction
@@ -99,9 +101,9 @@ fn @next_vxl_iterator(iterator: VoxelIterator) -> (VoxelIterator, VoxelIteratorR
 }
 
 // direction needs to be normalized !!!
-fn @make_voxel_iterator(grid: VoxelGrid, start: Vec3, ndir: Vec3) -> VoxelIterator {
+fn @make_voxel_iterator(volume: Volume, start: Vec3, ndir: Vec3) -> VoxelIterator {
 
-    let (ind_x, ind_y, ind_z) = grid.coord_to_indx(vec3_min(start, vec3_expand(0.99999)));
+    let (ind_x, ind_y, ind_z) = volume.coord_to_indx(vec3_min(start, vec3_expand(0.99999)));
     
     // can be negative (depending on direction)
     let step_x = if (ndir.x > flt_eps) { 1 } else { -1 };
@@ -111,23 +113,15 @@ fn @make_voxel_iterator(grid: VoxelGrid, start: Vec3, ndir: Vec3) -> VoxelIterat
     let t_delta = vec3_abs(
         vec3_safediv(
             make_vec3(
-                (1:f32 / (grid.width  as f32)),
-                (1:f32 / (grid.height as f32)),
-                (1:f32 / (grid.depth  as f32)),
+                (1:f32 / (volume.width  as f32)),
+                (1:f32 / (volume.height as f32)),
+                (1:f32 / (volume.depth  as f32)),
             ),
             ndir
         )
     );
-/*
-    //ASSERT
-    if (!grid.lcoords_in_bounds(offset_local_start)) {
-        print_string("Assertion failure: creating iterator outside boundaries: ");
-        print_vec3(offset_local_start);
-        print_string("\n");
-    }
-*/ 
 
-    let (lower_bounds, upper_bounds) = grid.bounds(ind_x, ind_y, ind_z);
+    let (lower_bounds, upper_bounds) = volume.bounds(ind_x, ind_y, ind_z, 1);
     let next_vxl_bounds = make_vec3(
         if step_x > 0 { math_builtins::fmin[f32](upper_bounds.x, 1) } else { math_builtins::fmax[f32](lower_bounds.x, 0) },
         if step_y > 0 { math_builtins::fmin[f32](upper_bounds.y, 1) } else { math_builtins::fmax[f32](lower_bounds.y, 0) },

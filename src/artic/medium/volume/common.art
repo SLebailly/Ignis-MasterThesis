@@ -1,26 +1,53 @@
-struct VoxelGridAccessor {
-    vxl_at_indx:  fn (/* i */ i32, /* j */ i32, /* k */ i32) -> VolumeVoxel
+static VOLUME_BOUNDS_FLT_MIN = 0.00001:f32;
+
+// struct containing the defining parameters for a homogeneous volume or homgeneous part of a heterogenenous volume
+struct VolumeProperties {
+    coeff_scattering: Color,
+    coeff_absorption: Color,
+    coeff_extinction: Color,
+
+    optical_thickness: fn (/* dist */ f32) -> Color
 }
 
-//normalized to 1x1x1
-struct VoxelGrid {
+// struct allowing access to the properties of each voxel (may enhance random access through top down/bottom up traversal whenever possible)
+struct VolumeAccessor{
+    properties_at_indx:  fn (/* i */ i32, /* j */ i32, /* k */ i32) -> VolumeProperties,
+    dimension_at_indx: fn (/* i */ i32, /* j */ i32, /* k */ i32) -> i32 // returns 1 for a non sparse volume, else return the amount of 1-size voxels covered by this index in each dimension
+}
+
+// struct containing all the necessary data for a volume
+struct Volume {
     // variables
     width:  i32,
     height: i32,
     depth:  i32,
 
     // functions
-    access_data:       fn () -> VoxelGridAccessor,
+    access_data:       fn () -> VolumeAccessor,
     coord_to_indx:     fn (/* coord */ Vec3) -> (i32, i32, i32),
     indx_to_coord:     fn (/* x */ i32, /* y */ i32, /* z */ i32) -> Vec3,
     is_in_vxl:         fn (/* coord */ Vec3, /* x */ i32, /* y */ i32, /* z */ i32) -> bool,
-    bounds:            fn (/* x */ i32, /* y */ i32, /* z */ i32) -> (/* lower */ Vec3, /* upper */ Vec3)
+    bounds:            fn (/* x */ i32, /* y */ i32, /* z */ i32, /* dim */ i32) -> (/* lower */ Vec3, /* upper */ Vec3)
 }
 
-fn @make_voxel_grid(width: i32, height: i32, depth: i32, access_data: fn () -> VoxelGridAccessor) -> VoxelGrid {
+
+fn @make_volume_properties(coeff_scattering: Color, coeff_absorption: Color, coeff_emission: Color) -> VolumeProperties {
+    
+    let coeff_absorption_t = color_sub(coeff_absorption, coeff_emission);
+    let coeff_extinction   = color_add(coeff_scattering, coeff_absorption_t);
+
+    VolumeProperties {
+        coeff_scattering = coeff_scattering,
+        coeff_absorption = coeff_absorption_t,
+        coeff_extinction = coeff_extinction,
+
+        optical_thickness = @|t: f32| color_mulf(coeff_extinction, t),
+    }
+}
+
+fn @make_volume(width: i32, height: i32, depth: i32, access_data: fn () -> VolumeAccessor) -> Volume {
 
     let vxl_dimensions = vec3_div(vec3_expand(1:f32), make_vec3(width as f32, height as f32, depth as f32));
-
 
     fn @is_in_vxl(coord: Vec3, x: i32, y: i32, z: i32) -> bool {
         let vxl_coord = indx_to_coord(x, y, z);
@@ -29,9 +56,9 @@ fn @make_voxel_grid(width: i32, height: i32, depth: i32, access_data: fn () -> V
         (diff.x < vxl_dimensions.x && diff.y < vxl_dimensions.y && diff.z < vxl_dimensions.z)
     }
 
-    fn @bounds(x: i32, y: i32, z: i32) -> (Vec3, Vec3) {
+    fn @bounds(x: i32, y: i32, z: i32, dim: i32) -> (Vec3, Vec3) {
         let lower = indx_to_coord(x, y, z);
-        let upper = vec3_add(lower, vxl_dimensions);
+        let upper = vec3_add(lower, vec3_mulf(vxl_dimensions, dim as f32));
 
         (lower, upper)
     }
@@ -97,7 +124,7 @@ fn @make_voxel_grid(width: i32, height: i32, depth: i32, access_data: fn () -> V
     }
 */
 
-    VoxelGrid {
+    Volume {
         width  = width,
         height = height,
         depth  = depth,
@@ -110,51 +137,4 @@ fn @make_voxel_grid(width: i32, height: i32, depth: i32, access_data: fn () -> V
         is_in_vxl         = is_in_vxl,
         bounds            = bounds
     }
-}
-
-fn @make_simple_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxelValue]) -> VoxelGrid {
-    
-    let width  = buffer.load_i32_host(0);
-    let height = buffer.load_i32_host(1);
-    let depth  = buffer.load_i32_host(2);
-
-    fn @access_data() = VoxelGridAccessor {
-        vxl_at_indx = @|x, y, z| {
-            //clamp between 0 and width-height-depth
-            let xs = if x < 0 { 0 } else if x >= width  { width  - 1 } else { x };
-            let ys = if y < 0 { 0 } else if y >= height { height - 1 } else { y };
-            let zs = if z < 0 { 0 } else if z >= depth  { depth  - 1 } else { z };
-    
-            let i = xs + (ys * width) + (zs * width * height);
-    
-            // every Voxel consists of 2 Vec3, which each take 4 spots (4th value is discarded)
-            let sigma_a = vec3_to_color(buffer.load_vec3(4 + (8*i)));
-            let sigma_s = vec3_to_color(buffer.load_vec3(4 + (8*i) + 4));
-    
-            make_simple_voxel(sigma_a, sigma_s, shader)
-        }
-    };
-
-    make_voxel_grid(width, height, depth, access_data)
-
-}
-
-fn @make_debug_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxelValue]) -> VoxelGrid {
-
-    let width  = buffer.load_i32_host(0);
-    let height = buffer.load_i32_host(1);
-    let depth  = buffer.load_i32_host(2);
-
-    let shader = make_simple_volume_shader(1:f32);
-
-    fn @access_data() = VoxelGridAccessor {
-        vxl_at_indx = @|x, y, z| {
-            let scalar = 5:f32;
-            let sigma = make_color((x as f32 * scalar)  / (width as f32), (y as f32  * scalar)/ (height as f32), (z as f32  * scalar) / (depth as f32), 1:f32);
-    
-            make_simple_voxel(sigma, sigma, shader)
-        }
-    };
-
-    make_voxel_grid(width, height, depth, access_data)
 }

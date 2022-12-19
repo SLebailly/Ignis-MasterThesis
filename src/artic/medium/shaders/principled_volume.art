@@ -37,7 +37,7 @@ fn @make_principled_volume_shader(params: PrincipledVolumeParameters) -> VolumeS
     let color_absorption_inv = color_sub(make_gray_color(1:f32), params.color_absorption); // 1 - color_absorption
     
     VolumeShader[PrincipledVolumeValues] {
-        volume_coefficients = @|values| {
+        volume_properties = @|values| {
 
             let vxl_density = if values.density > flt_eps { values.density * params.scalar_density } else { 0 };
         
@@ -46,11 +46,7 @@ fn @make_principled_volume_shader(params: PrincipledVolumeParameters) -> VolumeS
             let coeff_emission   = if params.scalar_emission > flt_eps { color_mulf(params.color_emission, params.scalar_emission) } else { make_gray_color(0:f32) };
         
             //TODO: add blackbody support
-            VolumeCoefficients {
-                coeff_scattering = coeff_scattering,
-                coeff_absorption = coeff_absorption,
-                coeff_emission   = coeff_emission
-            }
+            make_volume_properties(coeff_scattering, coeff_absorption, coeff_emission)
         }
     
     }

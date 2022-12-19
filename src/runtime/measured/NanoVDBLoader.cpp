@@ -47,7 +47,7 @@ bool NanoVDBLoader::prepare(const std::filesystem::path& in_nvdb, const std::fil
     uint32_t control_x = width / 2;
     uint32_t control_y = height / 2;
     uint32_t control_z = depth / 2;
-    IG_LOG(L_DEBUG) << "Writing VoxelGrid with dimensions: " << width << ", " << height << ", " << depth << std::endl;
+    IG_LOG(L_DEBUG) << "Writing Volume with dimensions: " << width << ", " << height << ", " << depth << std::endl;
     IG_LOG(L_DEBUG) << "Control coordinate (" << control_x << ", " << control_y << ", " << control_z << ") with value: " << grid->tree().getValue(nanovdb::Coord(control_x, control_y, control_z)) << std::endl;
     IG_LOG(L_DEBUG) << "Control coordinate (" << control_x + 10 << ", " << control_y + 10 << ", " << control_z + 10 << ") with value: " << grid->tree().getValue(nanovdb::Coord(control_x + 10 , control_y + 10 , control_z + 10 )) << std::endl;
     IG_LOG(L_DEBUG) << "Control coordinate (" << control_x - 10 << ", " << control_y - 10 << ", " << control_z - 10 << ") with value: " << grid->tree().getValue(nanovdb::Coord(control_x - 10, control_y - 10, control_z - 10)) << std::endl;
@@ -95,7 +95,7 @@ bool NanoVDBLoader::prepare_naive_grid(const std::filesystem::path& in_nvdb, con
     uint32_t control_x = width / 2;
     uint32_t control_y = height / 2;
     uint32_t control_z = depth / 2;
-    IG_LOG(L_INFO) << "Writing VoxelGrid with dimensions: " << width << ", " << height << ", " << depth << std::endl;
+    IG_LOG(L_INFO) << "Writing Volume with dimensions: " << width << ", " << height << ", " << depth << std::endl;
     IG_LOG(L_INFO) << "Control coordinate (" << control_x << ", " << control_y << ", " << control_z << ") with value: " << grid->tree().getValue(nanovdb::Coord(control_x, control_y, control_z)) << std::endl;
 
     stream.write(reinterpret_cast<char*>(&width),  sizeof(width));

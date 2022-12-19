@@ -11,7 +11,7 @@
 //      - Good question! Look for answers in papers
 // Question 2: How to determine transmittance at sampled point?
 //      - Calculation of transmittance is not defined in this method (at least not necessarily) but CAN be used as a stepwise function: cf. J. Novak - "Residual Ratio Trakcing for Estimating Attenuation in Participating Media" 2.3 Free-flight Sampling & Delta Tracking
-fn @make_delta_tracking_medium(_ctx: ShadingContext, _grid: VoxelGrid, phase: PhaseFunction, _interpolate: bool) -> Medium {
+fn @make_delta_tracking_medium(_ctx: ShadingContext, _volume: Volume, phase: PhaseFunction, _interpolate: bool) -> Medium {
 
     
     
@@ -34,13 +34,13 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, _grid: VoxelGrid, phase: Ph
 /*
 
 struct DeltaTrackingGrid {
-    grid: VoxelGrid,
+    volume: Volume,
     get_majorant: @|Vec3, Vec3| -> f32,
 
 }
 
 
-fn @make_delta_tracking_grid(grid: VoxelGrid, ) {
+fn @make_delta_tracking_grid(volume: Volume, ) {
 
 }
 

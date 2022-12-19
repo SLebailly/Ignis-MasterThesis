@@ -1,74 +1,64 @@
-
 // Implementation of Free-path sampling through Regular tracking
 // Sample the point of the next light-medium collision along the line of flight:
 // 1- compute random sampled value of transmittance between 0 and 1
 // 2- sweep along ray and compute the accumulated optical thickness until it first exceeds the sampled value
 // 3- coordinates where the accumulated optical thickness exceeds random variable is the sampled point.
 
-fn @make_regular_tracking_medium(ctx: ShadingContext, grid: VoxelGrid, phase: PhaseFunction, _interpolate: bool) -> Medium {
+fn @make_regular_tracking_medium(ctx: ShadingContext, volume: Volume, phase: PhaseFunction, interpolate: bool) -> Medium {
 
     // the values that will be used for clamping the local coordinates
-    let loc_min = vec3_expand(flt_eps);
-    let loc_max = vec3_expand(1-flt_eps);
+    let loc_min = vec3_expand(VOLUME_BOUNDS_FLT_MIN);
+    let loc_max = vec3_expand(1 - VOLUME_BOUNDS_FLT_MIN);
 
     /**
      * Evaluates the distance (and corresponding optical thickness) travelled along the ray before reaching the sampled transmittance value in the medium
      */
     fn @eval_dist(p_start: Vec3, dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color) {
 
-        let grid_accessor = grid.access_data();
-
-        fn @eval_dist_local(local_start: Vec3, direction: Vec3, sampled_value_tr: f32) -> (f32, Color) {
+        fn @eval_dist_local(local_start: Vec3, local_dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color) {
 
             // transform the sampled value of transmittance to its corresponding optical thicknes (easier on computation for the iterator)
             let sampled_value_opt = - math_builtins::log(sampled_value_tr); // tr = e^(-opt) <=> opt = - log(tr)
-
-            let mut dist = 0: f32 ; // the total distance so far
-            let mut acc_opt_thickness = make_gray_color(0.0); // the accumulated optical thickness
-
-            let (mut iterator, mut current) = next_vxl_iterator(make_voxel_iterator(grid, local_start, direction));
             
-            // iterate through the grid
-            while (current.ind_x >= 0 && current.ind_x < grid.width && current.ind_y >= 0 && current.ind_y < grid.height && current.ind_z >= 0 && current.ind_z < grid.depth) { // ensure that we are still within the grid
+            let mut acc_opt = make_gray_color(0:f32);
 
-                // get the values at the current position
-                let current_vxl = grid_accessor.vxl_at_indx(current.ind_x, current.ind_y, current.ind_z);
+            let volume_marcher  = make_hdda_marcher(local_start, local_dir_norm, volume, interpolate); //TODO: ensure that origin is within the volume (max 0.9999)
+            while (volume_marcher.has_next()) { // ensure that we are still within the volume
                 
+                // get the values at the current position
+                let (current_segment, current_dist) = volume_marcher.next_segment();
+
                 // total absorption coefficient in the voxel
                 // corresponding optical thickness (sigma_t * distance in the voxel)
-                let opt_thickness_in_vxl = current_vxl.optical_thickness(current.t);
-                
+                let opt_thickness_in_vxl = current_segment.local_properties.optical_thickness(current_segment.distance);
+
                 // add the optical thickness to the total
-                let new_acc_opt_thickness = color_add(acc_opt_thickness, opt_thickness_in_vxl);
-                
+                let new_acc_opt = color_add(acc_opt, opt_thickness_in_vxl);
+
                 // take the minimum color channel value
-                let min_opt_thickness = vec3_min_value(color_to_vec3(new_acc_opt_thickness));
+                let min_opt_thickness = vec3_min_value(color_to_vec3(new_acc_opt));
 
                 // optical thickness goes from 0 (full transparency) to sampled value
                 if (sampled_value_opt - min_opt_thickness > flt_eps) {
                     //continue the iteration
-                    dist += current.t;
-                    acc_opt_thickness = new_acc_opt_thickness;
-                    let (new_iterator, new_current) = next_vxl_iterator(iterator);
-                    iterator = new_iterator;
-                    current  = new_current;
+                    acc_opt = new_acc_opt;
                 } else {
                     
-                    let remaining_opt_thickness_minvalue = sampled_value_opt - vec3_min_value(color_to_vec3(acc_opt_thickness));
+                    let remaining_opt_thickness_minvalue = sampled_value_opt - vec3_min_value(color_to_vec3(acc_opt));
 
-                    let min_opt = vec3_min_value(color_to_vec3(current_vxl.optical_thickness(1)));
+                    let min_opt = vec3_min_value(color_to_vec3(current_segment.local_properties.coeff_extinction));
                    
                     let dist_delta = remaining_opt_thickness_minvalue / min_opt; // compute how far to go in the current voxel before reaching the threshold
 
-                    let opt_thickness_delta = current_vxl.optical_thickness(dist_delta);
+                    let opt_thickness_delta = current_segment.local_properties.optical_thickness(dist_delta);
 
-                    acc_opt_thickness = color_add(acc_opt_thickness, opt_thickness_delta);
+                    acc_opt = color_add(acc_opt, opt_thickness_delta);
 
-                    return((dist + dist_delta, acc_opt_thickness))
-                }
+                    return((current_dist - current_segment.distance + dist_delta, acc_opt))
+                } 
             }
-    
-            (flt_max, acc_opt_thickness)
+            //TODO: verify if flt_max is accurate here
+            (flt_max, acc_opt)
         }
 
         let loc_start = vec3_clamp(ctx.coord.to_normalized_point(p_start), loc_min, loc_max);
@@ -80,7 +70,7 @@ fn @make_regular_tracking_medium(ctx: ShadingContext, grid: VoxelGrid, phase: Ph
         let (loc_dist, loc_opt) = eval_dist_local(loc_start, vec3_normalize(loc_dir), sampled_value_tr);
 
         //transform the local distance and corresponding optical thickness into global distance/optical thickness
-        let dist                = loc_dist * scale_diff;
+        let dist                = if loc_dist >= flt_max { flt_max } else { loc_dist * scale_diff };
         let opt                 = color_mulf(loc_opt, scale_diff);
 
         (dist, opt)
@@ -98,7 +88,7 @@ fn @make_regular_tracking_medium(ctx: ShadingContext, grid: VoxelGrid, phase: Ph
         let loc_dir    = vec3_sub(loc_end, loc_start);
         let scale_diff = math_builtins::sqrt(vec3_len2(dir_u) / vec3_len2(loc_dir));
 
-        let local_opt  = eval_optical_thickness(grid, loc_start, loc_end, false);
+        let local_opt  = eval_optical_thickness(volume, loc_start, loc_end, false);
 
         optical_thickness_to_transmittance(color_mulf(local_opt, scale_diff))
     }

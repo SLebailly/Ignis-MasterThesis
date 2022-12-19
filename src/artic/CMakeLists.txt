@@ -88,15 +88,17 @@ set(ARTIC_MAIN_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/methods/delta_tracking.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/methods/ray_marching.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/methods/regular_tracking.art
-    ${CMAKE_CURRENT_SOURCE_DIR}/medium/nanovdb/accessor.art
-    ${CMAKE_CURRENT_SOURCE_DIR}/medium/nanovdb/nanovdb.art
-    ${CMAKE_CURRENT_SOURCE_DIR}/medium/nanovdb/utils.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/shaders/common.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/shaders/principled_volume.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/shaders/simple_volume.art
-    ${CMAKE_CURRENT_SOURCE_DIR}/medium/voxelgrid/voxel.art
-    ${CMAKE_CURRENT_SOURCE_DIR}/medium/voxelgrid/voxelgrid.art
-    ${CMAKE_CURRENT_SOURCE_DIR}/medium/voxelgrid/voxeliterator.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/common.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/volume_marcher.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/voxeliterator.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/nanovdb/accessor.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/nanovdb/data.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/nanovdb/nanovdb.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/nanovdb/utils.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/voxelgrid/voxelgrid.art
     ${CMAKE_CURRENT_SOURCE_DIR}/phase/common.art
     ${CMAKE_CURRENT_SOURCE_DIR}/phase/henyeygreenstein.art
     ${CMAKE_CURRENT_SOURCE_DIR}/phase/uniform.art

@@ -1,8 +1,8 @@
-fn @make_heterogeneous_medium(ctx: ShadingContext, grid: VoxelGrid, phase: PhaseFunction, interpolate: bool) -> Medium { // check dimensions of matrix, give inverse of Matrix with it
+fn @make_heterogeneous_medium(ctx: ShadingContext, volume: Volume, phase: PhaseFunction, interpolate: bool) -> Medium { // check dimensions of matrix, give inverse of Matrix with it
     //regular tracking
     //TODO: implement more methods and  add variable to pick between them
-    make_regular_tracking_medium(ctx, grid, phase, interpolate)
-    //make_ray_marching_medium(ctx, grid, phase, interpolate, 0.001)
+    make_regular_tracking_medium(ctx, volume, phase, interpolate)
+    //make_ray_marching_medium(ctx, volume, phase, interpolate, 0.001)
 }
 
 

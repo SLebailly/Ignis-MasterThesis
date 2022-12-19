@@ -1,5 +1,5 @@
 // A shader takes a generic voxel value and transforms it into usable volume extinction coefficients
-// In other words it interprets the grid values
+// In other words it interprets the volume values
 struct VolumeShader[VoxelValueT] {
-    volume_coefficients: fn (/* input */ VoxelValueT) -> VolumeCoefficients
+    volume_properties: fn (/* input */ VoxelValueT) -> VolumeProperties
 }

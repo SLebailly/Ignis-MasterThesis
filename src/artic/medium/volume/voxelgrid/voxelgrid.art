@@ -1,0 +1,63 @@
+// For simple voxel grids (custom format defined by bin file)
+struct SimpleVolumeVoxelValue {
+    sigma_a: Color,
+    sigma_s: Color
+}
+
+fn @make_simple_volume_voxel_value(sigma_a: Color, sigma_s: Color) = SimpleVolumeVoxelValue {
+    sigma_a = sigma_a,
+    sigma_s = sigma_s
+};
+
+fn @make_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxelValue]) -> Volume {
+    
+    let width  = buffer.load_i32_host(0);
+    let height = buffer.load_i32_host(1);
+    let depth  = buffer.load_i32_host(2);
+
+    fn @access_data() = VolumeAccessor {
+        properties_at_indx = @|x, y, z| {
+            //clamp between 0 and width-height-depth
+            let xs = if x < 0 { 0 } else if x >= width  { width  - 1 } else { x };
+            let ys = if y < 0 { 0 } else if y >= height { height - 1 } else { y };
+            let zs = if z < 0 { 0 } else if z >= depth  { depth  - 1 } else { z };
+    
+            let i = xs + (ys * width) + (zs * width * height);
+    
+            // every Voxel consists of 2 Vec3, which each take 4 spots (4th value is discarded)
+            let sigma_a = vec3_to_color(buffer.load_vec3(4 + (8*i)));
+            let sigma_s = vec3_to_color(buffer.load_vec3(4 + (8*i) + 4));
+    
+            shader.volume_properties(make_simple_volume_voxel_value(sigma_a, sigma_s))
+        },
+        dimension_at_indx = @|_i, _j, _k| {
+            1
+        }
+    };
+
+    make_volume(width, height, depth, access_data)
+
+}
+
+fn @make_debug_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxelValue]) -> Volume {
+
+    let width  = buffer.load_i32_host(0);
+    let height = buffer.load_i32_host(1);
+    let depth  = buffer.load_i32_host(2);
+
+    let shader = make_simple_volume_shader(1:f32);
+
+    fn @access_data() = VolumeAccessor {
+        properties_at_indx = @|x, y, z| {
+            let scalar = 5:f32;
+            let sigma = make_color((x as f32 * scalar)  / (width as f32), (y as f32  * scalar)/ (height as f32), (z as f32  * scalar) / (depth as f32), 1:f32);
+    
+            shader.volume_properties(make_simple_volume_voxel_value(sigma, sigma))
+        },
+        dimension_at_indx = @|_i, _j, _k| {
+            1
+        }
+    };
+
+    make_volume(width, height, depth, access_data)
+}
