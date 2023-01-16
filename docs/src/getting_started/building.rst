@@ -19,7 +19,7 @@ The following will need ``ccmake``, but works also with ``cmake-gui`` or with pl
 
 2.  Clone Ignis from https://github.com/PearCoding/Ignis
 
-    1.  Make sure all the dependencies listed in official top `README.md <https://github.com/PearCoding/Ignis/blob/master/README.md>`_ are installed.
+    1.  Make sure all the dependencies listed in `README.md <https://github.com/PearCoding/Ignis/blob/master/README.md>`_ are installed.
     2.  Run ``mkdir build && cd build && cmake ..``
     3.  Run ``ccmake .`` inside the ``build/`` directory.
     4.  Change ``AnyDSL_runtime_DIR`` to ``ANYDSL_ROOT/runtime/build/share/anydsl/cmake``, with ``ANYDSL_ROOT`` being the path to the root of the AnyDSL framework.
@@ -41,6 +41,14 @@ This mini tutorial is expecting some basic knowledge about the Windows build sys
     2.  Run the script ``scripts/setup/windows/setup.ps1``. If you use a different config file, specify the path as an argument to the script. The script will download all the necessary dependencies, except CUDA, compile it and create a new directory ``deps/`` on the directory on top of Ignis or the location specified in the config. This step has to be done only once, or if some of the dependencies got updated.
     3.  By default the ``build/`` directory contains a Ninja based ``Release`` configuration. 
     4.  The ``Release`` configuration is well tested and should be used for most purposes. Any other configuration is experimental and may fail at any time.
+
+.. NOTE:: It might be necessary to run the script ``scripts/setup/windows/vc_dev_env.ps1`` every time a new terminal is opened to ensure the correct visual studio environment is available.
+
+To change from the single build configuration using ```Ninja`` to a multiconfig-generator, remove or adapt the following line in ``scripts/setup/windows/config.json``:
+
+.. code-block:: json
+
+    "CMAKE_EXTRA_ARGS": ["-GNinja", "-UCMAKE_CONFIGURATION_TYPES"]
 
 Windows (Manual)
 ----------------
@@ -94,7 +102,7 @@ This mini tutorial is expecting some basic knowledge about CMake and the Windows
 2.  Clone Ignis from https://github.com/PearCoding/Ignis. This time the ``master`` branch is fine.
 
     1.  Getting AnyDSL to work is the hardest part. Congrats if you made it so far. However, Ignis requires some dependencies and configurations to work with AnyDSL.
-    2.  Make sure zlib, Intel oneAPI TBB and Eigen 3 are installed on your system. It is also recommended to install SDL2 to be able to use the viewer.
+    2.  Make sure zlib and Intel oneAPI TBB are installed on your system. It is also recommended to install SDL2 to be able to use the viewer.
     3.  Create a new directory named ``build``
     4.  Open the command line interface in the newly created directory. Make sure the recent VC environment is available.
     5.  In the command line interface write the following and adapt it to your AnyDSL setup:
@@ -143,3 +151,14 @@ Known Issues
     Setting the environment variable ``SDL_RENDER_DRIVER=software`` and ``SDL_FRAMEBUFFER_ACCELERATION=0`` should be a good workaround. This will not prevent you of using the GPU for raytracing however, only the UI will be software rendered.
 
 -   If running ``artic`` or ``clang`` fails when building Ignis it might be due to the two executables not able to find ``zlib.dll``. Make sure it is available for them. A simple solution is to just copy the ``zlib.dll`` next to the executables.
+
+-   Getting the following cmake error in LLVM:
+
+    .. code-block:: console
+
+        CMake Error at build/_deps/llvm-src/llvm/cmake/modules/AddLLVM.cmake:1985 (string):
+        string begin index: -1 is out of range 0 - 23
+        Call Stack (most recent call first):
+        build/_deps/llvm-src/llvm/tools/llvm-ar/CMakeLists.txt:20 (add_llvm_tool_symlink)
+
+    can be fixed by explicitly undefining the cmake variable ``CMAKE_CONFIGURATION_TYPES`` via ``-UCMAKE_CONFIGURATION_TYPES`` in the command line or in the ``scripts/setup/windows/config.json`` when using the automatic script.

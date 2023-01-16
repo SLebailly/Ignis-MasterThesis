@@ -3,6 +3,7 @@
 #include "ShaderUtils.h"
 #include "loader/Loader.h"
 #include "loader/LoaderCamera.h"
+#include "loader/LoaderEntity.h"
 #include "loader/LoaderShape.h"
 #include "loader/LoaderTechnique.h"
 #include "loader/LoaderUtils.h"
@@ -10,15 +11,13 @@
 #include <sstream>
 
 namespace IG {
-using namespace Parser;
-
 std::string TraversalShader::begin(const LoaderContext& ctx)
 {
     std::stringstream stream;
 
     stream << "#[export] fn ig_traversal_shader(settings: &Settings, size: i32) -> () {" << std::endl
            << "  maybe_unused(settings);" << std::endl
-           << "  " << ShaderUtils::constructDevice(ctx.Target) << std::endl
+           << "  " << ShaderUtils::constructDevice(ctx.Options.Target) << std::endl
            << "  let entities = load_entity_table(device); maybe_unused(entities);" << std::endl;
 
     return stream.str();
@@ -33,7 +32,7 @@ std::string TraversalShader::setupPrimary(const LoaderContext& ctx)
 {
     std::stringstream stream;
 
-    if (ctx.EntityCount == 0) {
+    if (ctx.Entities->entityCount() == 0) {
         stream << begin(ctx) << std::endl
                << "  maybe_unused(size);" << std::endl
                << end();
@@ -54,7 +53,7 @@ std::string TraversalShader::setupSecondary(const LoaderContext& ctx)
 
     std::stringstream stream;
 
-    if (ctx.EntityCount == 0) {
+    if (ctx.Entities->entityCount() == 0) {
         stream << begin(ctx) << std::endl
                << "  maybe_unused(size);" << std::endl
                << end();

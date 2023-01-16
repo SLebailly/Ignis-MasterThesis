@@ -1,6 +1,13 @@
 # Contains main dependencies used everywhere
 # Specific dependencies in optional components are defined inside the component
 CPMAddPackage(
+    NAME eigen
+    GITLAB_REPOSITORY libeigen/eigen
+    GIT_TAG 3.4
+    DOWNLOAD_ONLY YES
+)
+
+CPMAddPackage(
     NAME stb
     GITHUB_REPOSITORY nothings/stb 
     GIT_TAG master
@@ -45,7 +52,7 @@ CPMAddPackage(
 CPMAddPackage(
     NAME libbvh
     GITHUB_REPOSITORY madmann91/bvh
-    GIT_TAG master
+    GIT_TAG v1
     DOWNLOAD_ONLY YES
 )
 

@@ -173,9 +173,9 @@ private:                              \
 #include <cmath>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <filesystem>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <unordered_map>
@@ -225,15 +225,18 @@ using Vector4f = Eigen::Vector4f;
 using Vector4i = Eigen::Vector4i;
 
 /* Precise matrix types */
-using Matrix2f = Eigen::Matrix2f;
-using Matrix3f = Eigen::Matrix3f;
-using Matrix4f = Eigen::Matrix4f;
+using Matrix2f  = Eigen::Matrix2f;
+using Matrix3f  = Eigen::Matrix3f;
+using Matrix34f = Eigen::Matrix<float, 3, 4>;
+using Matrix4f  = Eigen::Matrix4f;
 
 using Quaternionf = Eigen::Quaternionf;
 using Transformf  = Eigen::Affine3f;
 
 using Colorf = Eigen::Array3f;
 
+template <typename VectorType>
+using AlignedVector = std::vector<VectorType, Eigen::aligned_allocator<VectorType>>;
 template <typename Key, typename VectorType>
 using AlignedUnorderedMap = std::unordered_map<Key, VectorType, std::hash<Key>, std::equal_to<Key>, Eigen::aligned_allocator<std::pair<const Key, VectorType>>>;
 
@@ -260,19 +263,4 @@ template <typename T>
     return (a < b) ? b : ((a > c) ? c : a);
 }
 
-/// Transform string to lowercase
-[[nodiscard]] inline std::string to_lowercase(const std::string& str)
-{
-    std::string tmp = str;
-    std::transform(tmp.begin(), tmp.end(), tmp.begin(), [](const std::string::value_type& v) { return static_cast<std::string::value_type>(::tolower((int)v)); });
-    return tmp;
-}
-
-/// Transform string to a string with whitespace replaced by the character given with c
-[[nodiscard]] inline std::string whitespace_escaped(const std::string& str, const std::string::value_type& c = '_')
-{
-    std::string tmp = str;
-    std::transform(tmp.begin(), tmp.end(), tmp.begin(), [=](const std::string::value_type& v) { return std::isspace(v) ? c : v; });
-    return tmp;
-}
 } // namespace IG

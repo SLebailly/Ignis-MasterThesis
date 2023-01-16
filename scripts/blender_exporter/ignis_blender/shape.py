@@ -1,6 +1,8 @@
 import os
 import bmesh
 
+from .addon_preferences import get_prefs
+
 
 def get_shape_name_base(obj):
     return obj.original.data.name  # We use the original mesh name!
@@ -18,7 +20,7 @@ def _shape_name_material(name, mat_id):
     return f"_m_{mat_id}_{name}"
 
 
-def _export_bmesh_by_material(me, name, rootPath):
+def _export_bmesh_by_material(me, name, rootPath, settings):
     from .ply import save_mesh as ply_save
 
     mat_count = len(me.materials)
@@ -41,6 +43,9 @@ def _export_bmesh_by_material(me, name, rootPath):
         # Make sure all faces are convex
         bmesh.ops.connect_verts_concave(bm, faces=bm.faces)
 
+        if settings.triangulate_shapes:
+            bmesh.ops.triangulate(bm, faces=bm.faces)
+
         bm.normal_update()
 
         if len(bm.verts) == 0 or len(bm.faces) == 0 or not bm.is_valid:
@@ -51,7 +56,9 @@ def _export_bmesh_by_material(me, name, rootPath):
         shape_name = name if mat_count == 1 else _shape_name_material(
             name, mat_id)
 
-        ply_save(filepath=os.path.join(rootPath, "Meshes", shape_name+".ply"),
+        abs_filepath = os.path.join(
+            rootPath, get_prefs().mesh_dir_name, shape_name+".ply")
+        ply_save(filepath=abs_filepath,
                  bm=bm,
                  use_ascii=False,
                  use_normals=True,
@@ -65,7 +72,7 @@ def _export_bmesh_by_material(me, name, rootPath):
     return shapes
 
 
-def export_shape(result, obj, depsgraph, meshpath):
+def export_shape(result, obj, depsgraph, meshpath, settings):
     name = get_shape_name_base(obj)
 
     try:
@@ -73,13 +80,13 @@ def export_shape(result, obj, depsgraph, meshpath):
     except RuntimeError:
         return []
 
-    shapes = _export_bmesh_by_material(me, name, meshpath)
+    shapes = _export_bmesh_by_material(me, name, meshpath, settings)
     obj.to_mesh_clear()
 
     for shape in shapes:
         result["shapes"].append(
             {"type": "ply", "name": shape[0],
-                "filename": f"Meshes/{shape[0]}.ply"},
+                "filename": f"{get_prefs().mesh_dir_name}/{shape[0]}.ply"},
         )
 
     return shapes
