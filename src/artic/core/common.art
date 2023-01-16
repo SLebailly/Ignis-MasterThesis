@@ -85,14 +85,10 @@ fn @fastpow(x: f32, p: f32) -> f32 {
     fastpow2(p * fastlog2(x))
 }
 
-// Likely/unlikely -----------------------------------------------------------------
-
-#[import(cc = "device", name = "llvm.expect.i1")] fn expect(bool, bool) -> bool;
-
-fn @  likely(cond: bool) = expect(cond,  true);
-fn @unlikely(cond: bool) = expect(cond, false);
-
 // Misc. ---------------------------------------------------------------------------
+
+fn @  null_likely(cond: bool) = cond;
+fn @null_unlikely(cond: bool) = cond;
 
 fn @prodsign(x: f32, y: f32) = bitcast[f32](bitcast[i32](x) ^ (bitcast[i32](y) & bitcast[i32](0x80000000:u32)));
 
@@ -170,8 +166,9 @@ fn @clamp(v: i32, l: i32, u: i32) = min(u, max(l, v));
 
 fn @clampf(v: f32, l: f32, u: f32) = math_builtins::fmin[f32](u, math_builtins::fmax[f32](l, v));
 
-fn @safe_div(a: f32, b: f32) = if math_builtins::fabs(b) <= flt_eps { 0:f32 } else { a / b };
-fn @safe_sqrt(a: f32)        = math_builtins::sqrt(math_builtins::fmax(0:f32, a));
+fn @safe_div(a: f32, b: f32)     = if math_builtins::fabs(b) <= flt_eps { 0:f32 } else { a / b };
+fn @safe_div_one(a: f32, b: f32) = if math_builtins::fabs(b) <= flt_eps { 1:f32 } else { a / b };
+fn @safe_sqrt(a: f32)            = math_builtins::sqrt(math_builtins::fmax(0:f32, a));
 
 /// A safe, (but less extreme) unroll function... making sure the stack aint exploding
 fn @safe_unroll(body: fn(i32) -> ()) {

@@ -67,10 +67,18 @@ scenes/radiance/*/*.exr
 scenes/radiance/*/*.unf
 scenes/radiance/*/*.oct
 
+scenes/evaluation/radiance/*.hdr
+scenes/evaluation/radiance/*.exr
+scenes/evaluation/radiance/*.unf
+scenes/evaluation/radiance/*.oct
+
 # Docker build stuff
 scripts/docker/anydsl/tmp/
 scripts/docker/ignis/tmp/
 
 # Do not add backup files
 *.blend1
+imgui.ini
+
+# Do not export imgui settings
 imgui.ini

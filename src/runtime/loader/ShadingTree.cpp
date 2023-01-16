@@ -3,6 +3,14 @@
 #include "LoaderTexture.h"
 #include "LoaderUtils.h"
 #include "Logger.h"
+#include "StringUtils.h"
+#include "device/Device.h"
+#include "shader/BakeShader.h"
+#include "shader/ScriptCompiler.h"
+
+#include <algorithm>
+#include <cctype>
+#include <locale>
 
 namespace IG {
 ShadingTree::ShadingTree(LoaderContext& ctx)
@@ -11,11 +19,93 @@ ShadingTree::ShadingTree(LoaderContext& ctx)
     , mForceSpecialization(false)
 {
     beginClosure("_root");
+    setupGlobalParameters();
 }
 
 void ShadingTree::signalError()
 {
     mContext.signalError();
+}
+
+void ShadingTree::setupGlobalParameters()
+{
+    auto& reg = mContext.GlobalRegistry;
+    // Register all available user parameters
+    for (const auto& pair : mContext.Options.Scene->parameters()) {
+        const auto param       = pair.second;
+        const std::string type = param->pluginType();
+
+        if (type == "number") {
+            const auto prop                 = param->property("value");
+            reg.FloatParameters[pair.first] = handleGlobalParameterNumber(pair.first, prop);
+            const std::string param_name    = "param_f32_" + whitespace_escaped(pair.first);
+            mHeaderLines.push_back("  let " + param_name + " = registry::get_global_parameter_f32(\"" + pair.first + "\", 0); maybe_unused(" + param_name + ");\n");
+            mTranspiler.registerCustomVariableNumber(pair.first, param_name);
+        } else if (type == "vector") {
+            const auto prop                  = param->property("value");
+            reg.VectorParameters[pair.first] = handleGlobalParameterVector(pair.first, prop);
+            const std::string param_name     = "param_vec3_" + whitespace_escaped(pair.first);
+            mHeaderLines.push_back("  let " + param_name + " = registry::get_global_parameter_vec3(\"" + pair.first + "\", vec3_expand(0)); maybe_unused(" + param_name + ");\n");
+            mTranspiler.registerCustomVariableVector(pair.first, param_name);
+        } else if (type == "color") {
+            const auto prop                 = param->property("value");
+            reg.ColorParameters[pair.first] = handleGlobalParameterColor(pair.first, prop);
+            const std::string param_name    = "param_color_" + whitespace_escaped(pair.first);
+            mHeaderLines.push_back("  let " + param_name + " = registry::get_global_parameter_color(\"" + pair.first + "\", color_builtins::black); maybe_unused(" + param_name + ");\n");
+            mTranspiler.registerCustomVariableColor(pair.first, param_name);
+        }
+    }
+}
+
+float ShadingTree::handleGlobalParameterNumber(const std::string& name, const SceneProperty& prop)
+{
+    float value = 0;
+    switch (prop.type()) {
+    default:
+        IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid value type" << std::endl;
+        break;
+    case SceneProperty::PT_NONE:
+        IG_LOG(L_ERROR) << "Parameter '" << name << "' has no value!" << std::endl;
+        break;
+    case SceneProperty::PT_INTEGER:
+    case SceneProperty::PT_NUMBER:
+        value = prop.getNumber();
+        break;
+    case SceneProperty::PT_STRING:
+        IG_LOG(L_ERROR) << "Parameter '" << name << "' is using PExpr expressions, which is not supported!" << std::endl;
+        break;
+    }
+    return value;
+}
+
+Vector3f ShadingTree::handleGlobalParameterVector(const std::string& name, const SceneProperty& prop)
+{
+    Vector3f value = Vector3f::Zero();
+    switch (prop.type()) {
+    default:
+        IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid value type" << std::endl;
+        break;
+    case SceneProperty::PT_NONE:
+        IG_LOG(L_ERROR) << "Parameter '" << name << "' has no value!" << std::endl;
+        break;
+    case SceneProperty::PT_INTEGER:
+    case SceneProperty::PT_NUMBER:
+        value = Vector3f::Constant(prop.getNumber());
+        break;
+    case SceneProperty::PT_VECTOR3:
+        value = prop.getVector3();
+        break;
+    case SceneProperty::PT_STRING:
+        IG_LOG(L_ERROR) << "Parameter '" << name << "' is using PExpr expressions, which is not supported!" << std::endl;
+        break;
+    }
+    return value;
+}
+
+Vector4f ShadingTree::handleGlobalParameterColor(const std::string& name, const SceneProperty& prop)
+{
+    const Vector3f a = handleGlobalParameterVector(name, prop);
+    return Vector4f(a.x(), a.y(), a.z(), 1); // TODO: Support alpha?
 }
 
 // ------------------ Number
@@ -65,49 +155,25 @@ static inline ShadingTree::ColorOptions mapToColorOptions(const ShadingTree::Tex
     };
 }
 
-float ShadingTree::computeNumber(const std::string& name, const Parser::Object& obj, float def) const
+std::string ShadingTree::handlePropertyNumber(const std::string& name, const SceneProperty& prop, const NumberOptions& options)
 {
-    const auto prop = obj.property(name);
-
-    std::string inline_str;
     switch (prop.type()) {
     default:
+    case SceneProperty::PT_NONE:
         IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
-        [[fallthrough]];
-    case Parser::PT_NONE:
-        return def;
-    case Parser::PT_INTEGER:
-    case Parser::PT_NUMBER:
-        return prop.getNumber();
-    case Parser::PT_VECTOR3:
-        return prop.getVector3().mean();
-    case Parser::PT_STRING:
-        return approxTexture(name, prop.getString(), Vector3f::Constant(def)).mean();
+        return {};
+    case SceneProperty::PT_INTEGER:
+    case SceneProperty::PT_NUMBER:
+        return acquireNumber(name, prop.getNumber(), options);
+    case SceneProperty::PT_VECTOR3:
+        IG_LOG(L_WARNING) << "Parameter '" << name << "' expects a number but a color was given. Using average instead" << std::endl;
+        return "color_average(" + acquireColor(name, prop.getVector3(), mapToColorOptions(options)) + ")";
+    case SceneProperty::PT_STRING:
+        return handleTexture(name, prop.getString(), false); // TODO: Map options
     }
 }
 
-Vector3f ShadingTree::computeColor(const std::string& name, const Parser::Object& obj, const Vector3f& def) const
-{
-    const auto prop = obj.property(name);
-
-    std::string inline_str;
-    switch (prop.type()) {
-    default:
-        IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
-        [[fallthrough]];
-    case Parser::PT_NONE:
-        return def;
-    case Parser::PT_INTEGER:
-    case Parser::PT_NUMBER:
-        return Vector3f::Constant(prop.getNumber());
-    case Parser::PT_VECTOR3:
-        return prop.getVector3();
-    case Parser::PT_STRING:
-        return approxTexture(name, prop.getString(), def);
-    }
-}
-
-void ShadingTree::addNumber(const std::string& name, const Parser::Object& obj, float def, bool hasDef, const NumberOptions& options)
+void ShadingTree::addNumber(const std::string& name, const SceneObject& obj, const std::optional<float>& def, const NumberOptions& options)
 {
     if (hasParameter(name)) {
         IG_LOG(L_ERROR) << "Multiple use of parameter '" << name << "'" << std::endl;
@@ -117,32 +183,18 @@ void ShadingTree::addNumber(const std::string& name, const Parser::Object& obj, 
     const auto prop = obj.property(name);
 
     std::string inline_str;
-    switch (prop.type()) {
-    default:
-        IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
-        [[fallthrough]];
-    case Parser::PT_NONE:
-        if (!hasDef)
+    if (prop.type() == SceneProperty::PT_NONE) {
+        if (!def.has_value())
             return;
-        inline_str = acquireNumber(name, def, options);
-        break;
-    case Parser::PT_INTEGER:
-    case Parser::PT_NUMBER:
-        inline_str = acquireNumber(name, prop.getNumber(), options);
-        break;
-    case Parser::PT_VECTOR3:
-        IG_LOG(L_WARNING) << "Parameter '" << name << "' expects a number but a color was given. Using average instead" << std::endl;
-        inline_str = "color_average(" + acquireColor(name, prop.getVector3(), mapToColorOptions(options)) + ")";
-        break;
-    case Parser::PT_STRING:
-        inline_str = handleTexture(name, prop.getString(), false); // TODO: Map options
-        break;
+        inline_str = acquireNumber(name, def.value(), options);
+    } else {
+        inline_str = handlePropertyNumber(name, prop, options);
     }
 
     currentClosure().Parameters[name] = inline_str;
 }
 
-void ShadingTree::addColor(const std::string& name, const Parser::Object& obj, const Vector3f& def, bool hasDef, const ColorOptions& options)
+void ShadingTree::addColor(const std::string& name, const SceneObject& obj, const std::optional<Vector3f>& def, const ColorOptions& options)
 {
     if (hasParameter(name)) {
         IG_LOG(L_ERROR) << "Multiple use of parameter '" << name << "'" << std::endl;
@@ -156,19 +208,19 @@ void ShadingTree::addColor(const std::string& name, const Parser::Object& obj, c
     default:
         IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
         [[fallthrough]];
-    case Parser::PT_NONE:
-        if (!hasDef)
+    case SceneProperty::PT_NONE:
+        if (!def.has_value())
             return;
-        inline_str = acquireColor(name, def, options);
+        inline_str = acquireColor(name, def.value(), options);
         break;
-    case Parser::PT_INTEGER:
-    case Parser::PT_NUMBER:
+    case SceneProperty::PT_INTEGER:
+    case SceneProperty::PT_NUMBER:
         inline_str = "make_gray_color(" + acquireNumber(name, prop.getNumber(), mapToNumberOptions(options)) + ")";
         break;
-    case Parser::PT_VECTOR3:
+    case SceneProperty::PT_VECTOR3:
         inline_str = acquireColor(name, prop.getVector3(), options);
         break;
-    case Parser::PT_STRING:
+    case SceneProperty::PT_STRING:
         inline_str = handleTexture(name, prop.getString(), true); // TODO: Map options
         break;
     }
@@ -176,7 +228,7 @@ void ShadingTree::addColor(const std::string& name, const Parser::Object& obj, c
     currentClosure().Parameters[name] = inline_str;
 }
 
-void ShadingTree::addVector(const std::string& name, const Parser::Object& obj, const Vector3f& def, bool hasDef, const VectorOptions& options)
+void ShadingTree::addVector(const std::string& name, const SceneObject& obj, const std::optional<Vector3f>& def, const VectorOptions& options)
 {
     if (hasParameter(name)) {
         IG_LOG(L_ERROR) << "Multiple use of parameter '" << name << "'" << std::endl;
@@ -190,19 +242,19 @@ void ShadingTree::addVector(const std::string& name, const Parser::Object& obj, 
     default:
         IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
         [[fallthrough]];
-    case Parser::PT_NONE:
-        if (!hasDef)
+    case SceneProperty::PT_NONE:
+        if (!def.has_value())
             return;
-        inline_str = acquireVector(name, def, options);
+        inline_str = acquireVector(name, def.value(), options);
         break;
-    case Parser::PT_INTEGER:
-    case Parser::PT_NUMBER:
+    case SceneProperty::PT_INTEGER:
+    case SceneProperty::PT_NUMBER:
         inline_str = "vec3_expand(" + acquireNumber(name, prop.getNumber(), mapToNumberOptions(options)) + ")";
         break;
-    case Parser::PT_VECTOR3:
+    case SceneProperty::PT_VECTOR3:
         inline_str = acquireVector(name, prop.getVector3(), options);
         break;
-    case Parser::PT_STRING:
+    case SceneProperty::PT_STRING:
         inline_str = "color_to_vec3(" + handleTexture(name, prop.getString(), true) + ")"; // TODO: Map options
         break;
     }
@@ -211,7 +263,7 @@ void ShadingTree::addVector(const std::string& name, const Parser::Object& obj, 
 }
 
 // Only use this if no basic color information suffices
-void ShadingTree::addTexture(const std::string& name, const Parser::Object& obj, bool hasDef, const TextureOptions& options)
+void ShadingTree::addTexture(const std::string& name, const SceneObject& obj, const std::optional<Vector3f>& def, const TextureOptions& options)
 {
     if (hasParameter(name)) {
         IG_LOG(L_ERROR) << "Multiple use of parameter '" << name << "'" << std::endl;
@@ -225,19 +277,19 @@ void ShadingTree::addTexture(const std::string& name, const Parser::Object& obj,
     default:
         IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
         [[fallthrough]];
-    case Parser::PT_NONE:
-        if (!hasDef)
+    case SceneProperty::PT_NONE:
+        if (!def.has_value())
             return;
-        inline_str = "make_black_texture()";
+        inline_str = "make_constant_texture(" + acquireColor(name, def.value(), mapToColorOptions(options)) + ")";
         break;
-    case Parser::PT_INTEGER:
-    case Parser::PT_NUMBER:
+    case SceneProperty::PT_INTEGER:
+    case SceneProperty::PT_NUMBER:
         inline_str = "make_constant_texture(make_gray_color(" + acquireNumber(name, prop.getNumber(), mapToNumberOptions(options)) + "))";
         break;
-    case Parser::PT_VECTOR3:;
+    case SceneProperty::PT_VECTOR3:
         inline_str = "make_constant_texture(" + acquireColor(name, prop.getVector3(), mapToColorOptions(options)) + ")";
         break;
-    case Parser::PT_STRING: {
+    case SceneProperty::PT_STRING: {
         std::string tex_func = handleTexture(name, prop.getString(), true);
         inline_str           = "@|ctx:ShadingContext|->Color{maybe_unused(ctx); " + tex_func + "}";
     } break;
@@ -246,10 +298,281 @@ void ShadingTree::addTexture(const std::string& name, const Parser::Object& obj,
     currentClosure().Parameters[name] = inline_str;
 }
 
-bool ShadingTree::beginClosure(const std::string& name)
+float ShadingTree::computeNumber(const std::string& name, const SceneObject& obj, float def)
+{
+    const auto prop = obj.property(name);
+
+    std::string inline_str;
+    switch (prop.type()) {
+    default:
+        IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
+        [[fallthrough]];
+    case SceneProperty::PT_NONE:
+        return def;
+    case SceneProperty::PT_INTEGER:
+    case SceneProperty::PT_NUMBER:
+        return prop.getNumber();
+    case SceneProperty::PT_VECTOR3:
+        return prop.getVector3().mean();
+    case SceneProperty::PT_STRING: {
+        if (const auto it = mContext.Cache->ExprComputation.find(prop.getString()); it != mContext.Cache->ExprComputation.end())
+            return it->second.mean();
+
+        IG_LOG(L_DEBUG) << "Computing number for expression '" << prop.getString() << "'" << std::endl;
+        LoaderContext ctx_copy = mContext.copyForBake();
+        return ShadingTree(ctx_copy).bakeTextureExpressionAverage(name, prop.getString(), Vector3f::Constant(def)).mean();
+    }
+    }
+}
+
+Vector3f ShadingTree::computeColor(const std::string& name, const SceneObject& obj, const Vector3f& def)
+{
+    const auto prop = obj.property(name);
+
+    std::string inline_str;
+    switch (prop.type()) {
+    default:
+        IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
+        [[fallthrough]];
+    case SceneProperty::PT_NONE:
+        return def;
+    case SceneProperty::PT_INTEGER:
+    case SceneProperty::PT_NUMBER:
+        return Vector3f::Constant(prop.getNumber());
+    case SceneProperty::PT_VECTOR3:
+        return prop.getVector3();
+    case SceneProperty::PT_STRING: {
+        if (const auto it = mContext.Cache->ExprComputation.find(prop.getString()); it != mContext.Cache->ExprComputation.end())
+            return it->second;
+
+        IG_LOG(L_DEBUG) << "Computing color for expression '" << prop.getString() << "'" << std::endl;
+        LoaderContext ctx_copy = mContext.copyForBake();
+        return ShadingTree(ctx_copy).bakeTextureExpressionAverage(name, prop.getString(), def);
+    }
+    }
+}
+
+ShadingTree::BakeOutputTexture ShadingTree::bakeTexture(const std::string& name, const SceneObject& obj, const std::optional<Vector3f>& def, const TextureBakeOptions& options)
+{
+    // options only affect bake process with PExpr expressions
+
+    const auto prop = obj.property(name);
+
+    std::string inline_str;
+    switch (prop.type()) {
+    default:
+        IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
+        [[fallthrough]];
+    case SceneProperty::PT_NONE:
+        if (!def.has_value())
+            return {};
+        return std::make_shared<Image>(Image::createSolidImage(Vector4f(def->x(), def->y(), def->z(), 1)));
+    case SceneProperty::PT_INTEGER:
+    case SceneProperty::PT_NUMBER:
+        return std::make_shared<Image>(Image::createSolidImage(Vector4f(prop.getNumber(), prop.getNumber(), prop.getNumber(), 1)));
+    case SceneProperty::PT_VECTOR3: {
+        const Vector3f c = prop.getVector3();
+        return std::make_shared<Image>(Image::createSolidImage(Vector4f(c.x(), c.y(), c.z(), 1)));
+    }
+    case SceneProperty::PT_STRING: {
+        IG_LOG(L_DEBUG) << "Baking property '" << name << "'" << std::endl;
+        LoaderContext ctx_copy = mContext.copyForBake();
+        return ShadingTree(ctx_copy).bakeTextureExpression(name, prop.getString(), options);
+    }
+    }
+}
+
+std::pair<size_t, size_t> ShadingTree::computeTextureResolution(const std::string& name, const SceneObject& obj)
+{
+    const auto prop = obj.property(name);
+
+    std::string inline_str;
+    switch (prop.type()) {
+    default:
+        IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
+        [[fallthrough]];
+    case SceneProperty::PT_NONE:
+    case SceneProperty::PT_INTEGER:
+    case SceneProperty::PT_NUMBER:
+    case SceneProperty::PT_VECTOR3:
+        return { 1, 1 };
+    case SceneProperty::PT_STRING: {
+        const std::string expr = prop.getString();
+        if (const auto it = mContext.Cache->ExprResolution.find(expr); it != mContext.Cache->ExprResolution.end())
+            return it->second;
+
+        IG_LOG(L_DEBUG) << "Computing resolution of property '" << name << "'" << std::endl;
+        LoaderContext ctx_copy               = mContext.copyForBake();
+        const auto res                       = ShadingTree(ctx_copy).computeTextureResolution(name, expr);
+        mContext.Cache->ExprResolution[expr] = res;
+        return res;
+    }
+    }
+}
+
+static inline bool isTexVariable(const std::string& var)
+{
+    return var == "uv" || var == "uvw";
+}
+
+std::pair<size_t, size_t> ShadingTree::computeTextureResolution(const std::string& name, const std::string& expr)
+{
+    const auto res = mTranspiler.transpile(expr);
+    if (!res.has_value())
+        return { 1, 1 };
+    else
+        return computeTextureResolution(name, res.value());
+}
+
+std::pair<size_t, size_t> ShadingTree::computeTextureResolution(const std::string&, const Transpiler::Result& result)
+{
+    std::pair<size_t, size_t> res = { 1, 1 };
+    for (const auto& tex : result.Textures) {
+        const auto tex_res = mContext.Textures->computeResolution(tex, *this);
+
+        res.first  = std::max(res.first, tex_res.first);
+        res.second = std::max(res.second, tex_res.second);
+    }
+
+    return res;
+}
+
+static inline std::optional<float> tryExtractFloat(const std::string& str)
+{
+    std::string c_str = str;
+    string_trim(c_str);
+
+    try {
+        size_t idx = 0;
+        float f    = std::stof(c_str, &idx);
+        if (idx != c_str.size())
+            return std::nullopt;
+        else
+            return std::make_optional(f);
+    } catch (...) {
+        return std::nullopt;
+    }
+}
+
+Vector3f ShadingTree::computeConstantColor(const std::string& name, const Transpiler::Result& result)
+{
+    IG_UNUSED(name);
+
+    // Handle simple case where it is just a number
+    const auto potential_number = tryExtractFloat(result.Expr);
+    if (potential_number)
+        return Vector3f::Constant(*potential_number);
+
+    std::string expr_art = result.Expr;
+    if (result.ScalarOutput)
+        expr_art = "make_gray_color(" + expr_art + ")";
+
+    // Constant expression with no ctx and textures
+    const std::string script = BakeShader::setupConstantColor("  let main_func = @|| " + expr_art + ";");
+
+    void* shader  = mContext.Options.Compiler->compile(mContext.Options.Compiler->prepare(script), "ig_constant_color");
+    auto callback = reinterpret_cast<BakeShader::ConstantColorFunc>(shader);
+    Vector4f color;
+    callback(&color.x(), &color.y(), &color.z(), &color.w());
+    return color.block<3, 1>(0, 0);
+}
+
+Image ShadingTree::computeImage(const std::string& name, const Transpiler::Result& result, const TextureBakeOptions& options)
+{
+    bool warn = false;
+    for (const std::string& var : result.Variables) {
+        if (!isTexVariable(var))
+            warn = true;
+    }
+
+    if (warn)
+        IG_LOG(L_WARNING) << "Given expression for '" << name << "' contains variables outside `uv`. Baking process might be incomplete" << std::endl;
+
+    std::stringstream inner_script;
+    for (const auto& tex : result.Textures) {
+        inner_script << loadTexture(tex);
+    }
+
+    std::string expr_art = result.Expr;
+    if (result.ScalarOutput)
+        expr_art = "make_gray_color(" + expr_art + ")";
+
+    inner_script << "  let main_func = @|ctx:ShadingContext|->Color{maybe_unused(ctx); " + expr_art + "};" << std::endl;
+
+    // Compute fitting resolution if needed
+    size_t width  = std::max(options.MaxWidth, options.MinWidth);
+    size_t height = std::max(options.MaxHeight, options.MinHeight);
+    if (options.MaxWidth != options.MinWidth || options.MaxHeight != options.MinHeight) {
+        const auto res = computeTextureResolution(name, result);
+        width          = std::max(options.MinWidth, res.first);
+        height         = std::max(options.MinHeight, res.second);
+        if (options.MaxWidth > 0)
+            width = std::min(options.MaxWidth, width);
+        if (options.MaxHeight > 0)
+            height = std::min(options.MaxHeight, height);
+    }
+    // Ensure width is at minimum 1
+    width  = std::max<size_t>(1, width);
+    height = std::max<size_t>(1, height);
+
+    const std::string script = BakeShader::setupTexture2d(mContext, inner_script.str(), width, height);
+
+    void* shader = mContext.Options.Compiler->compile(mContext.Options.Compiler->prepare(script), "ig_bake_shader");
+
+    Image image          = Image::createSolidImage(Vector4f::Zero(), width, height);
+    const auto resources = mContext.generateResourceMap();
+    mContext.Options.Device->bake(ShaderOutput<void*>{ shader, mContext.LocalRegistry }, &resources, image.pixels.get());
+    return image;
+}
+
+ShadingTree::BakeOutputTexture ShadingTree::bakeTextureExpression(const std::string& name, const std::string& expr, const TextureBakeOptions& options)
+{
+    auto res = mTranspiler.transpile(expr);
+
+    if (!res.has_value()) {
+        return {};
+    } else {
+        const auto& result = res.value();
+
+        if (result.Textures.empty() && result.Variables.empty()) {
+            if (options.SkipConstant)
+                return {};
+
+            const Vector3f color = computeConstantColor(name, result);
+            return std::make_shared<Image>(Image::createSolidImage(Vector4f(color.x(), color.y(), color.z(), 1)));
+        }
+
+        Image image = computeImage(name, result, options);
+        return std::make_shared<Image>(std::move(image));
+    }
+}
+
+Vector3f ShadingTree::bakeTextureExpressionAverage(const std::string& name, const std::string& expr, const Vector3f& def)
+{
+    auto res = mTranspiler.transpile(expr);
+
+    if (!res.has_value()) {
+        return def;
+    } else {
+        const auto& result = res.value();
+
+        if (result.Textures.empty() && result.Variables.empty()) {
+            const Vector3f color = computeConstantColor(name, result);
+
+            mContext.Cache->ExprComputation[expr] = color;
+            return color;
+        }
+
+        const Image image                     = computeImage(name, result, TextureBakeOptions{ 0, 0, 1, 1, true });
+        const Vector4f average                = image.computeAverage();
+        mContext.Cache->ExprComputation[expr] = average.block<3, 1>(0, 0);
+        return average.block<3, 1>(0, 0);
+    }
+}
+
+void ShadingTree::beginClosure(const std::string& name)
 {
     mClosures.emplace_back(Closure{ name, getClosureID(name), {} });
-    return true;
 }
 
 void ShadingTree::endClosure()
@@ -276,34 +599,26 @@ std::string ShadingTree::getInline(const std::string& name)
     return "";
 }
 
-bool ShadingTree::isPureTexture(const std::string& name)
-{
-    if (hasParameter(name))
-        return mPureTextures.count(name) > 0;
-    IG_LOG(L_ERROR) << "Trying to access unknown parameter '" << name << "'" << std::endl;
-    signalError();
-    return "";
-}
-
 void ShadingTree::registerTextureUsage(const std::string& name)
 {
     if (mLoadedTextures.count(name) == 0) {
-        const auto tex = mContext.Scene.texture(name);
-        if (!tex) {
-            IG_LOG(L_ERROR) << "Unknown texture '" << name << "'" << std::endl;
-            mHeaderLines.push_back("  let tex_" + getClosureID(name) + " = make_invalid_texture();\n");
-        } else {
-            const std::string res = LoaderTexture::generate(name, *tex, *this);
-            if (res.empty()) // Due to some error this might happen
-                return;
-            mHeaderLines.push_back(res);
-        }
+        const std::string res = loadTexture(name);
+        if (res.empty()) // Due to some error this might happen
+            return;
+        mHeaderLines.push_back(res);
         mLoadedTextures.insert(name);
     }
 }
 
+std::string ShadingTree::loadTexture(const std::string& tex_name)
+{
+    return mContext.Textures->generate(tex_name, *this);
+}
+
 std::string ShadingTree::handleTexture(const std::string& prop_name, const std::string& expr, bool needColor)
 {
+    IG_UNUSED(prop_name);
+
     auto res = mTranspiler.transpile(expr);
 
     if (!res.has_value()) {
@@ -314,12 +629,6 @@ std::string ShadingTree::handleTexture(const std::string& prop_name, const std::
     } else {
         for (const auto& tex : res.value().Textures)
             registerTextureUsage(tex);
-
-        // Check if the call is just a pure texture (without uv or other modifications)
-        if (res.value().Textures.size() == 1) {
-            if (*res.value().Textures.begin() == expr)
-                mPureTextures.insert(prop_name);
-        }
 
         if (needColor) {
             if (res.value().ScalarOutput)
@@ -337,14 +646,6 @@ std::string ShadingTree::handleTexture(const std::string& prop_name, const std::
     }
 }
 
-Vector3f ShadingTree::approxTexture(const std::string& prop_name, const std::string& expr, const Vector3f& def) const
-{
-    // TODO
-    IG_UNUSED(prop_name);
-    IG_UNUSED(expr);
-    return def;
-}
-
 bool ShadingTree::checkIfEmbed(float val, const NumberOptions& options) const
 {
     switch (options.EmbedType) {
@@ -354,7 +655,7 @@ bool ShadingTree::checkIfEmbed(float val, const NumberOptions& options) const
         return false;
     default:
     case EmbedType::Default:
-        if (mForceSpecialization || context().ForceShadingTreeSpecialization)
+        if (mForceSpecialization || mContext.Options.ForceSpecialization)
             return true;
         else if (options.SpecializeZero && std::abs(val) <= FltEps)
             return true;
@@ -374,7 +675,7 @@ bool ShadingTree::checkIfEmbed(const Vector3f& color, const ColorOptions& option
         return false;
     default:
     case EmbedType::Default:
-        if (mForceSpecialization || context().ForceShadingTreeSpecialization)
+        if (mForceSpecialization || mContext.Options.ForceSpecialization)
             return true;
         else if (options.SpecializeBlack && color.isZero(FltEps))
             return true;
@@ -394,7 +695,7 @@ bool ShadingTree::checkIfEmbed(const Vector3f& vec, const VectorOptions& options
         return false;
     default:
     case EmbedType::Default:
-        if (mForceSpecialization || context().ForceShadingTreeSpecialization)
+        if (mForceSpecialization || mContext.Options.ForceSpecialization)
             return true;
         else if (options.SpecializeZero && vec.isZero(FltEps))
             return true;
