@@ -165,6 +165,8 @@ set(SRC
   measured/powitacq_rgb.h
   measured/djmeasured.cpp
   measured/djmeasured.h
+  medium/HeterogeneousMedium.cpp
+  medium/HeterogeneousMedium.h
   medium/HomogeneousMedium.cpp
   medium/HomogeneousMedium.h
   medium/Medium.cpp

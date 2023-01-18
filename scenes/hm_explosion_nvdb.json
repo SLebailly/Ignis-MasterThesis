@@ -41,6 +41,22 @@
 		{"type":"area", "name":"AreaLight", "entity":"AreaLight", "radiance":[100,100,100]}
 	],
 	"media": [
-		{"type": "heterogeneous", "name": "Medium", "filename": "nvdb/explosion.nvdb", "g": 0, "interpolate": false, "scalar_density": 100 }
+		{
+			"type": "heterogeneous",
+			"name": "Medium",
+			"filename": "nvdb/explosion.nvdb",
+			"g": 0,
+			"interpolate": false,
+
+			"scalar_density":     5,
+			"scalar_emission":    0,
+			"scalar_blackbody":   8,
+			"scalar_temperature": 12000,
+			"color_scattering":   [0.113, 0.113, 0.113],
+			"color_absorption":   [0, 0, 0],
+			"color_emission":     [1, 1, 1],
+			"color_blackbody":    [1, 0.337, 0.667]
+
+		}
 	]
 }

@@ -59,6 +59,7 @@ bool NanoVDBLoader::prepare(const std::filesystem::path& in_nvdb, const std::fil
     return true;
 }
 
+//TODO: add PrincipledVolumeShader support
 bool NanoVDBLoader::prepare_naive_grid(const std::filesystem::path& in_nvdb, const std::filesystem::path& out_data)
 {
     auto handle   = nanovdb::io::readGrid(in_nvdb.u8string());
