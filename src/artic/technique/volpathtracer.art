@@ -33,7 +33,7 @@ fn @init_vpt_raypayload(payload: RayPayload) = write_vptraypayload(payload, VPTR
 });
 
 // TODO: Implement "A null-scattering path integral formulation of light transport", (Miller et. al, 2019)
-fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, media: MediaTable, _aovs: AOVTable, clamp_value: f32) -> Technique {
+fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, media: MediaTable, framebuffer: AOVImage, clamp_value: f32) -> Technique {
     let offset : f32 = 0.001;
 
     let handle_color = if clamp_value > 0 {
@@ -186,26 +186,63 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
         // Try sampling the medium
         if let Option[MediumSample]::Some(medium_sample) = medium.sample(rnd, ctx.ray.org, ctx.surf.point) {
             let phase_sample = medium.phase(medium_sample.pos).sample(rnd, out_dir);
-            let contrib      = color_mul(pt.contrib, color_mulf(medium_sample.color, phase_sample.weight)/* Pdf already applied!*/);
-            let rr_prob      = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
 
-            if randf(rnd) >= rr_prob {
-                Option[Ray]::None
-            } else {
-                let new_contrib = color_mulf(contrib, 1 / rr_prob);
+            let sigma_t   = medium_sample.properties.coeff_extinction;
+            let sigma_a   = medium_sample.properties.coeff_absorption;
+            let sigma_s   = medium_sample.properties.coeff_scattering;
+            let sigma_ind = vec3_max_index(color_to_vec3(sigma_t));
+            let sigma_t_p = color_at(sigma_t, sigma_ind);
+            let sigma_a_p = color_at(sigma_a, sigma_ind);
+
+            // max. extinction coeff is assumed to not be 0 here (as probability of collision with particle is 0 if ext. is 0)
+            let p_a = if sigma_a_p <= flt_eps { 0:f32 } else { sigma_a_p / sigma_t_p };
+            if randf(rnd) <= p_a {
+                // Absorption event
+                let emission      = color_mul(medium_sample.properties.emitted_radiance, sigma_a); // emitted radiance - absorption at this point
+                let transmittance = color_mul(color_mulf(medium_sample.color /* Pdf already applied!*/, phase_sample.weight), pt.contrib); // transmittance up until that point
+                let new_contrib   = color_divf(color_mul(transmittance, emission), p_a); // divide by probability of picking absorption event
+
+                framebuffer.splat(ctx.pixel, new_contrib);
                 // Notify other parts that the last interaction was a medium
-                let inv_pdf     = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
+                let inv_pdf       = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
+
                 write_vptraypayload(payload, VPTRayPayload {
                     inv_pdf = inv_pdf,
-                    contrib = new_contrib,
+                    contrib = make_color(0:f32, 0:f32, 1:f32, 1:f32),
                     depth   = pt.depth + 1,
                     eta     = pt.eta,
                     medium  = pt.medium
                 });
-                make_option(
-                    make_ray(medium_sample.pos, phase_sample.in_dir, 0, flt_max, ray_flag_bounce)
-                )
+                Option[Ray]::None
+            } else {
+                // Scattering event
+                let transmittance = color_mul(color_mulf(medium_sample.color /* Pdf already applied!*/, phase_sample.weight), pt.contrib); // transmittance up until that point
+                let contrib       = color_divf(color_mul(transmittance, sigma_s), (1 - p_a)); // divide by probability of picking scattering event
+
+                let rr_prob      = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
+    
+                if randf(rnd) >= rr_prob {
+                    Option[Ray]::None
+                } else {
+                    let new_contrib = color_mulf(contrib, 1 / rr_prob);
+                    // Notify other parts that the last interaction was a medium
+                    let inv_pdf     = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
+                    write_vptraypayload(payload, VPTRayPayload {
+                        inv_pdf = inv_pdf,
+                        contrib = new_contrib,
+                        depth   = pt.depth + 1,
+                        eta     = pt.eta,
+                        medium  = pt.medium
+                    });
+                    make_option(
+                        make_ray(medium_sample.pos, phase_sample.in_dir, 0, flt_max, ray_flag_bounce)
+                    )
+                }
+                
             }
+
+
+
         } else {
             // Bounce on surface
             if let Option[BsdfSample]::Some(bsdf_sample) = mat.bsdf.sample(rnd, out_dir, false) {

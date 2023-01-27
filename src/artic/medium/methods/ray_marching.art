@@ -9,9 +9,9 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
     /**
      * Evaluates the distance (and corresponding optical thickness) travelled along the ray before reaching the sampled transmittance value in the medium
      */
-    fn @eval_dist(p_start: Vec3, dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color) {
+    fn @next_flight(p_start: Vec3, dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color, VolumeProperties) {
 
-        fn @eval_dist_local(local_start: Vec3, local_dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color) {
+        fn @next_flight_local(local_start: Vec3, local_dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color, VolumeProperties) {
 
             // transform the sampled value of transmittance to its corresponding optical thicknes (easier on computation for the iterator)
             let sampled_value_opt = - math_builtins::log(sampled_value_tr); // tr = e^(-opt) <=> opt = - log(tr)
@@ -50,11 +50,11 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
 
                     acc_opt = color_add(acc_opt, opt_thickness_delta);
 
-                    return((current_dist - current_segment.distance + dist_delta, acc_opt))
+                    return((current_dist - current_segment.distance + dist_delta, acc_opt, current_segment.local_properties))
                 } 
             }
 
-            (flt_max, acc_opt)
+            (flt_max, acc_opt, make_vacuum_volume_properties())
         }
 
         let loc_start = vec3_clamp(pms.to_normalized_point(p_start), loc_min, loc_max);
@@ -63,13 +63,13 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
 
         // the difference between the normalized vector (lenght 1) and the vector after transformation to local coordinates is the difference in scale between the distance in local and global coordinates
         let scale_diff          = math_builtins::sqrt(1 / vec3_len2(loc_dir));
-        let (loc_dist, loc_opt) = eval_dist_local(loc_start, vec3_normalize(loc_dir), sampled_value_tr);
+        let (loc_dist, loc_opt, loc_properties) = next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_value_tr);
 
         //transform the local distance and corresponding optical thickness into global distance/optical thickness
         let dist                = loc_dist * scale_diff;
         let opt                 = color_mulf(loc_opt, scale_diff);
 
-        (dist, opt)
+        (dist, opt, loc_properties)
     }
 
 
@@ -146,7 +146,7 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
             let dir_norm = vec3_mulf(dir_u, safe_div(1, max_dist));
 
             // evaluate the corresponding distance for the sampled value of transmittance
-            let (mut dist, opt) = eval_dist(p_start, dir_norm, sampled_value_tr);
+            let (mut dist, opt, props) = next_flight(p_start, dir_norm, sampled_value_tr);
             // clamp the distance to the maximum distance before hitting an object/leaving the medium
             dist = math_builtins::fmin[f32](max_dist, dist);
 
@@ -165,7 +165,7 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
             let trans = optical_thickness_to_transmittance(opt);
             let pdf   = sampled_value_tr;
 
-            make_medium_sample(pos, pdf, color_divf(trans, pdf))
+            make_medium_sample(pos, pdf, color_divf(trans, pdf), props)
         },
         is_homogeneous = false
     }

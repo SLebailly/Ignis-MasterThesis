@@ -24,7 +24,7 @@ fn @make_nvdb_volume_f32(buffer: DeviceBuffer, principled_volume_shader: VolumeS
             properties_at_indx = @|i, j, k| {
                 let value = top_down_get_value(tree, clamp_index(i, j, k));
 
-                principled_volume_shader.volume_properties(make_principled_volume_values(value, 0))
+                principled_volume_shader.volume_properties(make_principled_volume_values(value, value))
             },
             dimension_at_indx = @|_i, _j, _k| {
                 //TODO: implement this

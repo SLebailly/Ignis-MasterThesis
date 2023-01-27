@@ -145,7 +145,7 @@ fn @blackbody(temp: f32) -> all::Color {
         let a_b =  0.24888616:f32;
         let b_b =  1.39095510:f32;
         let c_b = -4.17216437:f32;
-        let b = math_builtins::exp(a_b*t+b_b) + c_b;
+        let b = math_builtins::fmax(0:f32, math_builtins::exp(a_b*t+b_b) + c_b); // for temp > 1828, b can be negative.... bandaid fix is to clamp it to 0
 
         // Normalize based on luminance
         let g = (1 - r * 0.2126 - b * 0.0722) / 0.7152;

@@ -3,6 +3,7 @@
 #include "loader/LoaderLight.h"
 #include "loader/Parser.h"
 #include "loader/ShadingTree.h"
+#include "shader/ShaderUtils.h"
 
 namespace IG {
 VolumePathTechnique::VolumePathTechnique(const SceneObject& obj)
@@ -42,8 +43,8 @@ void VolumePathTechnique::generateBody(const SerializationInput& input) const
 
     ShadingTree tree(input.Context);
     input.Stream << input.Context.Lights->generateLightSelector(mLightSelector, tree)
-                 << "  let aovs = @|_id:i32| make_empty_aov_image();" << std::endl
-                 << "  let technique = make_volume_path_renderer(tech_max_depth, light_selector, media, aovs, tech_clamp);" << std::endl;
+                 << "  let framebuffer = device.load_aov_image(\"\", " << ShaderUtils::inlineSPI(input.Context) << ");"
+                 << "  let technique = make_volume_path_renderer(tech_max_depth, light_selector, media, framebuffer, tech_clamp);" << std::endl;
 }
 
 } // namespace IG

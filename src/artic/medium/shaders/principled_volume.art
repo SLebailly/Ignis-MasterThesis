@@ -1,17 +1,21 @@
-//static STEFAN_BOLTZMAN_SIGMA = 5.670373e-8 * 1e-6 / M_PI;
+static SCALED_STEFAN_BOLTZMAN_SIGMA = 5.670373 / flt_pi;
+static STEFAN_BOLTZMAN_SIGMA_SCALAR_INV = 100000000000000:f32; // divide by this number (x E-14)
+static MIN_BB_TEMPERATURE = 1000:f32; // value to clamp to so as to not produce negative colours
 
 // Blender Principled Volume Shader
-struct PrincipledVolumeParameters {
-    scalar_density: f32,
-    scalar_emission: f32,
-    color_scattering: Color,
-    color_absorption: Color,
-    color_emission: Color
-    //_color_blackbody: Color,
-    //_scalar_blackbody: f32,
-    //_scalar_temperature: f32
+// constants that define the medium material (constant for each voxel in the whole medium)
+struct PrincipledVolumeParameters { // = {Blender equivalent name}
+    scalar_density: f32,     // = Density
+    scalar_emission: f32,    // = Emission Strength
+    color_scattering: Color, // = Color
+    color_absorption: Color, // = Absorption Color
+    color_emission: Color,   // = Emission Color
+    color_blackbody: Color,  // = Blackbody Tint
+    scalar_blackbody: f32,   // = Blackbody Intensity
+    scalar_temperature: f32  // = Temperature
 }
 
+// variables that serve as input (vary for each voxel) - blender calls these attributes
 struct PrincipledVolumeValues {
     density: f32,
     temperature: f32
@@ -22,12 +26,15 @@ fn @make_principled_volume_values(density: f32, temperature: f32) = PrincipledVo
     temperature = temperature
 };
 
-fn @make_principled_volume_parameters(scalar_density: f32, scalar_emission: f32, color_scattering: Color, color_absorption: Color, color_emission: Color) = PrincipledVolumeParameters {
-    scalar_density   = scalar_density,
-    scalar_emission  = scalar_emission,
-    color_scattering = color_scattering,
-    color_absorption = color_absorption,
-    color_emission   = color_emission
+fn @make_principled_volume_parameters(scalar_density: f32, scalar_emission: f32, color_scattering: Color, color_absorption: Color, color_emission: Color, color_blackbody: Color, scalar_blackbody: f32, scalar_temperature: f32) = PrincipledVolumeParameters {
+    scalar_density     = scalar_density,
+    scalar_emission    = scalar_emission,
+    color_scattering   = color_scattering,
+    color_absorption   = color_absorption,
+    color_emission     = color_emission,
+    color_blackbody    = color_blackbody,
+    scalar_blackbody   = scalar_blackbody,
+    scalar_temperature = scalar_temperature
 };
 
 
@@ -35,6 +42,27 @@ fn @make_principled_volume_shader(params: PrincipledVolumeParameters) -> VolumeS
     
     let color_scattering_inv = color_sub(make_gray_color(1:f32), params.color_scattering); // 1 - color_scattering
     let color_absorption_inv = color_sub(make_gray_color(1:f32), params.color_absorption); // 1 - color_absorption
+
+    fn @blackbody_emission(values: PrincipledVolumeValues) -> Color {
+        /* Add temperature from attribute. */
+        let local_temp = params.scalar_temperature * values.temperature;
+        if (local_temp < MIN_BB_TEMPERATURE) {
+            return(make_gray_color(0:f32))
+        }
+
+        /* Stefan-Boltzman law. */
+        let local_temp_2 = local_temp * local_temp;
+        let local_temp_4 = local_temp_2 * local_temp_2;
+        let intensity = SCALED_STEFAN_BOLTZMAN_SIGMA * (lerp(1:f32, local_temp_4, params.scalar_blackbody) / STEFAN_BOLTZMAN_SIGMA_SCALAR_INV);
+
+        if (intensity > flt_eps) {
+            let black_body_color = color_mul(params.color_blackbody, math::blackbody(local_temp));//[1, 0.093, 0.006]
+            return(color_mulf(black_body_color, intensity))
+        }
+
+        make_gray_color(0:f32)
+    }
+
     
     VolumeShader[PrincipledVolumeValues] {
         volume_properties = @|values| {
@@ -45,8 +73,9 @@ fn @make_principled_volume_shader(params: PrincipledVolumeParameters) -> VolumeS
             let coeff_scattering = if vxl_density > flt_eps { color_mulf(params.color_scattering, vxl_density) } else { make_gray_color(0:f32) };
             let coeff_emission   = if params.scalar_emission > flt_eps { color_mulf(params.color_emission, params.scalar_emission) } else { make_gray_color(0:f32) };
         
-            //TODO: add blackbody support
-            make_volume_properties(coeff_scattering, coeff_absorption, coeff_emission)
+            let bb_emission = if params.scalar_blackbody > flt_eps && params.scalar_temperature > flt_eps && values.temperature > flt_eps { blackbody_emission(values) } else { make_gray_color(0:f32) };
+
+            make_volume_properties(coeff_scattering, coeff_absorption, color_add(coeff_emission, bb_emission))
         }
     
     }

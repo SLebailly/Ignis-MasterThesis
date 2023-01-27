@@ -6,7 +6,10 @@ struct VolumeProperties {
     coeff_absorption: Color,
     coeff_extinction: Color,
 
+    emitted_radiance: Color,
+
     optical_thickness: fn (/* dist */ f32) -> Color
+    //phase_function:    fn (/* in_dir */ Vec3) -> Vec3 //TODO: add phase function here
 }
 
 // struct allowing access to the properties of each voxel (may enhance random access through top down/bottom up traversal whenever possible)
@@ -31,18 +34,23 @@ struct Volume {
 }
 
 
-fn @make_volume_properties(coeff_scattering: Color, coeff_absorption: Color, coeff_emission: Color) -> VolumeProperties {
+fn @make_volume_properties(coeff_scattering: Color, coeff_absorption: Color, emitted_radiance: Color) -> VolumeProperties {
     
-    let coeff_absorption_t = color_sub(coeff_absorption, coeff_emission);
-    let coeff_extinction   = color_add(coeff_scattering, coeff_absorption_t);
+    let coeff_extinction   = color_add(coeff_scattering, coeff_absorption);
 
     VolumeProperties {
         coeff_scattering = coeff_scattering,
-        coeff_absorption = coeff_absorption_t,
+        coeff_absorption = coeff_absorption,
         coeff_extinction = coeff_extinction,
 
-        optical_thickness = @|t: f32| color_mulf(coeff_extinction, t),
+        emitted_radiance = emitted_radiance,
+
+        optical_thickness = @|t: f32| color_mulf(coeff_extinction, t)
     }
+}
+
+fn @make_vacuum_volume_properties() -> VolumeProperties {
+    make_volume_properties(make_gray_color(0:f32), make_gray_color(0:f32), make_gray_color(0:f32))
 }
 
 fn @make_volume(width: i32, height: i32, depth: i32, access_data: fn () -> VolumeAccessor) -> Volume {

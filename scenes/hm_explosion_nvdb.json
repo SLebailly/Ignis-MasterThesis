@@ -48,14 +48,14 @@
 			"g": 0,
 			"interpolate": false,
 
-			"scalar_density":     5,
+			"scalar_density":     10000,
 			"scalar_emission":    0,
-			"scalar_blackbody":   8,
+			"scalar_blackbody":   0.8,
 			"scalar_temperature": 12000,
 			"color_scattering":   [0.113, 0.113, 0.113],
 			"color_absorption":   [0, 0, 0],
 			"color_emission":     [1, 1, 1],
-			"color_blackbody":    [1, 0.337, 0.667]
+			"color_blackbody":    [1, 0.093, 0.006]
 
 		}
 	]

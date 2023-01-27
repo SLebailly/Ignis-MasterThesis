@@ -1,13 +1,15 @@
 struct MediumSample {
-    pos:   Vec3,
-    pdf:   f32,
-    color: Color // Weighted transmission
+    pos:        Vec3,
+    pdf:        f32,
+    color:      Color, // Weighted transmittance
+    properties: VolumeProperties // the properties of the volume at the point of the sample
 }
 
-fn @make_medium_sample(pos: Vec3, pdf: f32, color: Color) = make_option(MediumSample {
-    pos   = pos,
-    pdf   = pdf,
-    color = color,
+fn @make_medium_sample(pos: Vec3, pdf: f32, color: Color, properties: VolumeProperties) = make_option(MediumSample {
+    pos        = pos,
+    pdf        = pdf,
+    color      = color,
+    properties = properties
 });
 
 fn @reject_medium_sample() = Option[MediumSample]::None;

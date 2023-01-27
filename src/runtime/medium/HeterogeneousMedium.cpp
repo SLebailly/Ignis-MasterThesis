@@ -94,6 +94,9 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
         const Vector3f color_scattering = mMedium->property("color_scattering").getVector3(Vector3f(0.5f, 0.5f, 0.5f));
         const Vector3f color_absorption = mMedium->property("color_absorption").getVector3(Vector3f(0.8f, 0.8f, 0.8f));
         const Vector3f color_emission   = mMedium->property("color_emission"  ).getVector3(Vector3f(1.0f, 1.0f, 1.0f));
+        const Vector3f color_blackbody  = mMedium->property("color_blackbody" ).getVector3(Vector3f(0.0f, 0.0f, 0.0f)); //TODO: set defaults according to blender
+        const float scalar_blackbody    = std::min(std::max(mMedium->property("scalar_blackbody" ).getNumber(1.0f), 0.0f), 1.0f); //clamped between 0 and 1
+        const float scalar_temperature  = mMedium->property("scalar_temperature").getNumber(0.0f);
 
 #ifdef USE_SPARSE_GRID
         const auto bin_filename = setup_nvdb_grid(filename, medium_name, input.Tree.context());
@@ -106,7 +109,16 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
         input.Stream << input.Tree.pullHeader()
             << "  let " << buffer_name    << " = device.load_buffer_by_id(" << res_id << ");" << std::endl
 #ifdef USE_SPARSE_GRID
-            << "  let " << shader_params  << " = make_principled_volume_parameters(" << scalar_density << ", " << scalar_emission << ", " << LoaderUtils::inlineColor(color_scattering) << ", " << LoaderUtils::inlineColor(color_absorption) << ", " << LoaderUtils::inlineColor(color_emission) << ");"  << std::endl
+            << "  let " << shader_params  << " = make_principled_volume_parameters("
+                                                    << scalar_density << ", "
+                                                    << scalar_emission << ", "
+                                                    << LoaderUtils::inlineColor(color_scattering) << ", "
+                                                    << LoaderUtils::inlineColor(color_absorption) << ", "
+                                                    << LoaderUtils::inlineColor(color_emission)   << ", "
+                                                    << LoaderUtils::inlineColor(color_blackbody)  << ", "
+                                                    << scalar_blackbody << ","
+                                                    << scalar_temperature
+                                                << ");"  << std::endl
             << "  let " << shader_name    << " = make_principled_volume_shader(" << shader_params << ");" << std::endl
             << "  let " << volume_name    << " = make_nvdb_volume_f32(" << buffer_name << ", " << shader_name << ");" << std::endl;
 #else
@@ -126,7 +138,6 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
         IG_LOG(L_ERROR) << "File extension " << extension << " for heterogeneous medium not supported" << std::endl;
         return;
     }
-
     input.Stream << "  let " << generator_name << ": MediumGenerator = @|ctx| { make_heterogeneous_medium(ctx, "<< pms_func << "(), " << volume_name << ", make_henyeygreenstein_phase(" << input.Tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ") };" << std::endl;
     input.Tree.endClosure();
 }

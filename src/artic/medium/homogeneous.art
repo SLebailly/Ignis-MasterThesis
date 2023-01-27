@@ -1,9 +1,10 @@
 fn @make_homogeneous_medium(sigma_a: Color, sigma_s: Color, phase: PhaseFunction) -> Medium {
     let eps     = 1e-3 : f32;
-    let sigma_t = color_add(sigma_a, sigma_s);
+    let volume_properties = make_volume_properties(sigma_s, sigma_a, make_gray_color(0:f32));
+    let sigma_t = volume_properties.coeff_extinction;
 
     fn @eval_tr(t:f32) {
-        make_color(math_builtins::exp(-sigma_t.r * t), math_builtins::exp(-sigma_t.g * t), math_builtins::exp(-sigma_t.b * t), sigma_t.a)
+        optical_thickness_to_transmittance(volume_properties.optical_thickness(t))
     }
 
     fn @eval(p_start: Vec3, p_end: Vec3) -> Color {
@@ -50,7 +51,7 @@ fn @make_homogeneous_medium(sigma_a: Color, sigma_s: Color, phase: PhaseFunction
                 let tr  = eval_tr(ndist);
 
                 let pdf = color_at(tr, sigma_ind) * sigma_t_p;
-                make_medium_sample(pos, pdf, color_divf(tr, pdf))
+                make_medium_sample(pos, pdf, color_divf(tr, pdf), volume_properties)
             },
             is_homogeneous = true
         }
