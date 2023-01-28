@@ -48,6 +48,7 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
 
                     let min_opt = vec3_min_value(color_to_vec3(current_segment.local_properties.coeff_extinction));
                    
+                    // min_opt is not zero (tested)
                     let dist_delta = remaining_opt_thickness_minvalue / min_opt; // compute how far to go in the current voxel before reaching the threshold
 
                     let opt_thickness_delta = current_segment.local_properties.optical_thickness(dist_delta);
@@ -65,8 +66,10 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
         let loc_end   = vec3_clamp(pms.to_normalized_point(vec3_add(p_start, dir_norm)), loc_min, loc_max);
         let loc_dir   = vec3_sub(loc_end, loc_start);
 
-        // the difference between the normalized vector (lenght 1) and the vector after transformation to local coordinates is the difference in scale between the distance in local and global coordinates
-        let scale_diff          = math_builtins::sqrt(1 / vec3_len2(loc_dir));
+        let loc_dir_len2 = math_builtins::fmax(flt_eps, vec3_len2(loc_dir));
+
+        // the difference between the normalized vector (length 1) and the vector after transformation to local coordinates is the difference in scale between the distance in local and global coordinates
+        let scale_diff          = math_builtins::sqrt(1 / loc_dir_len2);
         let (loc_dist, loc_opt, loc_properties) = next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_value_tr);
 
         //transform the local distance and corresponding optical thickness into global distance/optical thickness
@@ -86,7 +89,7 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
         let loc_end    = vec3_clamp(pms.to_normalized_point(p_end),   loc_min, loc_max);
         let dir_u      = vec3_sub(p_end, p_start);
         let loc_dir    = vec3_sub(loc_end, loc_start);
-        let scale_diff = math_builtins::sqrt(vec3_len2(dir_u) / vec3_len2(loc_dir));
+        let scale_diff = math_builtins::sqrt(vec3_len2(dir_u) / math_builtins::fmax(flt_eps, vec3_len2(loc_dir)));
 
         let local_opt  = eval_optical_thickness(volume, loc_start, loc_end, false);
 

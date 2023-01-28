@@ -72,8 +72,7 @@ fn @make_principled_volume_shader(params: PrincipledVolumeParameters) -> VolumeS
             let coeff_absorption = if vxl_density > flt_eps { color_mulf(color_mul(color_scattering_inv, color_absorption_inv), vxl_density) } else { make_gray_color(0:f32) };
             let coeff_scattering = if vxl_density > flt_eps { color_mulf(params.color_scattering, vxl_density) } else { make_gray_color(0:f32) };
             let coeff_emission   = if params.scalar_emission > flt_eps { color_mulf(params.color_emission, params.scalar_emission) } else { make_gray_color(0:f32) };
-        
-            let bb_emission = if params.scalar_blackbody > flt_eps && params.scalar_temperature > flt_eps && values.temperature > flt_eps { blackbody_emission(values) } else { make_gray_color(0:f32) };
+            let bb_emission      = if params.scalar_blackbody > flt_eps && params.scalar_temperature > flt_eps && values.temperature > flt_eps { blackbody_emission(values) } else { make_gray_color(0:f32) };
 
             make_volume_properties(coeff_scattering, coeff_absorption, color_add(coeff_emission, bb_emission))
         }

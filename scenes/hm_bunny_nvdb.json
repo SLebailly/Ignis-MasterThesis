@@ -41,6 +41,12 @@
 		{"type":"area", "name":"AreaLight", "entity":"AreaLight", "radiance":[100,100,100]}
 	],
 	"media": [
-		{"type": "heterogeneous", "name": "Medium", "filename": "nvdb/bunny_cloud.nvdb", "g": 0, "scalar_density": 50 }
+		{
+			"type": "heterogeneous",
+			"name": "Medium",
+			"filename": "nvdb/bunny_cloud.nvdb",
+			"g": -0.8,
+			"scalar_density": 50
+		}
 	]
 }

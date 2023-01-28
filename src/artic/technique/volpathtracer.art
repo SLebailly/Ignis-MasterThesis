@@ -189,7 +189,6 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
 
             let sigma_t   = medium_sample.properties.coeff_extinction;
             let sigma_a   = medium_sample.properties.coeff_absorption;
-            let sigma_s   = medium_sample.properties.coeff_scattering;
             let sigma_ind = vec3_max_index(color_to_vec3(sigma_t));
             let sigma_t_p = color_at(sigma_t, sigma_ind);
             let sigma_a_p = color_at(sigma_a, sigma_ind);
@@ -198,26 +197,17 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
             let p_a = if sigma_a_p <= flt_eps { 0:f32 } else { sigma_a_p / sigma_t_p };
             if randf(rnd) <= p_a {
                 // Absorption event
-                let emission      = color_mul(medium_sample.properties.emitted_radiance, sigma_a); // emitted radiance - absorption at this point
+                let emission      = medium_sample.properties.emitted_radiance; // emitted radiance - absorption at this point // TODO: we should multiply by sigma_a... should we not? but it gives strange results...
                 let transmittance = color_mul(color_mulf(medium_sample.color /* Pdf already applied!*/, phase_sample.weight), pt.contrib); // transmittance up until that point
                 let new_contrib   = color_divf(color_mul(transmittance, emission), p_a); // divide by probability of picking absorption event
 
                 framebuffer.splat(ctx.pixel, new_contrib);
-                // Notify other parts that the last interaction was a medium
-                let inv_pdf       = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
-
-                write_vptraypayload(payload, VPTRayPayload {
-                    inv_pdf = inv_pdf,
-                    contrib = make_color(0:f32, 0:f32, 1:f32, 1:f32),
-                    depth   = pt.depth + 1,
-                    eta     = pt.eta,
-                    medium  = pt.medium
-                });
                 Option[Ray]::None
             } else {
                 // Scattering event
                 let transmittance = color_mul(color_mulf(medium_sample.color /* Pdf already applied!*/, phase_sample.weight), pt.contrib); // transmittance up until that point
-                let contrib       = color_divf(color_mul(transmittance, sigma_s), (1 - p_a)); // divide by probability of picking scattering event
+
+                let contrib       = color_divf(transmittance, (1 - p_a)); // divide by probability of picking scattering event // TODO: we should multiply by sigma_s... should we not? but it gives strange results...
 
                 let rr_prob      = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
     
