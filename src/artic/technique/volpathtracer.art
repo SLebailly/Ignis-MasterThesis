@@ -197,7 +197,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
             let p_a = if sigma_a_p <= flt_eps { 0:f32 } else { sigma_a_p / sigma_t_p };
             if randf(rnd) <= p_a {
                 // Absorption event
-                let emission      = color_mul(color_divf(medium_sample.properties.emitted_radiance, p_a), color_divf(sigma_a, sigma_t_p)); // emitted radiance - absorption at this point // TODO: we should multiply by sigma_a... should we not? but it gives strange results...
+                let emission      = color_mul(color_divf(medium_sample.properties.emitted_radiance, p_a), sigma_a); // emitted radiance - absorption at this point // TODO: we should multiply by sigma_a... should we not? but it gives strange results...
                 let transmittance = medium_sample.color /* Pdf already applied!*/; // transmittance up until that point
                 let new_contrib   = color_mul(transmittance, emission); // divide by probability of picking absorption event
 
@@ -207,7 +207,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                 // Scattering event
                 let p_s = 1 - p_a;
                 let phase_sample  = medium.phase(medium_sample.pos).sample(rnd, out_dir);
-                let transmittance = color_mul(medium_sample.color, color_divf(sigma_s, sigma_t_p)) /* Pdf already applied!*/; // transmittance up until that point
+                let transmittance = color_mul(medium_sample.color, sigma_s) /* Pdf already applied!*/; // transmittance up until that point
                 let contrib       = color_mul(color_divf(color_mulf(transmittance, phase_sample.weight), p_s), pt.contrib); // divide by probability of picking scattering event // TODO: we should multiply by sigma_s... should we not? but it gives strange results...
 
                 let rr_prob      = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
