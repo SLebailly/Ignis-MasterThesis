@@ -22,6 +22,7 @@ def write_vec3i_byte(file, vec3):
 def write_voxel_byte(file, voxel):
     write_vec3f_byte(file, voxel[0])
     write_vec3f_byte(file, voxel[1])
+    write_vec3f_byte(file, voxel[2])
 
 
 if __name__ == "__main__":

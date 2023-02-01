@@ -50,9 +50,10 @@ if __name__ == "__main__":
         for y in range(0, size):
             row = []
             for z in range(0, size):
-                sigma_s = [random(), random(), random()]
-                sigma_a = [random(), random(), random()]
-                row.append([sigma_a, sigma_s])
+                sigma_s =  [random(), random(), random()]
+                sigma_a =  [random(), random(), random()]
+                emission = [random(), random(), random()]
+                row.append([sigma_a, sigma_s, emission])
             plane.append(row)
         data["grid"].append(plane)
         

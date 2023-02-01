@@ -1,12 +1,16 @@
+static BUFFER_VOXEL_SIZE = 12;
+
 // For simple voxel grids (custom format defined by bin file)
 struct SimpleVolumeVoxelValue {
-    sigma_a: Color,
-    sigma_s: Color
+    sigma_a:  Color,
+    sigma_s:  Color,
+    emission: Color
 }
 
-fn @make_simple_volume_voxel_value(sigma_a: Color, sigma_s: Color) = SimpleVolumeVoxelValue {
-    sigma_a = sigma_a,
-    sigma_s = sigma_s
+fn @make_simple_volume_voxel_value(sigma_a: Color, sigma_s: Color, emission: Color) = SimpleVolumeVoxelValue {
+    sigma_a  = sigma_a,
+    sigma_s  = sigma_s,
+    emission = emission
 };
 
 fn @make_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxelValue]) -> Volume {
@@ -24,11 +28,12 @@ fn @make_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxel
     
             let i = xs + (ys * width) + (zs * width * height);
     
-            // every Voxel consists of 2 Vec3, which each take 4 spots (4th value is discarded)
-            let sigma_a = vec3_to_color(buffer.load_vec3(4 + (8*i)));
-            let sigma_s = vec3_to_color(buffer.load_vec3(4 + (8*i) + 4));
+            // every Voxel consists of 3 Vec3, which each take 4 spots (4th value is discarded)
+            let sigma_a  = vec3_to_color(buffer.load_vec3(4 + (BUFFER_VOXEL_SIZE*i)));
+            let sigma_s  = vec3_to_color(buffer.load_vec3(4 + (BUFFER_VOXEL_SIZE*i) + 4));
+            let emission = vec3_to_color(buffer.load_vec3(4 + (BUFFER_VOXEL_SIZE*i) + 8));
     
-            shader.volume_properties(make_simple_volume_voxel_value(sigma_a, sigma_s))
+            shader.volume_properties(make_simple_volume_voxel_value(sigma_a, sigma_s, emission))
         },
         dimension_at_indx = @|_i, _j, _k| {
             1
@@ -52,7 +57,7 @@ fn @make_debug_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolum
             let scalar = 5:f32;
             let sigma = make_color((x as f32 * scalar)  / (width as f32), (y as f32  * scalar)/ (height as f32), (z as f32  * scalar) / (depth as f32), 1:f32);
     
-            shader.volume_properties(make_simple_volume_voxel_value(sigma, sigma))
+            shader.volume_properties(make_simple_volume_voxel_value(sigma, sigma, sigma))
         },
         dimension_at_indx = @|_i, _j, _k| {
             1
