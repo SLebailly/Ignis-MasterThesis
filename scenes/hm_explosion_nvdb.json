@@ -45,14 +45,14 @@
 			"type": "heterogeneous",
 			"name": "Medium",
 			"filename": "nvdb/explosion.nvdb",
-			"g": 0.8,
+			"g": 0,
 			"interpolate": false,
 
 			"scalar_density":     50,
 			"scalar_emission":    0,
 			"scalar_blackbody":   0.8,
 			"scalar_temperature": 4000,
-			"color_scattering":   [0.113, 0.113, 0.113],
+			"color_scattering":   [0.452, 0.452, 0.452],
 			"color_absorption":   [0, 0, 0],
 			"color_emission":     [1, 1, 1],
 			"color_blackbody":    [1, 1, 1]
