@@ -7,6 +7,7 @@ screenshot_*
 # Heterogeneous Media grids
 scenes/media/*.json
 scenes/nvdb/*.nvdb
+scenes/dragon
 
 # Visual Studio stuff
 .vs/
