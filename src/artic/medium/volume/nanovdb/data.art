@@ -128,6 +128,8 @@ struct LeafNodeAccessor[ValueT, StatsT] {
     get_maximum:  fn () -> ValueT,
     get_average:  fn () -> StatsT,
     get_std_devi: fn () -> StatsT,
+    
+    tile_has_value:    fn (/* n */ i32) -> bool,
 
     //is_active:    fn (/* n */ i32) -> bool,
     get_value:    fn (/* n */ i32) -> ValueT
@@ -357,12 +359,14 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
         
         LeafNodeAccessor[ValueT, StatsT]  {
             //get_flags     = @|| buffer.load_u8(data_address + 12 + 3),
-            get_minimum   = @|| read_value(buffer, convert_address(value_mask_address + 64)),
-            get_maximum   = @|| read_value(buffer, convert_address(value_mask_address + 64 + value_size)),
-            get_average   = @|| read_stats(buffer, convert_address(value_mask_address + 64 + value_size + value_size)),
-            get_std_devi  = @|| read_stats(buffer, convert_address(value_mask_address + 64 + value_size + value_size + stats_size)),
+            get_minimum    = @|| read_value(buffer, convert_address(value_mask_address + 64)),
+            get_maximum    = @|| read_value(buffer, convert_address(value_mask_address + 64 + value_size)),
+            get_average    = @|| read_stats(buffer, convert_address(value_mask_address + 64 + value_size + value_size)),
+            get_std_devi   = @|| read_stats(buffer, convert_address(value_mask_address + 64 + value_size + value_size + stats_size)),
 
-            get_value     = @|n| read_value(buffer, convert_address(values_address + (n * value_size))),
+            tile_has_value = @|n| check_mask(buffer, value_mask_address, n),
+
+            get_value      = @|n| read_value(buffer, convert_address(values_address + (n * value_size))),
         }
     }
 

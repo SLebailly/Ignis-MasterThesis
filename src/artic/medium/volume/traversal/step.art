@@ -1,0 +1,20 @@
+/**
+ * Marches a fixed step distance at a time
+ */
+fn @make_fixed_distance_marcher(_origin: Vec3, _ndir: Vec3, volume: Volume, _step: f32, _interpolate: bool) -> VolumeMarcher {
+    //TODO: implement this
+    let accessor = volume.access_data();
+    VolumeMarcher {
+        has_next     = @|| {
+            false
+        },
+        next_segment = @|| {
+            let (local_props, _local_dim) = accessor.properties_at_indx(0, 0, 0);
+            let segment = PathSegment {
+                distance         = 0,
+                local_properties = local_props
+            };
+            (segment, 0)
+        }
+    }
+}

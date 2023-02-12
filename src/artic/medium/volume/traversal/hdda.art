@@ -1,0 +1,229 @@
+/**
+ * Marches to the bounds of the next voxel, with the ability to skip voxels when the node is sparse
+ */
+fn @make_hdda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: bool) -> VolumeMarcher {
+
+    let accessor = volume.access_data();
+    let t_vxl_delta = vec3_abs(vec3_safediv(volume.voxel_dimensions, ndir));
+
+    let (vxl_indx_x, vxl_indx_y, vxl_indx_z) = volume.coord_to_indx(origin);
+    let (_current_props, dim) = accessor.properties_at_indx(vxl_indx_x, vxl_indx_y, vxl_indx_z);
+    let (indx_x, indx_y, indx_z) = indx_to_sparse_index((vxl_indx_x, vxl_indx_y, vxl_indx_z), dim);
+    
+    let (lower_bounds, upper_bounds) = volume.bounds(indx_x, indx_y, indx_z, dim);
+
+    // can be negative (depending on direction)
+    let (step_x, t_max_x) = if (ndir.x > flt_eps) { (1, safe_div((upper_bounds.x - origin.x), ndir.x)) } else if (ndir.x < -flt_eps) { (-1, safe_div((lower_bounds.x - origin.x), ndir.x)) } else { (0, flt_max) }; //removed clamping here and added case for dir 0... TODO: verify if correct
+    let (step_y, t_max_y) = if (ndir.y > flt_eps) { (1, safe_div((upper_bounds.y - origin.y), ndir.y)) } else if (ndir.y < -flt_eps) { (-1, safe_div((lower_bounds.y - origin.y), ndir.y)) } else { (0, flt_max) };
+    let (step_z, t_max_z) = if (ndir.z > flt_eps) { (1, safe_div((upper_bounds.z - origin.z), ndir.z)) } else if (ndir.z < -flt_eps) { (-1, safe_div((lower_bounds.z - origin.z), ndir.z)) } else { (0, flt_max) };
+
+    /**
+     * Variables that change when switching between layers
+     */
+    let mut m_dim = dim;
+    let mut m_t_delta = vec3_mulf(t_vxl_delta, dim as f32);
+
+    /**
+     * Variables that change during iteration
+     */
+    let mut m_indx_x = indx_x;
+    let mut m_indx_y = indx_y;
+    let mut m_indx_z = indx_z;
+
+    let mut m_t_max   = vec3_abs(make_vec3(t_max_x, t_max_y, t_max_z));
+    let mut m_t_total = 0:f32;
+    let mut m_t_0     = 0:f32; //storing t_total every time we update the DDA (as t_max gets overwritten)
+
+    fn @m_update_dimension() -> VolumeProperties {
+        m_t_0 = m_t_total; // store current progress
+        let eps = 0.0001:f32;
+        let current_pos = vec3_add(origin, vec3_mulf(ndir, m_t_total + eps));
+
+        //TODO: optimize this.... There has to be a better way...?
+        let flt_correction = vec3_mulf(make_vec3(step_x as f32, step_y as f32, step_z as f32), eps);
+        let (lower, upper) = volume.bounds(m_indx_x, m_indx_y, m_indx_z, m_dim);
+        let clamped_pos = vec3_add(vec3_min(vec3_max(current_pos, lower), upper), flt_correction);
+        let (current_x, current_y, current_z) = volume.coord_to_indx(clamped_pos);
+
+        let (props, new_dim) = accessor.properties_at_indx(current_x, current_y, current_z);
+        let (new_indx_x, new_indx_y, new_indx_z) = indx_to_sparse_index((current_x, current_y, current_z), new_dim);
+
+        let (lower_bounds, upper_bounds) = volume.bounds(new_indx_x, new_indx_y, new_indx_z, new_dim);
+       
+        // can be negative (depending on direction)
+        let t_max_x = if (step_x > 0) { safe_div((upper_bounds.x - current_pos.x), ndir.x) } else if (step_x < 0) { safe_div((lower_bounds.x - current_pos.x), ndir.x) } else { flt_max }; //removed clamping here and added case for dir 0... TODO: verify if correct
+        let t_max_y = if (step_y > 0) { safe_div((upper_bounds.y - current_pos.y), ndir.y) } else if (step_y < 0) { safe_div((lower_bounds.y - current_pos.y), ndir.y) } else { flt_max };
+        let t_max_z = if (step_z > 0) { safe_div((upper_bounds.z - current_pos.z), ndir.z) } else if (step_z < 0) { safe_div((lower_bounds.z - current_pos.z), ndir.z) } else { flt_max };
+
+        m_dim = new_dim;
+        m_t_delta = vec3_mulf(t_vxl_delta, new_dim as f32);
+
+        m_t_max  = vec3_abs(make_vec3(t_max_x, t_max_y, t_max_z));
+        m_indx_x = new_indx_x;
+        m_indx_y = new_indx_y;
+        m_indx_z = new_indx_z;
+
+        props
+    }
+
+    /*
+    // Initializing debug printing
+    print_string("Initialized HDDA with: ");
+    print_string("m_indx: (");
+    print_i32(m_indx_x);
+    print_string(", ");
+    print_i32(m_indx_y);
+    print_string(", ");
+    print_i32(m_indx_z);
+    print_string("), dim: ");
+    print_i32(m_dim);
+    print_string(", t_delta ");
+    print_vec3(m_t_delta);
+    print_string(", t0: ");
+    print_f32(m_t_0);
+    print_string(", t_max: ");
+    print_vec3(m_t_max);
+    print_string("\n");
+    */
+    VolumeMarcher {
+        has_next     = @|| {
+            m_indx_x >= 0 && m_indx_x < volume.width && m_indx_y >= 0 && m_indx_y < volume.height && m_indx_z >= 0 && m_indx_z < volume.depth
+        },
+        next_segment = @|| {
+            let (local_props_for_current_dim, local_dim) = accessor.properties_at_indx(m_indx_x, m_indx_y, m_indx_z);
+            let local_props = if (local_dim != m_dim) {
+                m_update_dimension()
+            } else {
+                local_props_for_current_dim
+            };
+
+            let (new_x, new_y, new_z, new_t_max) = if m_t_max.x < m_t_max.y {
+                if m_t_max.x < m_t_max.z {
+                    (
+                        m_indx_x + (step_x * m_dim),
+                        m_indx_y,
+                        m_indx_z,
+                        vec3_add(m_t_max, make_vec3(m_t_delta.x, 0, 0))
+                    )
+                } else {
+                    (
+                        m_indx_x,
+                        m_indx_y,
+                        m_indx_z + (step_z * m_dim),
+                        vec3_add(m_t_max, make_vec3(0, 0, m_t_delta.z))
+                    )
+                }
+            } else {
+                if m_t_max.y < m_t_max.z {
+                    (
+                        m_indx_x,
+                        m_indx_y + (step_y * m_dim),
+                        m_indx_z,
+                        vec3_add(m_t_max, make_vec3(0, m_t_delta.y, 0))
+                    )
+                } else {
+                    (
+                        m_indx_x,
+                        m_indx_y,
+                        m_indx_z + (step_z * m_dim),
+                        vec3_add(m_t_max, make_vec3(0, 0, m_t_delta.z))
+                    )
+                }
+            };
+        
+            let new_t_total = m_t_0 + vec3_min_value(m_t_max);// math_builtins::fmin(m_t_max.x, math_builtins::fmin(m_t_max.y, m_t_max.z));
+            let t           = new_t_total - m_t_total;
+/*
+            print_i32(m_indx_x);
+            print_string(", ");
+            print_i32(m_indx_y);
+            print_string(", ");
+            print_i32(m_indx_z);
+            print_nl();
+*/
+            let segment = PathSegment {
+                distance       = t,
+                local_properties = local_props
+            };
+
+            /*
+            // Next debug printing
+            print_string("Next: ");
+            print_string("m_indx: (");
+            print_i32(m_indx_x);
+            print_string(", ");
+            print_i32(m_indx_y);
+            print_string(", ");
+            print_i32(m_indx_z);
+            print_string("), dim: ");
+            print_i32(m_dim);
+            print_string(", t: ");
+            print_f32(t);
+            print_string(", t_delta ");
+            print_vec3(m_t_delta);
+            print_string(", t_total: ");
+            print_f32(m_t_total);
+            print_string(", t_max: ");
+            print_vec3(m_t_max);
+            print_string("\n");
+            */
+
+            // adapt mutable variables
+            m_indx_x  = new_x;
+            m_indx_y  = new_y;
+            m_indx_z  = new_z;
+            m_t_max   = new_t_max;
+            m_t_total = new_t_total;
+        
+            // return
+            (segment, new_t_total)
+        }
+    }
+}
+
+
+
+
+fn @make_hdda_test_volume() {
+    let t_dim  = 16:i32;
+    let width  = t_dim;
+    let height = t_dim;
+    let depth  = t_dim;
+
+    fn @make_hdda_test_accessor() -> VolumeAccessor {
+        let tint = make_vec3(0.1, 0.1, 0.1);
+        
+        VolumeAccessor {
+            properties_at_indx = @|i, j, k| {
+                let a_i = (width-1 -  i) / (t_dim / 2);
+                let a_j = (height-1 - j) / (t_dim / 2);
+                let a_k = (depth-1 -  k) / (t_dim / 2);
+                let dim = 1 << (a_i + a_j + a_k);
+                /*
+                print_string("Dim for ");
+                print_i32(i);
+                print_string(", ");
+                print_i32(j);
+                print_string(", ");
+                print_i32(k);
+                print_string(": ");
+                print_i32(dim);
+                print_string("\n");
+                */
+                let color = vec3_to_color(vec3_mul(make_vec3(a_i as f32, a_j as f32, a_k as f32), tint));
+                (make_volume_properties(color, color, make_color(0:f32, 0:f32, 0:f32, 0:f32)), dim)
+            }
+        }
+    }
+
+
+    make_volume(width, height, depth, make_hdda_test_accessor)
+}
+
+fn @make_hdda_test_marcher() -> VolumeMarcher {
+
+    let origin = make_vec3(0.001:f32, 0.001:f32, 0.001:f32);
+    let ndir = vec3_normalize(make_vec3(4:f32, 4:f32, 4:f32));
+
+    make_hdda_marcher(origin, ndir, make_hdda_test_volume(), false)
+}

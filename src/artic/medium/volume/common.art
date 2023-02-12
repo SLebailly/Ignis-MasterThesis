@@ -14,8 +14,7 @@ struct VolumeProperties {
 
 // struct allowing access to the properties of each voxel (may enhance random access through top down/bottom up traversal whenever possible)
 struct VolumeAccessor{
-    properties_at_indx:  fn (/* i */ i32, /* j */ i32, /* k */ i32) -> VolumeProperties,
-    dimension_at_indx: fn (/* i */ i32, /* j */ i32, /* k */ i32) -> i32 // returns 1 for a non sparse volume, else return the amount of 1-size voxels covered by this index in each dimension
+    properties_at_indx: fn (/* i */ i32, /* j */ i32, /* k */ i32) -> (/* properties */ VolumeProperties, /* sparse voxel dimension */ i32)
 }
 
 // struct containing all the necessary data for a volume
@@ -24,6 +23,7 @@ struct Volume {
     width:  i32,
     height: i32,
     depth:  i32,
+    voxel_dimensions: Vec3,
 
     // functions
     access_data:       fn () -> VolumeAccessor,
@@ -136,6 +136,7 @@ fn @make_volume(width: i32, height: i32, depth: i32, access_data: fn () -> Volum
         width  = width,
         height = height,
         depth  = depth,
+        voxel_dimensions = vxl_dimensions,
 
         access_data = access_data,
 

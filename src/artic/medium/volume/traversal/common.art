@@ -1,0 +1,15 @@
+/*
+ * A path segment along which the volume properties are assumed to be homogeneous
+ */
+struct PathSegment {
+    distance: f32,
+    local_properties: VolumeProperties
+}
+
+/*
+ * A structure supporting the traversal of a volume in a certain direction by splitting the ray into segments of homogeneous properties
+ */
+struct VolumeMarcher {
+    next_segment: fn () -> (/* current_segment */ PathSegment, /* total_distance */ f32),
+    has_next: fn () -> bool
+}

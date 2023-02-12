@@ -55,4 +55,23 @@ fn print_color(c: Color) {
     print_string(")");
 }
 
+fn print_nl() {
+    print_string("\n");
+}
+
+fn prints_f32(description: &[u8], f: f32) {
+    print_string(description);
+    print_string(" ");
+    print_f32(f);
+    print_nl();
+}
+
+fn prints_vec3(description: &[u8], v: Vec3) {
+    print_string(description);
+    print_string(" ");
+    print_vec3(v);
+    print_nl();
+}
+
+
 

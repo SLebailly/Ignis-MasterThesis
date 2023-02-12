@@ -70,7 +70,7 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
 
         // the difference between the normalized vector (length 1) and the vector after transformation to local coordinates is the difference in scale between the distance in local and global coordinates
         let scale_diff          = math_builtins::sqrt(1 / loc_dir_len2);
-        let (loc_dist, loc_opt, loc_properties) = next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_value_tr);
+        let (loc_dist, loc_opt, loc_properties) = if (loc_dir_len2 > flt_eps) { next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_value_tr) } else { (0:f32, make_gray_color(0:f32), make_vacuum_volume_properties()) };
 
         //transform the local distance and corresponding optical thickness into global distance/optical thickness
         let dist                = if loc_dist >= flt_max { flt_max } else { loc_dist * scale_diff };

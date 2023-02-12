@@ -93,7 +93,10 @@ set(ARTIC_MAIN_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/shaders/principled_volume.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/shaders/simple_volume.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/common.art
-    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/volume_marcher.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/traversal/common.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/traversal/dda.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/traversal/hdda.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/traversal/step.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/voxeliterator.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/nanovdb/accessor.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/nanovdb/data.art

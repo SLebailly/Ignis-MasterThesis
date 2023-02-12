@@ -1,3 +1,26 @@
+// a node has 2^LOG2DIM children (in each dimension)
+static LOG2DIM_VOXEL = 0:u32;
+static LOG2DIM_LEAF  = 3:u32;
+static LOG2DIM_LOWER = 4:u32;
+static LOG2DIM_UPPER = 5:u32;
+
+// a node has 2^LOG2CHILDREN voxels (in each dimension)
+static LOG2CHILDREN_VOXEL = 0:u32;
+static LOG2CHILDREN_LEAF  = LOG2DIM_LEAF;
+static LOG2CHILDREN_LOWER = LOG2DIM_LOWER + LOG2DIM_LEAF;
+static LOG2CHILDREN_UPPER = LOG2DIM_UPPER + LOG2CHILDREN_LOWER;
+
+// how many potential voxels a node can contain (!= children) in each dimension
+static DIM_VOXEL  = 1:u32 << LOG2DIM_VOXEL;      // 2^0 = 1
+static DIM_LEAF   = 1:u32 << LOG2CHILDREN_LEAF;  // 2^3 = 8
+static DIM_LOWER  = 1:u32 << LOG2CHILDREN_LOWER; // 2^(3+4) = 2^7 = 128
+static DIM_UPPER  = 1:u32 << LOG2CHILDREN_UPPER; // 2^(3+4+5) = 2^12 = 4096
+
+static MASK_LEAF  = DIM_LEAF  as u64 - 1:u64; // 0[...]00000111
+static MASK_LOWER = DIM_LOWER as u64 - 1:u64; // 0[...]01111111
+static MASK_UPPER = DIM_UPPER as u64 - 1:u64; // 
+
+
 
 // aligns a buffer index to the next 32B-aligned address
 fn @align_32(index: i32) -> i32 {
@@ -32,25 +55,46 @@ fn @root_indices_to_key(i: i32, j: i32, k: i32) -> u64 {
     (bitcast[u32](k) as u64 >> child_total) | ((bitcast[u32](j) as u64 >> child_total) << 21) | ((bitcast[u32](i) as u64 >> child_total) << 42)
 }
 
+/**
+ * Every index is unique (since the entry is for a voxel) mod 4096 (since there are only 4096x4096x4096 voxels per lower internal node)
+ * => voxels (0, 0, 0) to (4095, 4095, 4095) are in one leaf etc
+ */
 fn @upper_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
-    let mask = (1:u64 << (12 as u64)) - 1;
-    let log2dim_u64 = 5 as u64; // 4 = lower internal,  5 = upper internal
-    let child_total = 7 as u64; // 3 = leaf, 7 = lower internal, 12 = upper internal
+    let mask = MASK_UPPER;
+    let log2dim_u64 = LOG2DIM_UPPER as u64; // 4 = lower internal,  5 = upper internal
+    let child_total = LOG2CHILDREN_LOWER as u64; // 3 = leaf, 7 = lower internal, 12 = upper internal
 
     ((((bitcast[u32](i) as u64 & mask) >> child_total) << (2 * log2dim_u64)) | (((bitcast[u32](j) as u64 & mask) >> child_total) << log2dim_u64) | ((bitcast[u32](k) as u64 & mask) >> child_total)) as i32
 }
 
+/**
+ * Every index is unique (since the entry is for a voxel) mod 128 (since there are only 128x128x128 voxels per lower internal node)
+ * => voxels (0, 0, 0) to (127, 127, 127) are in one leaf etc
+ */
 fn @lower_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
-    let mask = (1:u64 << (7 as u64)) - 1;
-    let log2dim_u64 = 4 as u64; // 4 = lower internal,  5 = upper internal
-    let child_total = 3 as u64; // 3 = leaf, 7 = lower internal, 12 = upper internal
+    let mask = MASK_LOWER; // 0[...]01111111
+    let log2dim_u64 = LOG2DIM_LOWER as u64; // 4 = lower internal,  5 = upper internal
+    let child_total = LOG2CHILDREN_LEAF as u64; // 3 = leaf, 7 = lower internal, 12 = upper internal
 
     ((((bitcast[u32](i) as u64 & mask) >> child_total) << (2 * log2dim_u64)) | (((bitcast[u32](j) as u64 & mask) >> child_total) << log2dim_u64) | ((bitcast[u32](k) as u64 & mask) >> child_total)) as i32
 }
 
+/**
+ * Every index is unique (since the entry is for a voxel) mod 8 (since there are only 8x8x8 voxels per leaf)
+ * => voxels (0, 0, 0) to (7, 7, 7) are in one leaf, then (8, 8, 8) to (15, 15, 15) etc
+ */
 fn @leaf_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
-    let log2dim_u64 = 3 as u64;
-    let mask = (1:u64 << log2dim_u64) - 1:u64;
+    let mask = MASK_LEAF; // 0[...]00111
+    let log2dim_u64 = LOG2DIM_LEAF as u64;
 
     (((bitcast[u32](i) as u64 & mask) << (2:u64 * log2dim_u64)) | ((bitcast[u32](j) as u64 & mask) << log2dim_u64) | (bitcast[u32](k) as u64 & mask)) as i32
 }
+
+/**
+ * dimesion: 1 = not sparse, 8 = leaf is sparse, 128 = lower internal node is sparse, 4096 = upper internal node is sparse
+ */
+fn @indx_to_sparse_index((i: i32, j: i32, k: i32), dimension: i32) -> (/* i */ i32, /* j */ i32, /* k */ i32) {
+    let mask = !(dimension - 1:i32);
+    (i & mask, j & mask, k & mask)
+}
+

@@ -92,14 +92,14 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
 
             //TODO: replace with actual volume_marcher
             while (current_dist < total_dist) { // ensure that we are still within the volume
-                let properties = volume_accessor.properties_at_indx(volume.coord_to_indx(current_pos));
+                let (properties, _sparse_dim) = volume_accessor.properties_at_indx(volume.coord_to_indx(current_pos));
                 
                 let tr = optical_thickness_to_transmittance(properties.optical_thickness(step_distance));
                 acc_trans = color_mul(acc_trans, tr);
         
                 let remaining_dist = total_dist - current_dist;
                 if (remaining_dist < step_distance) {
-                    let last_properties = volume_accessor.properties_at_indx(volume.coord_to_indx(local_end));
+                    let (last_properties, _sparse_dim) = volume_accessor.properties_at_indx(volume.coord_to_indx(local_end));
                     let last_tr = optical_thickness_to_transmittance(last_properties.optical_thickness(remaining_dist));
 
                     acc_trans = color_mul(acc_trans, last_tr);

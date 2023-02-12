@@ -19,16 +19,25 @@ fn @make_nvdb_volume_f32(buffer: DeviceBuffer, principled_volume_shader: VolumeS
     }
 
     fn @make_nvdb_accessor() -> VolumeAccessor {
+
+        let mut last_path = Option[AccessPath]::None;
+
+        fn @cache_path_get_value(i: i32, j: i32, k: i32) -> (f32, AccessPath) {
+            if let Option[AccessPath]::Some(previous_path) = last_path {
+                let (value, path) = bottom_up_get_value(tree, clamp_index(i, j, k), previous_path);
+                last_path = Option[AccessPath]::Some(path);
+                return(value, path)
+            } else {
+                let (value, path) = top_down_get_value(tree, clamp_index(i, j, k));
+                last_path = Option[AccessPath]::Some(path);
+                return(value, path)
+            }
+        }
         
         VolumeAccessor {
             properties_at_indx = @|i, j, k| {
-                let value = top_down_get_value(tree, clamp_index(i, j, k));
-
-                principled_volume_shader.volume_properties(make_principled_volume_values(value, value))
-            },
-            dimension_at_indx = @|_i, _j, _k| {
-                //TODO: implement this
-                1
+                let (value, path) = cache_path_get_value(i, j, k);
+                (principled_volume_shader.volume_properties(make_principled_volume_values(value, value)), path.sparse_dim)
             }
         }
 
