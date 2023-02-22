@@ -40,8 +40,12 @@ fn @make_nvdb_volume_f32(buffer: DeviceBuffer, principled_volume_shader: VolumeS
                 (principled_volume_shader.volume_properties(make_principled_volume_values(value, value)), path.sparse_dim)
             }
         }
-
     }
 
-    make_volume(width, height, depth, make_nvdb_accessor)
+    fn @get_majorant_extinction(_origin: Vec3, _ndir: Vec3) -> Color {
+        //TODO: add DDA on higher dimension to return majorant
+        make_gray_color(10:f32)
+    }
+
+    make_volume(width, height, depth, make_nvdb_accessor, get_majorant_extinction)
 }

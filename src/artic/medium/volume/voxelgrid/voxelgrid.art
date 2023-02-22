@@ -37,11 +37,11 @@ fn @make_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxel
         }
     };
 
-    make_volume(width, height, depth, access_data)
+    make_volume(width, height, depth, access_data, @|_origin: Vec3, _ndir: Vec3| make_gray_color(1:f32)) //TODO: Add actual majorant (maybe constant for the whole grid) here
 
 }
 
-fn @make_debug_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxelValue]) -> Volume {
+fn @make_debug_voxel_grid(buffer: DeviceBuffer, _shader: VolumeShader[SimpleVolumeVoxelValue]) -> Volume {
 
     let width  = buffer.load_i32_host(0);
     let height = buffer.load_i32_host(1);
@@ -58,5 +58,20 @@ fn @make_debug_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolum
         }
     };
 
-    make_volume(width, height, depth, access_data)
+    make_volume(width, height, depth, access_data, @|_origin: Vec3, _ndir: Vec3| make_gray_color(1:f32))
+}
+
+fn @make_vacuum_voxel_grid(majorant: f32) -> Volume {
+
+    let width  = 1;
+    let height = 1;
+    let depth  = 1;
+
+    fn @access_data() = VolumeAccessor {
+        properties_at_indx = @|_x, _y, _z| {
+            (make_vacuum_volume_properties(), 1)
+        }
+    };
+
+    make_volume(width, height, depth, access_data, @|_origin: Vec3, _ndir: Vec3| make_gray_color(majorant))
 }

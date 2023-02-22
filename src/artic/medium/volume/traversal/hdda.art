@@ -217,7 +217,7 @@ fn @make_hdda_test_volume() {
     }
 
 
-    make_volume(width, height, depth, make_hdda_test_accessor)
+    make_volume(width, height, depth, make_hdda_test_accessor, @|_origin: Vec3, _ndir: Vec3| make_gray_color(1:f32))
 }
 
 fn @make_hdda_test_marcher() -> VolumeMarcher {

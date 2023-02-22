@@ -11,10 +11,7 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
      */
     fn @next_flight(p_start: Vec3, dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color, VolumeProperties) {
 
-        fn @next_flight_local(local_start: Vec3, local_dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color, VolumeProperties) {
-
-            // transform the sampled value of transmittance to its corresponding optical thicknes (easier on computation for the iterator)
-            let sampled_value_opt = - math_builtins::log(sampled_value_tr); // tr = e^(-opt) <=> opt = - log(tr)
+        fn @next_flight_local(local_start: Vec3, local_dir_norm: Vec3, sampled_value_opt: f32) -> (f32, Color, VolumeProperties) {
             
             let mut acc_opt = make_gray_color(0:f32);
 
@@ -60,14 +57,17 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
         let loc_start = vec3_clamp(pms.to_normalized_point(p_start), loc_min, loc_max);
         let loc_end   = vec3_clamp(pms.to_normalized_point(vec3_add(p_start, dir_norm)), loc_min, loc_max);
         let loc_dir   = vec3_sub(loc_end, loc_start);
+        
+        // transform the sampled value of transmittance to its corresponding optical thicknes (easier on computation for the iterator)
+        let sampled_value_opt = - math_builtins::log(sampled_value_tr); // tr = e^(-opt) <=> opt = - log(tr)
 
         // the difference between the normalized vector (lenght 1) and the vector after transformation to local coordinates is the difference in scale between the distance in local and global coordinates
-        let scale_diff          = math_builtins::sqrt(1 / vec3_len2(loc_dir));
-        let (loc_dist, loc_opt, loc_properties) = next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_value_tr);
+        let scale_diff          = math_builtins::sqrt(vec3_len2(loc_dir));
+        let (loc_dist, loc_opt, loc_properties) = next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_value_opt * scale_diff);
 
         //transform the local distance and corresponding optical thickness into global distance/optical thickness
-        let dist                = loc_dist * scale_diff;
-        let opt                 = color_mulf(loc_opt, scale_diff);
+        let dist                = loc_dist / scale_diff;
+        let opt                 = color_divf(loc_opt, scale_diff);
 
         (dist, opt, loc_properties)
     }

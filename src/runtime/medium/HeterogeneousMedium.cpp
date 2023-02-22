@@ -130,10 +130,11 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
         std::string shader_name  = "vs_" + medium_name;
         size_t res_id = input.Tree.context().registerExternalResource(filename);
 
-        input.Stream << input.Tree.pullHeader()
-            << "  let " << buffer_name    << " = device.load_buffer_by_id(" << res_id << ");" << std::endl
-            << "  let " << shader_name    << " = make_simple_volume_shader(1);" << std::endl
-            << "  let " << volume_name    << " = make_voxel_grid(" << buffer_name << ", " << shader_name << ");" << std::endl;
+        input.Stream << input.Tree.pullHeader() //TODO. uncomment these instead of using vacuum voxel grid
+            //<< "  let " << buffer_name    << " = device.load_buffer_by_id(" << res_id << ");" << std::endl
+            //<< "  let " << shader_name    << " = make_simple_volume_shader(1);" << std::endl
+            //<< "  let " << volume_name    << " = make_vacuum_voxel_grid(" << buffer_name << ", " << shader_name << ");" << std::endl;
+            << "  let " << volume_name    << " = make_vacuum_voxel_grid(1:f32);" << std::endl;
     } else {
         IG_LOG(L_ERROR) << "File extension " << extension << " for heterogeneous medium not supported" << std::endl;
         return;

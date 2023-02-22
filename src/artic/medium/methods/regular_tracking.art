@@ -15,10 +15,7 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
      */
     fn @next_flight(p_start: Vec3, dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color, VolumeProperties) {
 
-        fn @next_flight_local(local_start: Vec3, local_dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color, VolumeProperties) {
-
-            // transform the sampled value of transmittance to its corresponding optical thicknes (easier on computation for the iterator)
-            let sampled_value_opt = - math_builtins::log(sampled_value_tr); // tr = e^(-opt) <=> opt = - log(tr)
+        fn @next_flight_local(local_start: Vec3, local_dir_norm: Vec3, sampled_value_opt: f32) -> (f32, Color, VolumeProperties) {
             
             let mut acc_opt = make_gray_color(0:f32);
 
@@ -66,15 +63,17 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
         let loc_end   = vec3_clamp(pms.to_normalized_point(vec3_add(p_start, dir_norm)), loc_min, loc_max);
         let loc_dir   = vec3_sub(loc_end, loc_start);
 
+        let sampled_opt = - math_builtins::log(sampled_value_tr); // tr = e^(-opt) <=> opt = - log(tr)
+
         let loc_dir_len2 = math_builtins::fmax(flt_eps, vec3_len2(loc_dir));
 
         // the difference between the normalized vector (length 1) and the vector after transformation to local coordinates is the difference in scale between the distance in local and global coordinates
-        let scale_diff          = math_builtins::sqrt(1 / loc_dir_len2);
-        let (loc_dist, loc_opt, loc_properties) = if (loc_dir_len2 > flt_eps) { next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_value_tr) } else { (0:f32, make_gray_color(0:f32), make_vacuum_volume_properties()) };
+        let scale_diff          = math_builtins::sqrt(loc_dir_len2);
+        let (loc_dist, loc_opt, loc_properties) = if (loc_dir_len2 > flt_eps) { next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_opt * scale_diff) } else { (0:f32, make_gray_color(0:f32), make_vacuum_volume_properties()) };
 
         //transform the local distance and corresponding optical thickness into global distance/optical thickness
-        let dist                = if loc_dist >= flt_max { flt_max } else { loc_dist * scale_diff };
-        let opt                 = color_mulf(loc_opt, scale_diff);
+        let dist                = if loc_dist >= flt_max { flt_max } else { loc_dist / scale_diff };
+        let opt                 = color_divf(loc_opt, scale_diff);
 
         (dist, opt, loc_properties)
     }
@@ -119,12 +118,12 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
 
             // evaluate the corresponding distance for the sampled value of transmittance
             let (mut dist, opt, props) = next_flight(p_start, dir_norm, sampled_value_tr);
-            // clamp the distance to the maximum distance before hitting an object/leaving the medium
-            dist = math_builtins::fmin[f32](max_dist, dist);
+            // clamp the distance to a minimum distance to avoid staying in the same position
+            dist = math_builtins::fmax[f32](0.0001, dist);//TODO: potentially lower eps
 
             // reject samples if the optical thickness is black (no transmittance) or if leaving the medium/hitting another object before interacting with the medium
             if is_black_eps(opt, 1e-3) { return(reject_medium_sample()) }
-            if math_builtins::fabs(max_dist - dist) <= flt_eps { return(reject_medium_sample()) }
+            if max_dist - dist <= flt_eps { return(reject_medium_sample()) }
 
 
             /*
