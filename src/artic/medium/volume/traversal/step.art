@@ -1,20 +1,25 @@
 /**
  * Marches a fixed step distance at a time
  */
-fn @make_fixed_distance_marcher(_origin: Vec3, _ndir: Vec3, volume: Volume, _step: f32, _interpolate: bool) -> VolumeMarcher {
-    //TODO: implement this
+fn @make_fixed_distance_marcher(origin: Vec3, ndir: Vec3, volume: Volume, step: f32, _interpolate: bool) -> VolumeMarcher {
     let accessor = volume.access_data();
+
+    let mut total_dist = 0:f32;
+
     VolumeMarcher {
-        has_next     = @|| {
-            false
+        has_next = @|| {
+            let next_pos = vec3_add(origin, vec3_mulf(ndir, total_dist + step)); 
+            volume.is_in_volume(next_pos)
         },
         next_segment = @|| {
-            let (local_props, _local_dim) = accessor.properties_at_indx(0, 0, 0);
+            total_dist = total_dist + step;
+            let current_pos = vec3_add(origin, vec3_mulf(ndir, total_dist)); 
+            let (local_props, _local_dim) = accessor.properties_at_indx(volume.coord_to_indx(current_pos));
             let segment = PathSegment {
-                distance         = 0,
+                distance         = step,
                 local_properties = local_props
             };
-            (segment, 0)
+            (segment, total_dist)
         }
     }
 }

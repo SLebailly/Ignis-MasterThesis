@@ -1,6 +1,7 @@
 static SCALED_STEFAN_BOLTZMAN_SIGMA = 5.670373 / flt_pi;
 static STEFAN_BOLTZMAN_SIGMA_SCALAR_INV = 100000000000000:f32; // divide by this number (x E-14)
 static MIN_BB_TEMPERATURE = 1000:f32; // value to clamp to so as to not produce negative colours
+static DENSITY_EPS = 0.0001:f32;
 
 // Blender Principled Volume Shader
 // constants that define the medium material (constant for each voxel in the whole medium)
@@ -66,11 +67,10 @@ fn @make_principled_volume_shader(params: PrincipledVolumeParameters) -> VolumeS
     
     VolumeShader[PrincipledVolumeValues] {
         volume_properties = @|values| {
-
-            let vxl_density = if values.density > flt_eps { values.density * params.scalar_density } else { 0 };
+            let vxl_density = if values.density > DENSITY_EPS { values.density * params.scalar_density } else { 0 };
         
-            let coeff_absorption = if vxl_density > flt_eps { color_mulf(color_mul(color_scattering_inv, color_absorption_inv), vxl_density) } else { make_gray_color(0:f32) };
-            let coeff_scattering = if vxl_density > flt_eps { color_mulf(params.color_scattering, vxl_density) } else { make_gray_color(0:f32) };
+            let coeff_absorption = if vxl_density > DENSITY_EPS { color_mulf(color_mul(color_scattering_inv, color_absorption_inv), vxl_density) } else { make_gray_color(0:f32) };
+            let coeff_scattering = if vxl_density > DENSITY_EPS { color_mulf(params.color_scattering, vxl_density) } else { make_gray_color(0:f32) };
             let coeff_emission   = if params.scalar_emission > flt_eps { color_mulf(params.color_emission, params.scalar_emission) } else { make_gray_color(0:f32) };
             let bb_emission      = if params.scalar_blackbody > flt_eps && params.scalar_temperature > flt_eps && values.temperature > flt_eps { blackbody_emission(values) } else { make_gray_color(0:f32) };
 

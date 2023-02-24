@@ -204,7 +204,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
             let p_f = 1 - p_a - p_s;
 
             let r = randf(rnd);
-            let weighted_ft = color_div(medium_sample.color /* Pdf already applied! ( = T * sigma_t / p(t) ) */, sigma_t); // corresponds to ft / p(t) in "A null-scattering path integral formulation of light transport", (Miller et. al, 2019).
+            let weighted_ft = medium_sample.color; // corresponds to ft / p(t) in "A null-scattering path integral formulation of light transport", (Miller et. al, 2019).
             
             if r < p_a {
                 // Absorption event
@@ -256,7 +256,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                     medium  = pt.medium
                 });
                 make_option(
-                    make_ray(medium_sample.pos, out_dir, 0, flt_max, ray_flag_bounce) // continue in the same direction
+                    make_ray(medium_sample.pos, ctx.ray.dir, 0, flt_max, ray_flag_bounce) // continue in the same direction
                 )
             }
 

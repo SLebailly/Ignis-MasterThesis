@@ -56,7 +56,7 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
         let (loc_dist, loc_opt, loc_properties) = if (loc_dir_len2 > flt_eps) {
             next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_value_opt * scale_diff)
         } else {
-            (0:f32, make_gray_color(0:f32), make_vacuum_volume_properties())
+            (0:f32, make_gray_color(1:f32), make_vacuum_volume_properties())
         };
 
         //transform the local distance and corresponding optical thickness into global distance/optical thickness
@@ -79,7 +79,7 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
 
         let local_opt  = eval_optical_thickness(volume, loc_start, loc_end, false); //TODO: implement null-scattering transmittance estimation, atm this still uses regular tracking
 
-        optical_thickness_to_transmittance(color_mulf(local_opt, scale_diff))
+        optical_thickness_to_transmittance(color_mulf(local_opt, scale_diff)) // TODO: does this need to be weighted by PDF...???
     }
 
 
@@ -98,7 +98,7 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
             // sample value of transmittance (uniformly)
             let sampled_value_tr = randf(rnd) * 0.99999;
             // transform the sampled value of transmittance to its corresponding optical thicknes (easier on computation for the iterator)
-            let sampled_value_opt = - math_builtins::log(sampled_value_tr); // tr = e^(-opt) <=> opt = - log(tr)
+            let sampled_value_opt = - math_builtins::log(1:f32 - sampled_value_tr); // tr = e^(-opt) <=> opt = - log(tr)
 
 
             let dir_u    = vec3_sub(p_end, p_start);
@@ -124,11 +124,9 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
             // determine position, transmittance and pdf based on previous calculations
             let pos   = vec3_add(p_start, vec3_mulf(dir_norm, dist));
             let trans = optical_thickness_to_transmittance(opt);
-            let pdf   = 1:f32;//sampled_value_tr;//TODO: verify this
-
-//                                                 -------------------------10--------------------      
-//                                                 ---------1------------  --------10-------------         
-            make_medium_sample(pos, pdf, color_mul(color_divf(trans, pdf), props.coeff_extinction), props)
+            let pdf   = sampled_value_tr;// * vec3_max_value(color_to_vec3(props.coeff_extinction));//TODO: verify this
+               
+            make_medium_sample(pos, pdf, color_builtins::white, props)
         },
         is_homogeneous = false
     }
