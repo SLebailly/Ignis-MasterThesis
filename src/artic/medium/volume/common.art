@@ -43,6 +43,15 @@ fn @homogenize_nullscattering_properties(properties: VolumeProperties, homogeniz
 
     let coeff_fictional  = color_sub(homogenized_extinction, properties.coeff_extinction);
 
+    if (coeff_fictional.r < 0 || coeff_fictional.g < 0 || coeff_fictional.b < 0) {
+        print_string("Homogenized extinction ");
+        print_color(homogenized_extinction);
+        print_string(" is not majorant of ");
+        print_color(properties.coeff_extinction);
+        print_nl();
+        print_flush();
+    }
+
     VolumeProperties {
         coeff_scattering = properties.coeff_scattering,
         coeff_absorption = properties.coeff_absorption,

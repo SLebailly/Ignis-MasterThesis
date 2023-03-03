@@ -95,7 +95,7 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
     
     Medium {
         phase = @|_| phase,
-        eval  = @|p_start, p_end| {
+        eval  = @|_, p_start, p_end| {
             eval_tr(p_start, p_end)
         },
         eval_inf = @|_, _| color_builtins::black,

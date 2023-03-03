@@ -50,6 +50,15 @@ fn @make_voxel_path(upper_node: KeyAddressPair[u64], lower_node: KeyAddressPair[
     leaf_node  = Option[KeyAddressPair[i32]]::Some(leaf_node)
 };
 
+fn @get_max_value[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT]) -> ValueT {
+    let tree_accessor = tree.access_tree_data();
+
+    // =============== Root level ===============
+    let root_address       = tree_accessor.get_node_address_root(false);
+    let root_node_accessor = tree.access_root_node(root_address);
+
+    root_node_accessor.get_maximum()
+}
 
 
 // traverse the tree from the root to the bottom to find the value of the Voxel
@@ -117,6 +126,8 @@ fn @top_down_get_value[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i3
     // Root was sparse
     (root_node_accessor.get_background(), make_empty_path())
 }
+
+
 
 //TODO: implement this
 // traverse the tree from a previous leaf to the corresponding voxel

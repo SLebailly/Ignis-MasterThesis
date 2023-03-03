@@ -82,6 +82,14 @@ struct TreeDataAccessor {
     get_active_voxel_count:       fn () -> i32
 }
 
+struct ValueAccessor[ValueT, StatsT] {
+    get_value: fn () -> ValueT,
+    get_maximum: fn () -> ValueT,
+    get_minimum: fn () -> ValueT,
+    get_average: fn () -> StatsT,
+    get_std_devi: fn () -> StatsT
+}
+
 struct RootNodeAccessor[ValueT, StatsT] {        
     //BBox mBBox,    // 24B, AABB of active values in index space.
     get_bounding_box: fn (/* on_host */ bool) -> ((i32, i32, i32), (i32, i32, i32)),

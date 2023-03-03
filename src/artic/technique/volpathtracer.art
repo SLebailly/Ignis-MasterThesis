@@ -71,7 +71,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
         
         let was_medium_interaction = math_builtins::signbit(pt.inv_pdf);
         let medium = get_medium(ctx, pt.medium);
-        let hitvol = medium.eval(ctx.ray.org, ctx.surf.point); // Volume transmittance from ray origin to this hit point
+        let hitvol = medium.eval(rnd, ctx.ray.org, ctx.surf.point); // Volume transmittance from ray origin to this hit point
 
         let pdf_l_s = light_sample.pdf.as_solid(light_sample.cos, light_sample.dist * light_sample.dist) * light_select_pdf;
         if pdf_l_s <= flt_eps {
@@ -105,7 +105,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                 ))
             } else {
                 let ld  = vec3_sub(light_sample.pos, ctx.surf.point);
-                let vol = color_mul(hitvol, medium.eval(ctx.surf.point, light_sample.pos));
+                let vol = color_mul(hitvol, medium.eval(rnd, ctx.surf.point, light_sample.pos));
                 return(make_simple_shadow_ray(
                     make_ray(ctx.surf.point, ld, offset, 1 - offset, ray_flag_shadow),
                     color_mul(contrib, vol)
@@ -131,7 +131,16 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                 let inv_pdf  = math_builtins::fmax[f32](0/*Ignore medium interactions*/, pt.inv_pdf);
                 let pdf_s    = emit.pdf.as_solid(dot, ctx.hit.distance * ctx.hit.distance);
                 let mis      = 1 / (1 + inv_pdf * light_selector.pdf(mat.light, ctx.ray.org) * pdf_s);
-                let vol      = medium.eval(ctx.ray.org, ctx.surf.point);
+
+                let mut hash = fnv_init();
+                hash = fnv_hash(hash, ctx.ray.org.x as u32);
+                hash = fnv_hash(hash, ctx.ray.org.y as u32);
+                hash = fnv_hash(hash, ctx.ray.org.z as u32);
+                hash = fnv_hash(hash, ctx.surf.point.x as u32);
+                hash = fnv_hash(hash, ctx.surf.point.y as u32);
+                hash = fnv_hash(hash, ctx.surf.point.z as u32);
+
+                let vol      = medium.eval(hash, ctx.ray.org, ctx.surf.point);
                 let contrib  = handle_color(color_mulf(color_mul(pt.contrib, color_mul(emit.intensity, vol)), mis));
                 
                 return(make_option(contrib))
@@ -189,18 +198,18 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
         // Try sampling the medium
         if let Option[MediumSample]::Some(medium_sample) = medium.sample(rnd, ctx.ray.org, ctx.surf.point) {
 
-            let sigma_t   = medium_sample.properties.coeff_extinction;
-            let sigma_a   = medium_sample.properties.coeff_absorption;
-            let sigma_s   = medium_sample.properties.coeff_scattering;
-            let sigma_f   = medium_sample.properties.coeff_fictional;
-            let sigma_ind = vec3_max_index(color_to_vec3(sigma_t));
-            let sigma_t_p = color_at(sigma_t, sigma_ind);
-            let sigma_a_p = color_at(sigma_a, sigma_ind);
-            let sigma_s_p = color_at(sigma_s, sigma_ind);
+            let mu_t   = medium_sample.properties.coeff_extinction;
+            let mu_a   = medium_sample.properties.coeff_absorption;
+            let mu_s   = medium_sample.properties.coeff_scattering;
+            let mu_f   = medium_sample.properties.coeff_fictional;
+            let mu_ind = vec3_max_index(color_to_vec3(mu_t));
+            let mu_t_p = color_at(mu_t, mu_ind);
+            let mu_a_p = color_at(mu_a, mu_ind);
+            let mu_s_p = color_at(mu_s, mu_ind);
 
             // max. extinction coeff is assumed to not be 0 here (as probability of collision with particle is 0 if ext. is 0)
-            let p_a = if sigma_a_p <= flt_eps { 0:f32 } else { sigma_a_p / sigma_t_p };
-            let p_s = if sigma_s_p <= flt_eps { 0:f32 } else { sigma_s_p / sigma_t_p };
+            let p_a = if mu_a_p <= flt_eps { 0:f32 } else { mu_a_p / mu_t_p };
+            let p_s = if mu_s_p <= flt_eps { 0:f32 } else { mu_s_p / mu_t_p };
             let p_f = 1 - p_a - p_s;
 
             let r = randf(rnd);
@@ -208,7 +217,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
             
             if r < p_a {
                 // Absorption event
-                let albedo        = color_div(sigma_a, sigma_t);
+                let albedo        = color_div(mu_a, mu_t);
                 let emission      = color_mul(albedo, medium_sample.properties.emitted_radiance); 
                 let new_contrib   = color_divf(color_mul(weighted_ft, emission), p_a); /* weighted with Pdf of emission event!*/
 
@@ -216,7 +225,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                 Option[Ray]::None
             } else if r < p_a + p_s {
                 // Scattering event
-                let albedo        = color_div(sigma_s, sigma_t);
+                let albedo        = color_div(mu_s, mu_t);
                 let phase_sample  = medium.phase(medium_sample.pos).sample(rnd, out_dir); // sample new direction
                 let weighted_lS   = color_mul(albedo, color_mulf(pt.contrib, phase_sample.weight / p_s)); // weight by phase function scatter direction pdf AND pdf of picking a scatter event
                 let contrib       = color_mul(weighted_ft, weighted_lS); 
@@ -242,10 +251,15 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                 }
             } else {
                 // null-scattering event
-                let albedo        = color_div(sigma_f, sigma_t); // = 1 in vacuum
+                let albedo        = color_div(mu_f, mu_t); // = 1 in vacuum
                 let ls            = color_mul(albedo, pt.contrib);
                 let contrib       = color_divf(color_mul(weighted_ft, ls), p_f); // weight by  pdf
 
+                if (contrib.r < 1:f32 - 0.001 || contrib.r > 1:f32 + 0.001) {
+                    print_string("Yeet ");
+                    print_color(contrib);
+                    print_nl();
+                }
                 let inv_pdf     = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
 
                 write_vptraypayload(payload, VPTRayPayload {
@@ -263,10 +277,17 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
         } else {
             // Bounce on surface
             if let Option[BsdfSample]::Some(bsdf_sample) = mat.bsdf.sample(rnd, out_dir, false) {
-                let vol         = medium.eval(ctx.ray.org, ctx.surf.point); // this is (1, 1, 1) in vacuum
-                let vol_contrib = color_mul(vol, pt.contrib);
+                let trans       = medium.eval(rnd, ctx.ray.org, ctx.surf.point); // this is (1, 1, 1) in vacuum
+                let vol_contrib = color_mul(trans, pt.contrib);
                 let contrib     = color_mul(vol_contrib, bsdf_sample.color/* Pdf and cosine are already applied!*/);
                 let rr_prob     = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
+
+                if (trans.r < 0.9999 || trans.r > 1.0001) {
+                    print_string("tr: ");
+                    print_color(trans);
+                    print_nl();
+                    print_flush();
+                }
                 
                 if randf(rnd) >= rr_prob {
                     Option[Ray]::None

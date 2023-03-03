@@ -99,7 +99,7 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
     
     Medium {
         phase = @|_| phase,
-        eval  = @|p_start, p_end| {
+        eval  = @|_, p_start, p_end| {
             eval_tr(p_start, p_end)
         },
         eval_inf = @|_, _| color_builtins::black,

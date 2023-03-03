@@ -44,7 +44,9 @@ fn @make_nvdb_volume_f32(buffer: DeviceBuffer, principled_volume_shader: VolumeS
 
     fn @get_majorant_extinction(_origin: Vec3, _ndir: Vec3) -> Color {
         //TODO: add DDA on higher dimension to return majorant
-        make_gray_color(10:f32)
+        let max = get_max_value(tree);
+        let max_props = principled_volume_shader.volume_properties(make_principled_volume_values(max, max));
+        max_props.coeff_extinction
     }
 
     make_volume(width, height, depth, make_nvdb_accessor, get_majorant_extinction)
