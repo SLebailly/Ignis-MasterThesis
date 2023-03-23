@@ -121,16 +121,15 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
               ) -> Option[Color] {
         let pt = unwrap_vptraypayload(payload);
         
-
         // Hits on a light source
-        if mat.is_emissive && ctx.surf.is_entering {
+        if mat.is_emissive && ctx.surf.is_entering && pt.depth == 1 {
             let medium = get_medium(ctx, pt.medium);
             let dot    = -vec3_dot(ctx.ray.dir, ctx.surf.local.col(2));
             if dot > flt_eps { // Only contribute proper aligned directions
                 let emit     = mat.emission(ctx);
                 let inv_pdf  = math_builtins::fmax[f32](0/*Ignore medium interactions*/, pt.inv_pdf);
                 let pdf_s    = emit.pdf.as_solid(dot, ctx.hit.distance * ctx.hit.distance);
-                let mis      = 1 / (1 + inv_pdf * light_selector.pdf(mat.light, ctx.ray.org) * pdf_s);
+                let mis      = 1 / (1 + inv_pdf * light_selector.pdf(mat.light, ctx.ray.org) * pdf_s); //TODO: NEE
 
                 let mut hash = fnv_init();
                 hash = fnv_hash(hash, ctx.ray.org.x as u32);
@@ -152,12 +151,17 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
     fn @on_miss( ray: Ray
                , pixel: PixelCoord
                , payload: RayPayload) -> Option[Color] {
+
         let mut inflights = 0;
         let mut color     = color_builtins::black;
         
         let pt     = unwrap_vptraypayload(payload);
         let ctx    = make_miss_shading_context(pixel, ray);
         let medium = get_medium(ctx, pt.medium);
+        
+        if pt.depth == 1 {
+            return(Option[Color]::None)
+        }
 
         for light_id in safe_unroll(0, light_selector.infinites.count) {
             let light = light_selector.infinites.get(light_id);
@@ -168,7 +172,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                 let emit  = light.emission(ctx);
                 let pdf   = light.pdf_direct(ray, make_invalid_surface_element());
                 let pdf_s = pdf.as_solid(1, 1/* We assume infinite lights are always given in solid angle measure */);
-                let mis   = 1 / (1 + math_builtins::fmax[f32](0/*Ignore medium interactions*/, pt.inv_pdf) * light_selector.pdf(light, ray.org) * pdf_s);
+                let mis   = 1 / (1 + math_builtins::fmax[f32](0/*Ignore medium interactions*/, pt.inv_pdf) * light_selector.pdf(light, ray.org) * pdf_s); //TODO: NEE
                 let vol   = medium.eval_inf(ray.org, ray.dir);
                 color     = color_add(color, handle_color(color_mulf(color_mul(pt.contrib, color_mul(emit, vol)), mis)));
             }
@@ -195,8 +199,11 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
             return(Option[Ray]::None)
         }
 
+
         // Try sampling the medium
-        if let Option[MediumSample]::Some(medium_sample) = medium.sample(rnd, ctx.ray.org, ctx.surf.point) {
+        if let Option[MediumSample]::Some(medium_sample) = medium.sample(rnd, ctx.ray.org, ctx.surf.point) { // differentiate if max-bounces was reached
+
+            //Russian roulette for NEE...?
 
             let mu_t   = medium_sample.properties.coeff_extinction;
             let mu_a   = medium_sample.properties.coeff_absorption;
@@ -255,11 +262,6 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                 let ls            = color_mul(albedo, pt.contrib);
                 let contrib       = color_divf(color_mul(weighted_ft, ls), p_f); // weight by  pdf
 
-                if (contrib.r < 1:f32 - 0.001 || contrib.r > 1:f32 + 0.001) {
-                    print_string("Yeet ");
-                    print_color(contrib);
-                    print_nl();
-                }
                 let inv_pdf     = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
 
                 write_vptraypayload(payload, VPTRayPayload {
@@ -275,25 +277,21 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
             }
 
         } else {
+            
+            //Russian roulette for NEE...?
+
             // Bounce on surface
             if let Option[BsdfSample]::Some(bsdf_sample) = mat.bsdf.sample(rnd, out_dir, false) {
                 let trans       = medium.eval(rnd, ctx.ray.org, ctx.surf.point); // this is (1, 1, 1) in vacuum
                 let vol_contrib = color_mul(trans, pt.contrib);
                 let contrib     = color_mul(vol_contrib, bsdf_sample.color/* Pdf and cosine are already applied!*/);
                 let rr_prob     = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
-
-                if (trans.r < 0.9999 || trans.r > 1.0001) {
-                    print_string("tr: ");
-                    print_color(trans);
-                    print_nl();
-                    print_flush();
-                }
                 
                 if randf(rnd) >= rr_prob {
                     Option[Ray]::None
                 } else {
-                    let inv_pdf     = if mat.bsdf.is_specular { 0 } else { 1 / bsdf_sample.pdf };
-                    let new_contrib = color_mulf(contrib, 1 / rr_prob);
+                    let inv_pdf     = if mat.bsdf.is_specular { 0 } else { 1:f32 / bsdf_sample.pdf };
+                    let new_contrib = color_divf(contrib, rr_prob);
                     
                     let is_transmission = math_builtins::signbit(vec3_dot(ctx.surf.local.col(2), bsdf_sample.in_dir));
                     let new_medium      = if is_transmission { mat.interface.pick(ctx.surf.is_entering) } else { pt.medium };

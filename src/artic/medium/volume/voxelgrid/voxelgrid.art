@@ -13,7 +13,7 @@ fn @make_simple_volume_voxel_value(sigma_a: Color, sigma_s: Color, emission: Col
     emission = emission
 };
 
-fn @make_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxelValue]) -> Volume {
+fn @make_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxelValue], majorant: Color) -> Volume {
     
     let width  = buffer.load_i32_host(0);
     let height = buffer.load_i32_host(1);
@@ -37,7 +37,7 @@ fn @make_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxel
         }
     };
 
-    make_volume(width, height, depth, access_data, @|_origin: Vec3, _ndir: Vec3| make_gray_color(1:f32)) //TODO: Add actual majorant (maybe constant for the whole grid) here
+    make_volume(width, height, depth, access_data, @|_origin: Vec3, _ndir: Vec3| majorant) //TODO: Add actual majorant (maybe constant for the whole grid) here
 
 }
 

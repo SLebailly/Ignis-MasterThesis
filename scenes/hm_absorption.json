@@ -35,12 +35,12 @@
 		{"name":"Left","shape":"Left", "bsdf":"mat-ColoredWall"},
 		{"name":"Right","shape":"Right", "bsdf":"mat-ColoredWall"},
 		{"name":"Back","shape":"Back", "bsdf":"mat-GrayWall"},
-		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium","shadow_visible": false}
+		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium", "shadow_visible": false}
 	],
 	"lights": [
 		{"type":"area", "name":"AreaLight", "entity":"AreaLight", "radiance":[100,100,100]}
 	],
 	"media": [
-		{"type": "heterogeneous", "name": "Medium", "filename": "media/chess_small.bin", "g": 0, "interpolate": true }
+		{"type": "heterogeneous", "name": "Medium", "filename": "media/absorption.bin", "g": 0, "interpolate": false, "majorant": [1, 1, 1], "method": "regular" }
 	]
 }

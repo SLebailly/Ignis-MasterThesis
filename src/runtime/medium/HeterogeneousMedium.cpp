@@ -129,17 +129,29 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
 
         std::string shader_name  = "vs_" + medium_name;
         size_t res_id = input.Tree.context().registerExternalResource(filename);
+        const Vector3f majorant = mMedium->property("majorant").getVector3(Vector3f(10.0f, 10.0f, 10.0f));
+        const float scalar = mMedium->property("scalar_density").getNumber(1.0f);
 
-        input.Stream << input.Tree.pullHeader() //TODO. uncomment these instead of using vacuum voxel grid
-            //<< "  let " << buffer_name    << " = device.load_buffer_by_id(" << res_id << ");" << std::endl
-            //<< "  let " << shader_name    << " = make_simple_volume_shader(1);" << std::endl
-            //<< "  let " << volume_name    << " = make_vacuum_voxel_grid(" << buffer_name << ", " << shader_name << ");" << std::endl;
-            << "  let " << volume_name    << " = make_vacuum_voxel_grid(1:f32);" << std::endl;
+        input.Stream << input.Tree.pullHeader()
+            << "  let " << buffer_name    << " = device.load_buffer_by_id(" << res_id << ");" << std::endl
+            << "  let " << shader_name    << " = make_simple_volume_shader(" << scalar << ");" << std::endl
+            << "  let " << volume_name    << " = make_voxel_grid(" << buffer_name << ", " << shader_name << ", " << LoaderUtils::inlineColor(majorant) << ");" << std::endl;
+            //<< "  let " << volume_name    << " = make_vacuum_voxel_grid(1:f32);" << std::endl;
     } else {
         IG_LOG(L_ERROR) << "File extension " << extension << " for heterogeneous medium not supported" << std::endl;
         return;
     }
-    input.Stream << "  let " << generator_name << ": MediumGenerator = @|ctx| { make_heterogeneous_medium(ctx, "<< pms_func << "(), " << volume_name << ", make_henyeygreenstein_phase(" << input.Tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ") };" << std::endl;
+
+    const std::string method = mMedium->property("method").getString("regular");
+
+    if (method == "delta_tracking") {
+        input.Stream << "  let " << generator_name << ": MediumGenerator = @|ctx| { make_delta_tracking_medium(ctx, "<< pms_func << "(), " << volume_name << ", make_henyeygreenstein_phase(" << input.Tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ") };" << std::endl;
+    } else if (method == "ray_marching") {
+        const float step_distance = mMedium->property("step_distance").getNumber(0.001f);
+        input.Stream << "  let " << generator_name << ": MediumGenerator = @|ctx| { make_ray_marching_medium(ctx, "<< pms_func << "(), " << volume_name << ", make_henyeygreenstein_phase(" << input.Tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ", " << step_distance << ") };" << std::endl;
+    } else {
+        input.Stream << "  let " << generator_name << ": MediumGenerator = @|ctx| { make_regular_tracking_medium(ctx, "<< pms_func << "(), " << volume_name << ", make_henyeygreenstein_phase(" << input.Tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ") };" << std::endl;
+    }
     input.Tree.endClosure();
 }
 

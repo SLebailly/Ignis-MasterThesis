@@ -16,6 +16,9 @@
 	"bsdfs": [
 		{"type":"diffuse", "name": "mat-Light", "reflectance":[0,0,0]},
 		{"type":"diffuse", "name": "mat-GrayWall", "reflectance":[0.8,0.8,0.8]},
+		{"type":"diffuse", "name": "mat-RedWall", "reflectance":[0.8,0,0]},
+		{"type":"diffuse", "name": "mat-GreenWall", "reflectance":[0,0.8,0]},
+		{"type":"diffuse", "name": "mat-BlueWall", "reflectance":[0,0,0.8]},
 		{"type":"diffuse", "name": "mat-ColoredWall", "reflectance":[0.106039, 0.195687, 0.800000]},
 		{"type":"passthrough", "name": "mat-Object"}
 	],
@@ -26,21 +29,21 @@
 		{"type":"external", "name":"Left", "filename":"meshes/Left.ply"},
 		{"type":"external", "name":"Right", "filename":"meshes/Right.ply"},
 		{"type":"external", "name":"Back", "filename":"meshes/Back.ply"},
-		{"type":"external", "name":"Object", "filename":"meshes/Cube2.obj", "face_normals": true, "transform": {"scale": 0.4, "translate": [0,0,0]} }
+		{"type":"external", "name":"Object", "filename":"meshes/Cube2.obj", "face_normals": true, "transform": {"scale": 0.4, "translate": [0,-1.0,0]} }
 	],
 	"entities": [
 		{"name":"AreaLight", "shape":"AreaLight", "bsdf":"mat-Light"},
 		{"name":"Bottom","shape":"Bottom", "bsdf":"mat-GrayWall"},
 		{"name":"Top","shape":"Top", "bsdf":"mat-GrayWall"},
-		{"name":"Left","shape":"Left", "bsdf":"mat-ColoredWall"},
-		{"name":"Right","shape":"Right", "bsdf":"mat-ColoredWall"},
-		{"name":"Back","shape":"Back", "bsdf":"mat-GrayWall"},
-		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium","shadow_visible": false}
+		{"name":"Left","shape":"Left", "bsdf":"mat-RedWall"},
+		{"name":"Right","shape":"Right", "bsdf":"mat-BlueWall"},
+		{"name":"Back","shape":"Back", "bsdf":"mat-GreenWall"},
+		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium", "shadow_visible": false, "bounce_visible": false}
 	],
 	"lights": [
 		{"type":"area", "name":"AreaLight", "entity":"AreaLight", "radiance":[100,100,100]}
 	],
 	"media": [
-		{"type": "heterogeneous", "name": "Medium", "filename": "media/chess_small.bin", "g": 0, "interpolate": true }
+		{"type": "vacuum", "name": "Medium", "filename": "media/vaccuum.bin", "g": 0, "interpolate": false, "majorant": [0.1, 0.1, 0.1], "method": "delta_tracking", "scalar_density": 1 }
 	]
 }
