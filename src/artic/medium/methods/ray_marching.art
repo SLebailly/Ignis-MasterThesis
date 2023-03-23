@@ -1,6 +1,6 @@
 // Implementation of a Ray Marching transmittance estimator
 // marches along the ray in fixed distance and integrates transmittance
-fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, interpolate: bool, step_distance: f32) -> Medium {
+fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, interpolate: bool, max_scattering: i32, step_distance: f32) -> Medium {
 
     // the values that will be used for clamping the local coordinates
     let loc_min = vec3_expand(VOLUME_BOUNDS_FLT_MIN);
@@ -135,7 +135,8 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
 
             make_medium_sample(pos, pdf, color_divf(trans, pdf), props)
         },
-        is_homogeneous = false
+        is_homogeneous = false,
+        max_scattering = max_scattering
     }
 }
 

@@ -5,7 +5,8 @@ fn @make_vacuum_medium()-> Medium {
         eval_inf       = @|_, _| color_builtins::white,
         sample         = @|_, _, _| reject_medium_sample(),
         pdf            = @|_, _, _| 0,
-        is_homogeneous = true
+        is_homogeneous = true,
+        max_scattering = 999999
     }
 }
 

@@ -21,7 +21,8 @@ fn @make_homogeneous_medium(sigma_a: Color, sigma_s: Color, phase: PhaseFunction
             eval_inf = @|_, _| if is_black_eps(sigma_t, 1e-4) { color_builtins::white } else { color_builtins::black },
             sample   = @|_, _, _| reject_medium_sample(),
             pdf      = @|_, _, _| 0,
-            is_homogeneous = true
+            is_homogeneous = true,
+            max_scattering = 8 //TODO: make this a variable
         }
     } else {
         let sigma_ind = vec3_min_index(color_to_vec3(sigma_t));
@@ -53,7 +54,8 @@ fn @make_homogeneous_medium(sigma_a: Color, sigma_s: Color, phase: PhaseFunction
                 let pdf = color_at(tr, sigma_ind) * sigma_t_p;
                 make_medium_sample(pos, pdf, color_divf(tr, pdf), volume_properties)
             },
-            is_homogeneous = true
+            is_homogeneous = true,
+            max_scattering = 8 //TODO: make this a variable
         }
     }
 }

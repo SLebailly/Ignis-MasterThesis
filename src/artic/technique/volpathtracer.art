@@ -1,9 +1,10 @@
 struct VPTRayPayload {
-    inv_pdf: f32,
-    contrib: Color,
-    depth:   i32,
-    eta:     f32,
-    medium:  i32,
+    inv_pdf:  f32,
+    contrib:  Color,
+    depth:    i32,
+    eta:      f32,
+    medium:   i32,
+    voldepth: i32
 }
 
 fn @write_vptraypayload(payload: RayPayload, vpt: VPTRayPayload) -> () {
@@ -14,23 +15,37 @@ fn @write_vptraypayload(payload: RayPayload, vpt: VPTRayPayload) -> () {
     payload.set(4, vpt.depth as f32);
     payload.set(5, vpt.eta);
     payload.set(6, vpt.medium as f32);
+    payload.set(7, vpt.voldepth as f32);
 }
 
 fn @unwrap_vptraypayload(payload: RayPayload) = VPTRayPayload {
-    inv_pdf = payload.get(0),
-    contrib = make_color(payload.get(1), payload.get(2), payload.get(3), 1),
-    depth   = payload.get(4) as i32,
-    eta     = payload.get(5),
-    medium  = payload.get(6) as i32,
+    inv_pdf  = payload.get(0),
+    contrib  = make_color(payload.get(1), payload.get(2), payload.get(3), 1),
+    depth    = payload.get(4) as i32,
+    eta      = payload.get(5),
+    medium   = payload.get(6) as i32,
+    voldepth = payload.get(7) as i32
 };
 
 fn @init_vpt_raypayload(payload: RayPayload) = write_vptraypayload(payload, VPTRayPayload {
-    inv_pdf = 0,
-    contrib = color_builtins::white,
-    depth   = 1,
-    eta     = 1,
-    medium  = -1
+    inv_pdf  = 0,
+    contrib  = color_builtins::white,
+    depth    = 1,
+    eta      = 1,
+    medium   = -1,
+    voldepth = 0
 });
+
+/**
+ * Helper function for sampling the volume ONLY if max_scattering has not been reached yet
+ */
+fn @sample_volume(medium: Medium, vol_depth: i32, rnd: &mut RndState, start_pos: Vec3, end_pos: Vec3) -> Option[MediumSample] {
+    if vol_depth + 1 > medium.max_scattering {
+        reject_medium_sample()
+    } else {
+        medium.sample(rnd, start_pos, end_pos)
+    }
+}
 
 // TODO: Implement "A null-scattering path integral formulation of light transport", (Miller et. al, 2019)
 fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, media: MediaTable, framebuffer: AOVImage, clamp_value: f32) -> Technique {
@@ -122,7 +137,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
         let pt = unwrap_vptraypayload(payload);
         
         // Hits on a light source
-        if mat.is_emissive && ctx.surf.is_entering && pt.depth == 1 {
+        if mat.is_emissive && ctx.surf.is_entering/* && pt.depth == 1*/ {
             let medium = get_medium(ctx, pt.medium);
             let dot    = -vec3_dot(ctx.ray.dir, ctx.surf.local.col(2));
             if dot > flt_eps { // Only contribute proper aligned directions
@@ -158,10 +173,11 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
         let pt     = unwrap_vptraypayload(payload);
         let ctx    = make_miss_shading_context(pixel, ray);
         let medium = get_medium(ctx, pt.medium);
-        
+        /*
         if pt.depth == 1 {
             return(Option[Color]::None)
         }
+        */
 
         for light_id in safe_unroll(0, light_selector.infinites.count) {
             let light = light_selector.infinites.get(light_id);
@@ -201,7 +217,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
 
 
         // Try sampling the medium
-        if let Option[MediumSample]::Some(medium_sample) = medium.sample(rnd, ctx.ray.org, ctx.surf.point) { // differentiate if max-bounces was reached
+        if let Option[MediumSample]::Some(medium_sample) = sample_volume(medium, pt.voldepth, rnd, ctx.ray.org, ctx.surf.point) { // differentiate if max-bounces was reached
 
             //Russian roulette for NEE...?
 
@@ -246,11 +262,12 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                     // Notify other parts that the last interaction was a medium
                     let inv_pdf     = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
                     write_vptraypayload(payload, VPTRayPayload {
-                        inv_pdf = inv_pdf,
-                        contrib = new_contrib,
-                        depth   = pt.depth,
-                        eta     = pt.eta,
-                        medium  = pt.medium
+                        inv_pdf  = inv_pdf,
+                        contrib  = new_contrib,
+                        depth    = pt.depth,
+                        eta      = pt.eta,
+                        medium   = pt.medium,
+                        voldepth = pt.voldepth + 1
                     });
                     make_option(
                         make_ray(medium_sample.pos, phase_sample.in_dir, 0, flt_max, ray_flag_bounce)
@@ -265,11 +282,12 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                 let inv_pdf     = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
 
                 write_vptraypayload(payload, VPTRayPayload {
-                    inv_pdf = inv_pdf,
-                    contrib = contrib,
-                    depth   = pt.depth,
-                    eta     = pt.eta,
-                    medium  = pt.medium
+                    inv_pdf  = inv_pdf,
+                    contrib  = contrib,
+                    depth    = pt.depth,
+                    eta      = pt.eta,
+                    medium   = pt.medium,
+                    voldepth = pt.voldepth
                 });
                 make_option(
                     make_ray(medium_sample.pos, ctx.ray.dir, 0, flt_max, ray_flag_bounce) // continue in the same direction
@@ -294,14 +312,15 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                     let new_contrib = color_divf(contrib, rr_prob);
                     
                     let is_transmission = math_builtins::signbit(vec3_dot(ctx.surf.local.col(2), bsdf_sample.in_dir));
-                    let new_medium      = if is_transmission { mat.interface.pick(ctx.surf.is_entering) } else { pt.medium };
+                    let (new_medium, new_voldepth) = if is_transmission { (mat.interface.pick(ctx.surf.is_entering), 0) } else { (pt.medium, pt.voldepth) };
 
                     write_vptraypayload(payload, VPTRayPayload {
-                        inv_pdf = inv_pdf,
-                        contrib = new_contrib,
-                        depth   = pt.depth + 1,
-                        eta     = pt.eta * bsdf_sample.eta,
-                        medium  = new_medium
+                        inv_pdf  = inv_pdf,
+                        contrib  = new_contrib,
+                        depth    = pt.depth + 1,
+                        eta      = pt.eta * bsdf_sample.eta,
+                        medium   = new_medium,
+                        voldepth = new_voldepth
                     });
                     make_option(
                         make_ray(ctx.surf.point, bsdf_sample.in_dir, offset, flt_max, ray_flag_bounce)

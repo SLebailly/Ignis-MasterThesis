@@ -4,7 +4,7 @@
 // 2- sweep along ray and compute the accumulated optical thickness until it first exceeds the sampled value
 // 3- coordinates where the accumulated optical thickness exceeds random variable is the sampled point.
 
-fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, interpolate: bool) -> Medium {
+fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, interpolate: bool, max_scattering: i32) -> Medium {
 
     // the values that will be used for clamping the local coordinates
     let loc_min = vec3_expand(VOLUME_BOUNDS_FLT_MIN);
@@ -138,7 +138,8 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
 
             make_medium_sample(pos, pdf, color_divf(trans, pdf), props)
         },
-        is_homogeneous = false
+        is_homogeneous = false,
+        max_scattering = max_scattering
     }
 }
 

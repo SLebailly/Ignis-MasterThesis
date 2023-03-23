@@ -11,8 +11,7 @@
 //      - Good question! Look for answers in papers
 // Question 2: How to determine transmittance at sampled point?
 //      - Calculation of transmittance is not defined in this method (at least not necessarily) but CAN be used as a stepwise function: cf. J. Novak - "Residual Ratio Trakcing for Estimating Attenuation in Participating Media" 2.3 Free-flight Sampling & Delta Tracking
-fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, _interpolate: bool) -> Medium {
-
+fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, _interpolate: bool, max_scattering: i32) -> Medium {
 
     // the values that will be used for clamping the local coordinates
     let loc_min  = vec3_expand(VOLUME_BOUNDS_FLT_MIN);
@@ -145,6 +144,7 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
 
             make_medium_sample(pos, pdf, color_divf(trans, pdf), props)
         },
-        is_homogeneous = false
+        is_homogeneous = false,
+        max_scattering = max_scattering
     }
 }

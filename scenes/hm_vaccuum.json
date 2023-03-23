@@ -38,12 +38,12 @@
 		{"name":"Left","shape":"Left", "bsdf":"mat-RedWall"},
 		{"name":"Right","shape":"Right", "bsdf":"mat-BlueWall"},
 		{"name":"Back","shape":"Back", "bsdf":"mat-GreenWall"},
-		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium", "shadow_visible": false, "bounce_visible": false}
+		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium", "shadow_visible": false}
 	],
 	"lights": [
 		{"type":"area", "name":"AreaLight", "entity":"AreaLight", "radiance":[100,100,100]}
 	],
 	"media": [
-		{"type": "vacuum", "name": "Medium", "filename": "media/vaccuum.bin", "g": 0, "interpolate": false, "majorant": [0.1, 0.1, 0.1], "method": "delta_tracking", "scalar_density": 1 }
+		{"type": "vacuum", "name": "Medium", "filename": "media/vaccuum.bin", "g": 0, "interpolate": false, "majorant": [0.1, 0.1, 0.1], "method": "delta_tracking", "scalar_density": 1, "max_scattering": 3 }
 	]
 }

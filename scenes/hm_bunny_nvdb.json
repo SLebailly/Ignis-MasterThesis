@@ -47,6 +47,7 @@
 			"filename": "nvdb/bunny_cloud.nvdb",
 			"g": -0.8,
 			"method": "delta_tracking",
+			"max_scattering": 1,
 
 			"scalar_density":     50,
 			"scalar_emission":    0,
