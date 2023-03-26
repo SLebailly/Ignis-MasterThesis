@@ -12,6 +12,7 @@ VolumePathTechnique::VolumePathTechnique(const SceneObject& obj)
     mMaxDepth      = obj.property("max_depth").getInteger(DefaultMaxRayDepth);
     mLightSelector = obj.property("light_selector").getString();
     mClamp         = obj.property("clamp").getNumber(0.0f);
+    mEnableNEE     = obj.property("nee").getBool(true);
 }
 
 TechniqueInfo VolumePathTechnique::getInfo(const LoaderContext&) const
@@ -44,7 +45,8 @@ void VolumePathTechnique::generateBody(const SerializationInput& input) const
     ShadingTree tree(input.Context);
     input.Stream << input.Context.Lights->generateLightSelector(mLightSelector, tree)
                  << "  let framebuffer = device.load_aov_image(\"\", " << ShaderUtils::inlineSPI(input.Context) << ");"
-                 << "  let technique = make_volume_path_renderer(tech_max_depth, light_selector, media, framebuffer, tech_clamp);" << std::endl;
+                 << "  let technique = make_volume_path_renderer(tech_max_depth, light_selector, media, framebuffer, tech_clamp, "
+                 << (mEnableNEE ? "true" : "false") << ");" << std::endl;
 }
 
 } // namespace IG

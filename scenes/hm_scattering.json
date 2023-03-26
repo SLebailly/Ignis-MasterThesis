@@ -1,7 +1,8 @@
 {
 	"technique": {
 		"type": "volpath",
-		"max_depth": 64
+		"max_depth": 64,
+		"nee": false
 	},
 	"camera": {
 		"type": "perspective",
@@ -41,6 +42,6 @@
 		{"type":"area", "name":"AreaLight", "entity":"AreaLight", "radiance":[100,100,100]}
 	],
 	"media": [
-		{"type": "heterogeneous", "name": "Medium", "filename": "media/scattering.bin", "g": 0, "interpolate": false, "majorant": [10, 10, 10], "method": "regular_tracking", "scalar_density": 10, "max_scattering": 2048 }
+		{"type": "heterogeneous", "name": "Medium", "filename": "media/scattering.bin", "g": 0, "interpolate": false, "majorant": [1, 1, 1], "method": "delta_tracking", "scalar_density": 1, "max_scattering": 8192 }
 	]
 }

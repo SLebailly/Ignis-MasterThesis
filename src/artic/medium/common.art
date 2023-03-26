@@ -58,6 +58,7 @@ fn print_color(c: Color) {
 
 fn print_nl() {
     print_string("\n");
+    print_flush();
 }
 
 fn prints_f32(description: &[u8], f: f32) {

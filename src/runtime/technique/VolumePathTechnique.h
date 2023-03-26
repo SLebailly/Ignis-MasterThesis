@@ -17,5 +17,6 @@ private:
     size_t mMaxDepth;
     std::string mLightSelector;
     float mClamp;
+    bool mEnableNEE;
 };
 } // namespace IG
