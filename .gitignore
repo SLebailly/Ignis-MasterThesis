@@ -2,10 +2,7 @@ build/
 CMakeSettings.json
 
 # Screenshots
-screenshot_*
-
-# renders
-renders/
+*.exr
 
 # Heterogeneous Media grids
 scenes/media/*.json
