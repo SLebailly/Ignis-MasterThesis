@@ -4,7 +4,8 @@ struct VPTRayPayload {
     depth:    i32,
     eta:      f32,
     medium:   i32,
-    voldepth: i32
+    voldepth: i32,
+    is_nee:   i32 // 0: it is a normal ray, 1: it is a shadow ray
 }
 
 fn @write_vptraypayload(payload: RayPayload, vpt: VPTRayPayload) -> () {
@@ -16,6 +17,7 @@ fn @write_vptraypayload(payload: RayPayload, vpt: VPTRayPayload) -> () {
     payload.set(5, vpt.eta);
     payload.set(6, vpt.medium as f32);
     payload.set(7, vpt.voldepth as f32);
+    payload.set(8, vpt.is_nee as f32);
 }
 
 fn @unwrap_vptraypayload(payload: RayPayload) = VPTRayPayload {
@@ -24,7 +26,8 @@ fn @unwrap_vptraypayload(payload: RayPayload) = VPTRayPayload {
     depth    = payload.get(4) as i32,
     eta      = payload.get(5),
     medium   = payload.get(6) as i32,
-    voldepth = payload.get(7) as i32
+    voldepth = payload.get(7) as i32,
+    is_nee   = payload.get(8) as i32
 };
 
 fn @init_vpt_raypayload(payload: RayPayload) = write_vptraypayload(payload, VPTRayPayload {
@@ -33,7 +36,8 @@ fn @init_vpt_raypayload(payload: RayPayload) = write_vptraypayload(payload, VPTR
     depth    = 1,
     eta      = 1,
     medium   = -1,
-    voldepth = 0
+    voldepth = 0,
+    is_nee   = 0
 });
 
 /**
@@ -44,6 +48,75 @@ fn @sample_volume(medium: Medium, vol_depth: i32, rnd: &mut RndState, start_pos:
         reject_medium_sample()
     } else {
         medium.sample(rnd, start_pos, end_pos)
+    }
+}
+
+/**
+ * Helper function that either produces a NEE direction or a random phase function sample
+ */
+fn @sample_phase_nee(rnd: &mut RndState, rr_prob_nee: f32, phase: PhaseFunction, pos: Vec3, out_dir: Vec3, light_selector: LightSelector) -> (PhaseSample, bool) {
+
+    if randf(rnd) < rr_prob_nee {
+        let (light, light_select_pdf) = light_selector.sample(rnd, pos);
+        
+        let sample_direct = light.sample_direct;
+        let light_sample  = @sample_direct(rnd, make_particle_surface_element(pos));
+    
+        let pdf_l_s = light_sample.pdf.as_solid(math_builtins::fabs(light_sample.cos), light_sample.dist * light_sample.dist) * light_select_pdf;
+    
+        // NEE sample
+        (make_phase_sample(light_sample.dir, pdf_l_s, phase.eval(out_dir, light_sample.dir) / (pdf_l_s * rr_prob_nee)), true)
+    } else {
+        // Phase function sample
+        let sample = phase.sample(rnd, out_dir);
+        (make_phase_sample(sample.in_dir, sample.pdf, sample.weight / (1:f32 - rr_prob_nee)), false)
+    }
+}
+
+struct NeeBounceSample[SampleType] {
+    is_nee: bool,
+    sample: SampleType
+}
+/**
+ * Helper function that either produces a NEE direction or a random bsdf sample
+ */
+fn @sample_bsdf_nee(rnd: &mut RndState, rr_prob_nee: f32, bsdf: Bsdf, surf: SurfaceElement, out_dir: Vec3, light_selector: LightSelector) -> Option[NeeBounceSample[BsdfSample]] {
+
+    let (light, light_select_pdf) = light_selector.sample(rnd, surf.point);
+        
+    let sample_direct = light.sample_direct;
+    let light_sample  = @sample_direct(rnd, surf);
+
+    let pdf_l_s = light_sample.pdf.as_solid(math_builtins::fabs(light_sample.cos), light_sample.dist * light_sample.dist) * light_select_pdf;
+
+    let actual_rr_prob_nee = if pdf_l_s > flt_eps { rr_prob_nee } else { 0:f32 };
+    
+    if randf(rnd) < actual_rr_prob_nee {
+        // NEE sample
+        make_option(NeeBounceSample[BsdfSample] {
+            is_nee = true,
+            sample = BsdfSample {
+                in_dir = light_sample.dir,  // Sampled direction
+                pdf    = pdf_l_s,           // BSDF value for the sample
+                color  = color_mulf(bsdf.eval(out_dir, vec3_neg(light_sample.dir)), 1:f32 / (pdf_l_s * actual_rr_prob_nee)), // Color of the sample, with cosine and pdf already applied
+                eta    = 1:f32              // Eta on the sampled direction
+            }
+        })
+    } else {
+        // BSDF sample
+        if let Option[BsdfSample]::Some(bsdf_sample) = bsdf.sample(rnd, out_dir, false) {
+            make_option(NeeBounceSample[BsdfSample] {
+                is_nee = false,
+                sample = BsdfSample {
+                    in_dir = bsdf_sample.in_dir,  // Sampled direction
+                    pdf    = bsdf_sample.pdf,     // BSDF value for the sample
+                    color  = color_divf(bsdf_sample.color, (1:f32 - actual_rr_prob_nee)), // Color of the sample, with cosine and pdf already applied
+                    eta    = bsdf_sample.eta      // Eta on the sampled direction
+                }
+            })
+        } else {
+            Option[NeeBounceSample[BsdfSample]]::None
+        }
     }
 }
 
@@ -177,11 +250,10 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
         let pt     = unwrap_vptraypayload(payload);
         let ctx    = make_miss_shading_context(pixel, ray);
         let medium = get_medium(ctx, pt.medium);
-        /*
+        
         if pt.depth == 1 {
             return(Option[Color]::None)
         }
-        */
 
         for light_id in safe_unroll(0, light_selector.infinites.count) {
             let light = light_selector.infinites.get(light_id);
@@ -221,9 +293,7 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
 
 
         // Try sampling the medium
-        if let Option[MediumSample]::Some(medium_sample) = sample_volume(medium, pt.voldepth, rnd, ctx.ray.org, ctx.surf.point) { // differentiate if max-bounces was reached
-
-            //Russian roulette for NEE...?
+        if let Option[MediumSample]::Some(medium_sample) = sample_volume(medium, if (pt.is_nee == 1) { medium.max_scattering } else { pt.voldepth }, rnd, ctx.ray.org, ctx.surf.point) { // differentiate if max-bounces was reached
 
             let mu_t   = medium_sample.properties.coeff_extinction;
             let mu_a   = medium_sample.properties.coeff_absorption;
@@ -252,8 +322,9 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                 Option[Ray]::None
             } else if r < p_a + p_s {
                 // Scattering event
+                let rr_prob_nee = if enable_nee { 0:f32 } else { 0.5:f32 };
                 let albedo        = color_div(mu_s, mu_t);
-                let phase_sample  = medium.phase(medium_sample.pos).sample(rnd, out_dir); // sample new direction
+                let (phase_sample, is_nee)  = sample_phase_nee(rnd, rr_prob_nee, medium.phase(medium_sample.pos), medium_sample.pos, out_dir, light_selector); // sample new direction
                 let weighted_lS   = color_mul(albedo, color_mulf(pt.contrib, phase_sample.weight / p_s)); // weight by phase function scatter direction pdf AND pdf of picking a scatter event
                 let contrib       = color_mul(weighted_ft, weighted_lS); 
 
@@ -271,7 +342,8 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                         depth    = pt.depth,
                         eta      = pt.eta,
                         medium   = pt.medium,
-                        voldepth = pt.voldepth + 1
+                        voldepth = if is_nee { medium.max_scattering } else { pt.voldepth + 1 },
+                        is_nee   = if is_nee { 1:i32 } else { pt.is_nee }
                     });
                     make_option(
                         make_ray(medium_sample.pos, phase_sample.in_dir, 0, flt_max, ray_flag_bounce)
@@ -291,7 +363,8 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                     depth    = pt.depth,
                     eta      = pt.eta,
                     medium   = pt.medium,
-                    voldepth = pt.voldepth
+                    voldepth = pt.voldepth,
+                    is_nee   = pt.is_nee
                 });
                 make_option(
                     make_ray(medium_sample.pos, ctx.ray.dir, 0, flt_max, ray_flag_bounce) // continue in the same direction
@@ -299,11 +372,10 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
             }
 
         } else {
-            
-            //Russian roulette for NEE...?
-
             // Bounce on surface
-            if let Option[BsdfSample]::Some(bsdf_sample) = mat.bsdf.sample(rnd, out_dir, false) {
+            let rr_prob_nee = if enable_nee { 0:f32 } else { 0:f32 };
+            if let Option[NeeBounceSample[BsdfSample]]::Some(bsdf_sample_nee) = sample_bsdf_nee(rnd, rr_prob_nee, mat.bsdf, ctx.surf, out_dir, light_selector) {//mat.bsdf.sample(rnd, out_dir, false) {
+                let bsdf_sample = bsdf_sample_nee.sample;
                 let trans       = medium.eval(rnd, ctx.ray.org, ctx.surf.point); // this is (1, 1, 1) in vacuum
                 let vol_contrib = color_mul(trans, pt.contrib);
                 let contrib     = color_mul(vol_contrib, bsdf_sample.color/* Pdf and cosine are already applied!*/);
@@ -324,7 +396,8 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                         depth    = pt.depth + 1,
                         eta      = pt.eta * bsdf_sample.eta,
                         medium   = new_medium,
-                        voldepth = new_voldepth
+                        voldepth = new_voldepth,
+                        is_nee   = if bsdf_sample_nee.is_nee { 1:i32 } else { pt.is_nee }
                     });
                     make_option(
                         make_ray(ctx.surf.point, bsdf_sample.in_dir, offset, flt_max, ray_flag_bounce)

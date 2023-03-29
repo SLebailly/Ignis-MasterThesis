@@ -24,3 +24,13 @@ fn @invert_surface_element(surf: SurfaceElement) = surf.{
     face_normal = vec3_neg(surf.face_normal),
     local       = flip_orthonormal_mat3x3(surf.local)
 };
+
+fn @make_particle_surface_element(pos: Vec3) = SurfaceElement {
+    is_entering = false,
+    point       = pos,
+    face_normal = vec3_expand(1),
+    inv_area    = 0,
+    prim_coords = vec2_expand(0),
+    tex_coords  = vec2_expand(0),
+    local       = mat3x3_identity()
+};
