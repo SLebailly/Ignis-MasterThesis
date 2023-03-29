@@ -4,6 +4,9 @@ CMakeSettings.json
 # Screenshots
 screenshot_*
 
+# renders
+renders/
+
 # Heterogeneous Media grids
 scenes/media/*.json
 scenes/nvdb/*.nvdb
