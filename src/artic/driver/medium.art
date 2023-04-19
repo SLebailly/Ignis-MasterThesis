@@ -20,6 +20,7 @@ struct Medium {
     eval_inf:       fn (/* start_pos */Vec3, /* direction */Vec3) -> Color,                             // Evaluate from position A with direction B towards infinity (most of the time its zero)
     sample:         fn (&mut RndState, /* start_pos */Vec3, /* end_pos */Vec3) -> Option[MediumSample], // Sample position between two positions and a direction based on the phase
     pdf:            fn (/* start_pos */Vec3, /* end_pos */Vec3, /* pos */Vec3) -> f32,                  // Pdf sampled
+    properties      fn (/* pos */Vec3) -> VolumeProperties,                                             // Returns the volume properties for given position
     is_homogeneous: bool,
     max_scattering: i32
 }

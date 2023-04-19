@@ -23,6 +23,12 @@ fn @eval_optical_thickness(volume: Volume, local_start: Vec3, local_end: Vec3, i
     acc_opt
 }
 
+fn @eval_volume_properties(volume: Volume, pms: PointMapperSet, global_coords: Vec3) -> VolumeProperties {
+    let accessor     = volume.access_data();
+    let local_coords = pms.to_normalized_point(global_coords);
+    make_option(accessor.properties_at_indx(volume.coord_to_indx(sampled_point)))
+}
+
 
 /**
  * Uniform transmittance sampling

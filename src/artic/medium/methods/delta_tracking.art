@@ -144,6 +144,7 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
 
             make_medium_sample(pos, pdf, color_divf(trans, pdf), props)
         },
+        properties = @|coords| eval_volume_properties(volume, pms, coords),
         is_homogeneous = false,
         max_scattering = max_scattering
     }
