@@ -219,7 +219,6 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
             return(Option[Ray]::None)
         }
 
-
         // Try sampling the medium
         if let Option[MediumSample]::Some(medium_sample) = sample_volume(medium, pt.voldepth, rnd, ctx.ray.org, ctx.surf.point) { // differentiate if max-bounces was reached
 
@@ -316,12 +315,12 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
                     let new_contrib = color_divf(contrib, rr_prob);
                     
                     let is_transmission = math_builtins::signbit(vec3_dot(ctx.surf.local.col(2), bsdf_sample.in_dir));
-                    let (new_medium, new_voldepth) = if is_transmission { (mat.interface.pick(ctx.surf.is_entering), 0) } else { (pt.medium, pt.voldepth) };
+                    let (new_medium, newdepth, new_voldepth) = if is_transmission { (mat.interface.pick(ctx.surf.is_entering), pt.depth, 0) } else { (pt.medium, pt.depth + 1, pt.voldepth) };
 
                     write_vptraypayload(payload, VPTRayPayload {
                         inv_pdf  = inv_pdf,
                         contrib  = new_contrib,
-                        depth    = pt.depth + 1,
+                        depth    = newdepth, //workaround for not counting entering the medium as 1 bounce...
                         eta      = pt.eta * bsdf_sample.eta,
                         medium   = new_medium,
                         voldepth = new_voldepth
