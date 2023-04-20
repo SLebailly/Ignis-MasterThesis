@@ -1,9 +1,51 @@
+static default_temperature = 0:f32;
+static max_index = 99999999;
+static min_index = -max_index;
+static min_bbox = (min_index, min_index, min_index);
+static max_bbox = (max_index, max_index, max_index);
 
-fn @make_nvdb_volume_f32(buffer: DeviceBuffer, principled_volume_shader: VolumeShader[PrincipledVolumeValues]) -> Volume {
+fn @get_tree_option(buffer_option: Option[DeviceBuffer]) -> Option[NanoVDBTree[f32, f32]] {
+    if let Option[DeviceBuffer]::Some(buffer) = buffer_option {
+        Option[NanoVDBTree[f32, f32]]::Some(make_nvdb_tree[f32, f32](buffer, 4, 4, @|bf, i| bf.load_f32(i), @|bf, i| bf.load_f32(i)))
+    } else {
+        Option[NanoVDBTree[f32, f32]]::None
+    }
+}
 
-    let tree = make_nvdb_tree[f32, f32](buffer, 4, 4, @|bf, i| bf.load_f32(i), @|bf, i| bf.load_f32(i));
+fn @tree_option_bbox(tree_option: Option[NanoVDBTree[f32, f32]]) -> ((i32, i32, i32), (i32, i32, i32)) {
+    if let Option[NanoVDBTree[f32, f32]]::Some(tree) = tree_option {
+        tree.access_root_node(tree.access_tree_data().get_node_address_root(true)).get_bounding_box(true)
+    } else {
+        (max_bbox, min_bbox)
+    }
+}
 
-    let ((x_min, y_min, z_min), (x_max, y_max, z_max)) = tree.access_root_node(tree.access_tree_data().get_node_address_root(true)).get_bounding_box(true);
+fn @lowest_path_dim_option(path_a: AccessPath, path_b_option: Option[AccessPath]) {
+    if let Option[AccessPath]::Some(path_b) = path_b_option {
+        if path_a.sparse_dim < path_b.sparse_dim { path_a.sparse_dim } else { path_b.sparse_dim }
+    } else {
+        path_a.sparse_dim
+    }
+}
+
+fn @get_max_value_option(tree_option: Option[NanoVDBTree[f32, f32]]) {
+    if let Option[NanoVDBTree[f32, f32]]::Some(tree) = tree_option {
+        get_max_value(tree)
+    } else {
+        default_temperature
+    }
+}
+
+
+fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option: Option[DeviceBuffer], principled_volume_shader: VolumeShader[PrincipledVolumeValues]) -> Volume {
+
+    let tree_density     = make_nvdb_tree[f32, f32](buffer_density, 4, 4, @|bf, i| bf.load_f32(i), @|bf, i| bf.load_f32(i));
+    let tree_temperature_option = get_tree_option(buffer_temperature_option);
+
+    let ((x_min_d, y_min_d, z_min_d), (x_max_d, y_max_d, z_max_d)) = tree_density.access_root_node(tree_density.access_tree_data().get_node_address_root(true)).get_bounding_box(true);
+    let ((x_min_t, y_min_t, z_min_t), (x_max_t, y_max_t, z_max_t)) = tree_option_bbox(tree_temperature_option);
+    let ((x_min, y_min, z_min), (x_max, y_max, z_max)) = ((min(x_min_d, x_min_t), min(y_min_d, y_min_t), min(z_min_d, z_min_t)), (max(x_max_d, x_max_t), max(y_max_d, y_max_t), max(z_max_d, z_max_t)));
+
     let width  = (x_max - x_min) + 1;
     let height = (y_max - y_min) + 1;
     let depth  = (z_max - z_min) + 1;
@@ -20,32 +62,59 @@ fn @make_nvdb_volume_f32(buffer: DeviceBuffer, principled_volume_shader: VolumeS
 
     fn @make_nvdb_accessor() -> VolumeAccessor {
 
-        let mut last_path = Option[AccessPath]::None;
+        let mut last_density_path = Option[AccessPath]::None;
+        let mut last_temperature_path = Option[AccessPath]::None;
 
-        fn @cache_path_get_value(i: i32, j: i32, k: i32) -> (f32, AccessPath) {
-            if let Option[AccessPath]::Some(previous_path) = last_path {
+
+        fn @cache_path_get_value_density(i: i32, j: i32, k: i32) -> (f32, AccessPath) {
+            if let Option[AccessPath]::Some(previous_path) = last_density_path {
+                let (value, path) = bottom_up_get_value(tree_density, clamp_index(i, j, k), previous_path);
+                last_density_path = Option[AccessPath]::Some(path);
+                return(value, path)
+            } else {
+                let (value, path) = top_down_get_value(tree_density, clamp_index(i, j, k));
+                last_density_path = Option[AccessPath]::Some(path);
+                return(value, path)
+            }
+        }
+
+        fn @cache_path_get_value_temperature(i: i32, j: i32, k: i32, tree: NanoVDBTree[f32, f32]) -> (f32, AccessPath) {
+            if let Option[AccessPath]::Some(previous_path) = last_temperature_path {
                 let (value, path) = bottom_up_get_value(tree, clamp_index(i, j, k), previous_path);
-                last_path = Option[AccessPath]::Some(path);
+                last_temperature_path = Option[AccessPath]::Some(path);
                 return(value, path)
             } else {
                 let (value, path) = top_down_get_value(tree, clamp_index(i, j, k));
-                last_path = Option[AccessPath]::Some(path);
+                last_temperature_path = Option[AccessPath]::Some(path);
                 return(value, path)
+            }
+        }
+
+        fn @cache_path_get_value_temperature_option(i: i32, j: i32, k: i32) -> (f32, Option[AccessPath]) {
+            if let Option[NanoVDBTree[f32, f32]]::Some(tree_temperature) = tree_temperature_option {
+                let (value, path) = cache_path_get_value_temperature(i, j, k, tree_temperature);
+                (value, Option[AccessPath]::Some(path))
+            } else {
+                (default_temperature, Option[AccessPath]::None)
             }
         }
         
         VolumeAccessor {
             properties_at_indx = @|i, j, k| {
-                let (value, path) = cache_path_get_value(i, j, k);
-                (principled_volume_shader.volume_properties(make_principled_volume_values(value, value)), path.sparse_dim)
+                let (value_d, path_d) = cache_path_get_value_density(i, j, k);
+                let (value_t, path_t_option) = cache_path_get_value_temperature_option(i, j, k);
+                let min_dim = lowest_path_dim_option(path_d, path_t_option);
+                (principled_volume_shader.volume_properties(make_principled_volume_values(value_d, value_t)), min_dim)
             }
         }
     }
 
     fn @get_majorant_extinction(_origin: Vec3, _ndir: Vec3) -> Color {
         //TODO: add DDA on higher dimension to return majorant
-        let max = get_max_value(tree);
-        let max_props = principled_volume_shader.volume_properties(make_principled_volume_values(max, max));
+        let max_d = get_max_value(tree_density);
+        let max_t = get_max_value_option(tree_temperature_option);
+
+        let max_props = principled_volume_shader.volume_properties(make_principled_volume_values(max_d, max_t));
         max_props.coeff_extinction
     }
 

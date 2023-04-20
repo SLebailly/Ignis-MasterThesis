@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+#define NANOVDB_USE_ZIP 1
 #include <nanovdb/util/IO.h>
 #include <fstream>
 #include <sstream>
@@ -12,17 +13,21 @@
 namespace IG {
 // Only used in the building process
 
-bool NanoVDBLoader::prepare(const std::filesystem::path& in_nvdb, const std::filesystem::path& out_data)
+bool NanoVDBLoader::prepare(const std::filesystem::path& in_nvdb, const std::string gridName, const std::filesystem::path& out_data)
 {
-    auto handle   = nanovdb::io::readGrid(in_nvdb.u8string());
+    auto handle   = nanovdb::io::readGrid(in_nvdb.u8string(), gridName);
     uint8_t* data = handle.data(); // Returns a non-const pointer to the data
     uint64_t size = handle.size(); // Returns the size in bytes of the raw memory buffer
 
     const char* grid_type = toStr(handle.gridType());
     const char* grid_type_float = "float";
-    if (strcmp(grid_type, grid_type_float) != 0) {
+    const char* grid_type_end   = "End";
+    if (strcmp(grid_type, grid_type_end) == 0) {
+        IG_LOG(L_WARNING) << "No Grid found for grid name " << gridName << "." << std::endl;
+        return false;
+    } else if (strcmp(grid_type, grid_type_float) != 0) {
         // only float Grid Types (density) are currently supported in Ignis
-        IG_LOG(L_ERROR) << "Only float Grid Types (density) are currently supported in Ignis (found " << grid_type << ")" << std::endl;
+        IG_LOG(L_ERROR) << "Only float Grid Types (density or temperature) are currently supported in Ignis (found " << grid_type << " for grid " << gridName << ")" << std::endl;
         return false;
     }
 

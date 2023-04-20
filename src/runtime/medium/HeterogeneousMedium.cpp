@@ -12,21 +12,21 @@
 namespace IG {
 
 #ifdef USE_SPARSE_GRID
-static std::string setup_nvdb_grid(const std::filesystem::path path, const std::string medium_name, LoaderContext& ctx)
+static std::string setup_nvdb_grid(const std::filesystem::path path, const std::string medium_name, const std::string grid_name, LoaderContext& ctx)
 {
-    const std::string exported_id = medium_name + "_nvdb";
+    const std::string exported_id = medium_name + "_" + grid_name + "_nvdb";
 
     const auto data = ctx.Cache->ExportedData.find(exported_id);
     if (data != ctx.Cache->ExportedData.end())
         return std::any_cast<std::string>(data->second);
 
     std::filesystem::create_directories("data/"); // Make sure this directory exists
-    std::string out_path = "data/nvdb_" + medium_name + ".bin";
+    std::string out_path = "data/nvdb_" + medium_name + "_" + grid_name + ".bin";
 
-    if (!NanoVDBLoader::prepare(path, out_path))
+    if (!NanoVDBLoader::prepare(path, grid_name, out_path))
         ctx.signalError();
     else {
-        IG_LOG(L_INFO) << "Created sparse bin buffer file from NVDB File." << std::endl;
+        IG_LOG(L_INFO) << "Created sparse bin buffer file from NVDB " << grid_name << " grid." << std::endl;
     }
     ctx.Cache->ExportedData[exported_id] = out_path;
     return out_path;
@@ -97,18 +97,34 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
         const Vector3f color_blackbody  = mMedium->property("color_blackbody" ).getVector3(Vector3f(0.0f, 0.0f, 0.0f)); //TODO: set defaults according to blender
         const float scalar_blackbody    = std::min(std::max(mMedium->property("scalar_blackbody" ).getNumber(1.0f), 0.0f), 1.0f); //clamped between 0 and 1
         const float scalar_temperature  = mMedium->property("scalar_temperature").getNumber(0.0f);
+        const std::string grid_name_density     = mMedium->property("grid_density").getString("density");
+        const std::string grid_name_temperature = mMedium->property("grid_temperature").getString("none");
 
 #ifdef USE_SPARSE_GRID
-        const auto bin_filename = setup_nvdb_grid(filename, medium_name, input.Tree.context());
+        const auto bin_filename_density     = setup_nvdb_grid(filename, medium_name, grid_name_density, input.Tree.context());
+        //TODO: check if grid_name_temparure is "none", if so, do not load the grid
+        const auto bin_filename_temperature = setup_nvdb_grid(filename, medium_name, grid_name_density, input.Tree.context());
 #else
         const auto bin_filename = setup_uniform_nvdb_grid(filename, medium_name, input.Tree.context());
 #endif
 
-        size_t res_id = input.Tree.context().registerExternalResource(bin_filename);
+        const std::string buffer_name_density     = buffer_name + "_density";
+        const std::string buffer_name_temperature = buffer_name + "_temperature";
+        size_t res_id_density = input.Tree.context().registerExternalResource(bin_filename_density);
+        size_t res_id_temperature = input.Tree.context().registerExternalResource(bin_filename_temperature);
 
         input.Stream << input.Tree.pullHeader()
-            << "  let " << buffer_name    << " = device.load_buffer_by_id(" << res_id << ");" << std::endl
-#ifdef USE_SPARSE_GRID
+            << "  let " << buffer_name_density << " = device.load_buffer_by_id(" << res_id_density << ");" << std::endl;
+
+        if (grid_name_temperature == "none") {
+            input.Stream << input.Tree.pullHeader()
+                << "  let " << buffer_name_temperature << " = Option[DeviceBuffer]::None;" << std::endl;
+        } else {
+            input.Stream << input.Tree.pullHeader()
+                << "  let " << buffer_name_temperature << " = Option[DeviceBuffer]::Some(device.load_buffer_by_id(" << res_id_temperature << "));" << std::endl;
+        }
+        input.Stream << input.Tree.pullHeader()
+        #ifdef USE_SPARSE_GRID
             << "  let " << shader_params  << " = make_principled_volume_parameters("
                                                     << scalar_density << ", "
                                                     << scalar_emission << ", "
@@ -120,7 +136,7 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
                                                     << scalar_temperature
                                                 << ");"  << std::endl
             << "  let " << shader_name    << " = make_principled_volume_shader(" << shader_params << ");" << std::endl
-            << "  let " << volume_name    << " = make_nvdb_volume_f32(" << buffer_name << ", " << shader_name << ");" << std::endl;
+            << "  let " << volume_name    << " = make_nvdb_volume_f32(" << buffer_name_density << ", " << buffer_name_temperature << ", " << shader_name << ");" << std::endl;
 #else
             << "  let " << shader_name    << " = make_simple_volume_shader(1);" << std::endl
             << "  let " << volume_name    << " = make_voxel_grid(" << buffer_name << ", " << shader_name << ");" << std::endl;
