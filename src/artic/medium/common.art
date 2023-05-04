@@ -4,7 +4,7 @@ fn @make_vacuum_medium()-> Medium {
         eval           = @|_, _, _| color_builtins::white,
         eval_inf       = @|_, _| color_builtins::white,
         sample         = @|_, _, _| reject_medium_sample(),
-        pdf            = @|_, _, _| 0,
+        pdf            = @|_, _, _| 1,
         is_homogeneous = true,
         max_scattering = 999999
     }

@@ -1,0 +1,114 @@
+/**
+ * Function that is called when bouncing inside the medium in the volumetric path tracer.
+ * Note: the volume transmittance has to be weighed by the probability of the ray reaching the bounce hit point!
+ * pdf(t > d) = Tr(d)
+ * Meaning, for free flight sampling where the sample is outside the boundaries, the weighted transmittance should be white,
+ * while for a ray that deterministically goes straight through the medium (null-scattering at every bounce, c.f. ratio tracking),
+ * the weighted transmittance is the transmittance itself.
+ */
+fn @onMediumBounce(
+    ctx:           ShadingContext, // shading context
+    rnd:           &mut RndState,  // rnd
+    payload:       RayPayload,     // wrapped payload
+    pt:            VPTRayPayload,  // unwrapped payload
+    framebuffer:   AOVImage,       // frame buffer (necessary to splat the pixel color on absorption/emission)
+    medium_sample: MediumSample,   // medium sample at particle interaction point
+    medium:        Medium,         // the medium in which the event occured
+    out_dir:       Vec3            // the inverse direction of the ray (for sampling the phase function) 
+) -> Option[Ray] {
+
+    // extracing the coefficients from the medium sample
+    let mu_t   = medium_sample.properties.coeff_extinction;
+    let mu_a   = medium_sample.properties.coeff_absorption;
+    let mu_s   = medium_sample.properties.coeff_scattering;
+    let mu_f   = medium_sample.properties.coeff_fictional;
+    let mu_ind = vec3_max_index(color_to_vec3(mu_t));
+    let mu_t_p = color_at(mu_t, mu_ind);
+    let mu_a_p = color_at(mu_a, mu_ind);
+    let mu_s_p = color_at(mu_s, mu_ind);
+
+    // max. extinction coeff is assumed to not be 0 here (as probability of collision with particle is 0 if ext. is 0)
+    let p_a = if mu_a_p <= flt_eps { 0:f32 } else { mu_a_p / mu_t_p };
+    let p_s = if mu_s_p <= flt_eps { 0:f32 } else { mu_s_p / mu_t_p };
+    let p_f = 1 - p_a - p_s;
+
+    let r = randf(rnd);
+
+    if r < p_a {
+        // Absorption event
+        absorption(ctx, pt, framebuffer, mu_a, medium_sample, p_a)
+    } else if r < p_a + p_s {
+        // Scattering event
+        scattering(rnd, payload, pt, mu_s, medium_sample, p_s, medium, out_dir)
+    } else {
+        // null-scattering event
+        null_scattering(payload, pt, mu_f, medium_sample, p_f, ctx.ray.dir)
+    }
+}
+
+
+/**
+ * Handles the absorption event
+ * Ray is terminated, and the emission (if there is any) is added to the ray Color
+ */
+fn @absorption(ctx: ShadingContext, pt: VPTRayPayload, framebuffer: AOVImage, mu_a: Color, medium_sample: MediumSample, prob_absorption: f32) -> Option[Ray] {
+    let emission    = color_mul(mu_a, medium_sample.properties.emitted_radiance); 
+    let new_contrib = color_divf(color_mul(medium_sample.color, emission), prob_absorption); /* weighted with Pdf of absorption/emission event!*/
+
+    framebuffer.splat(ctx.pixel, color_mul(new_contrib, pt.contrib));
+    Option[Ray]::None
+}
+
+/**
+ * Handles the scattering event
+ * Ray is scattered in a direction sampled from the phase function
+ */
+fn @scattering(rnd: &mut RndState, payload: RayPayload, pt: VPTRayPayload, mu_s: Color, medium_sample: MediumSample, prob_scattering: f32, medium: Medium, out_dir: Vec3) -> Option[Ray] {
+    let phase_sample  = medium.phase(medium_sample.pos).sample(rnd, out_dir); // sample new direction
+    let path_contrib  = color_mul(medium_sample.color, color_mulf(color_divf(mu_s, prob_scattering), phase_sample.weight));
+    let contrib       = color_mul(pt.contrib, path_contrib);
+
+    let rr_prob      = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
+
+    if randf(rnd) >= rr_prob {
+        Option[Ray]::None
+    } else {
+        let new_contrib = color_mulf(contrib, 1 / rr_prob);
+        // Notify other parts that the last interaction was a medium
+        let inv_pdf     = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
+        write_vptraypayload(payload, VPTRayPayload {
+            inv_pdf  = inv_pdf,
+            contrib  = new_contrib,
+            depth    = pt.depth,
+            eta      = pt.eta,
+            medium   = pt.medium,
+            voldepth = pt.voldepth + 1
+        });
+        make_option(
+            make_ray(medium_sample.pos, phase_sample.in_dir, 0, flt_max, ray_flag_bounce)
+        )
+    }
+}
+
+/**
+ * Handles the null_scattering event
+ * Ray continues in the same direction
+ */
+fn @null_scattering(payload: RayPayload, pt: VPTRayPayload, mu_f: Color, medium_sample: MediumSample, prob_nullscattering: f32, in_dir: Vec3) -> Option[Ray] {
+    let ls       = color_mul(mu_f, pt.contrib);
+    let contrib  = color_divf(color_mul(medium_sample.color, ls), prob_nullscattering); // weight by  pdf
+
+    let inv_pdf  = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
+
+    write_vptraypayload(payload, VPTRayPayload {
+        inv_pdf  = inv_pdf,
+        contrib  = contrib,
+        depth    = pt.depth,
+        eta      = pt.eta,
+        medium   = pt.medium,
+        voldepth = pt.voldepth
+    });
+    make_option(
+        make_ray(medium_sample.pos, in_dir, 0, flt_max, ray_flag_bounce) // continue in the same direction
+    )
+}

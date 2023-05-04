@@ -5,6 +5,8 @@
 #include "loader/ShadingTree.h"
 #include "shader/ShaderUtils.h"
 
+#include "Logger.h"
+
 namespace IG {
 VolumePathTechnique::VolumePathTechnique(const SceneObject& obj)
     : Technique("volpath")
@@ -42,6 +44,7 @@ void VolumePathTechnique::generateBody(const SerializationInput& input) const
     else
         input.Stream << "  let tech_clamp = registry::get_global_parameter_f32(\"__tech_clamp\", 0);" << std::endl;
 
+    IG_LOG(L_DEBUG) << "Starting volume path renderer with NEE set to " << (mEnableNEE ? "true" : "false") << "." << std::endl;
     ShadingTree tree(input.Context);
     input.Stream << input.Context.Lights->generateLightSelector(mLightSelector, tree)
                  << "  let framebuffer = device.load_aov_image(\"\", " << ShaderUtils::inlineSPI(input.Context) << ");"

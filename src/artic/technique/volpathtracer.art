@@ -1,52 +1,3 @@
-struct VPTRayPayload {
-    inv_pdf:  f32,
-    contrib:  Color,
-    depth:    i32,
-    eta:      f32,
-    medium:   i32,
-    voldepth: i32
-}
-
-fn @write_vptraypayload(payload: RayPayload, vpt: VPTRayPayload) -> () {
-    payload.set(0, vpt.inv_pdf);
-    payload.set(1, vpt.contrib.r);
-    payload.set(2, vpt.contrib.g);
-    payload.set(3, vpt.contrib.b);
-    payload.set(4, vpt.depth as f32);
-    payload.set(5, vpt.eta);
-    payload.set(6, vpt.medium as f32);
-    payload.set(7, vpt.voldepth as f32);
-}
-
-fn @unwrap_vptraypayload(payload: RayPayload) = VPTRayPayload {
-    inv_pdf  = payload.get(0),
-    contrib  = make_color(payload.get(1), payload.get(2), payload.get(3), 1),
-    depth    = payload.get(4) as i32,
-    eta      = payload.get(5),
-    medium   = payload.get(6) as i32,
-    voldepth = payload.get(7) as i32
-};
-
-fn @init_vpt_raypayload(payload: RayPayload) = write_vptraypayload(payload, VPTRayPayload {
-    inv_pdf  = 0,
-    contrib  = color_builtins::white,
-    depth    = 1,
-    eta      = 1,
-    medium   = -1,
-    voldepth = 0
-});
-
-/**
- * Helper function for sampling the volume ONLY if max_scattering has not been reached yet
- */
-fn @sample_volume(medium: Medium, vol_depth: i32, rnd: &mut RndState, start_pos: Vec3, end_pos: Vec3) -> Option[MediumSample] {
-    if vol_depth + 1 > medium.max_scattering {
-        reject_medium_sample()
-    } else {
-        medium.sample(rnd, start_pos, end_pos)
-    }
-}
-
 // TODO: Implement "A null-scattering path integral formulation of light transport", (Miller et. al, 2019)
 fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, media: MediaTable, framebuffer: AOVImage, clamp_value: f32, enable_nee: bool) -> Technique {
     let offset : f32 = 0.001;
@@ -213,122 +164,30 @@ fn @make_volume_path_renderer(max_path_len: i32, light_selector: LightSelector, 
         let pt      = unwrap_vptraypayload(payload);
         let medium  = get_medium(ctx, pt.medium);
         let out_dir = vec3_neg(ctx.ray.dir);
-
         
         if pt.depth + 1 > max_path_len {
             return(Option[Ray]::None)
         }
 
-        // Try sampling the medium
-        if let Option[MediumSample]::Some(medium_sample) = sample_volume(medium, pt.voldepth, rnd, ctx.ray.org, ctx.surf.point) { // differentiate if max-bounces was reached
-
-            //Russian roulette for NEE...?
-
-            let mu_t   = medium_sample.properties.coeff_extinction;
-            let mu_a   = medium_sample.properties.coeff_absorption;
-            let mu_s   = medium_sample.properties.coeff_scattering;
-            let mu_f   = medium_sample.properties.coeff_fictional;
-            let mu_ind = vec3_max_index(color_to_vec3(mu_t));
-            let mu_t_p = color_at(mu_t, mu_ind);
-            let mu_a_p = color_at(mu_a, mu_ind);
-            let mu_s_p = color_at(mu_s, mu_ind);
-
-            // max. extinction coeff is assumed to not be 0 here (as probability of collision with particle is 0 if ext. is 0)
-            let p_a = if mu_a_p <= flt_eps { 0:f32 } else { mu_a_p / mu_t_p };
-            let p_s = if mu_s_p <= flt_eps { 0:f32 } else { mu_s_p / mu_t_p };
-            let p_f = 1 - p_a - p_s;
-
-            let r = randf(rnd);
-            let weighted_ft = medium_sample.color; // corresponds to ft / p(t) in "A null-scattering path integral formulation of light transport", (Miller et. al, 2019).
-            
-            if r < p_a {
-                // Absorption event
-                let albedo        = color_div(mu_a, mu_t);
-                let emission      = color_mul(albedo, medium_sample.properties.emitted_radiance); 
-                let new_contrib   = color_divf(color_mul(weighted_ft, emission), p_a); /* weighted with Pdf of emission event!*/
-
-                framebuffer.splat(ctx.pixel, color_mul(new_contrib, pt.contrib));
-                Option[Ray]::None
-            } else if r < p_a + p_s {
-                // Scattering event
-                let albedo        = color_div(mu_s, mu_t);
-                let phase_sample  = medium.phase(medium_sample.pos).sample(rnd, out_dir); // sample new direction
-                let weighted_lS   = color_mul(albedo, color_mulf(pt.contrib, phase_sample.weight / p_s)); // weight by phase function scatter direction pdf AND pdf of picking a scatter event
-                let contrib       = color_mul(weighted_ft, weighted_lS); 
-
-                let rr_prob      = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
-    
-                if randf(rnd) >= rr_prob {
-                    Option[Ray]::None
-                } else {
-                    let new_contrib = color_mulf(contrib, 1 / rr_prob);
-                    // Notify other parts that the last interaction was a medium
-                    let inv_pdf     = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
-                    write_vptraypayload(payload, VPTRayPayload {
-                        inv_pdf  = inv_pdf,
-                        contrib  = new_contrib,
-                        depth    = pt.depth,
-                        eta      = pt.eta,
-                        medium   = pt.medium,
-                        voldepth = pt.voldepth + 1
-                    });
-                    make_option(
-                        make_ray(medium_sample.pos, phase_sample.in_dir, 0, flt_max, ray_flag_bounce)
-                    )
-                }
-            } else {
-                // null-scattering event
-                let albedo        = color_div(mu_f, mu_t); // = 1 in vacuum
-                let ls            = color_mul(albedo, pt.contrib);
-                let contrib       = color_divf(color_mul(weighted_ft, ls), p_f); // weight by  pdf
-
-                let inv_pdf     = -1:f32; // 1 / (medium_sample.pdf * phase_sample.pdf); // TODO
-
-                write_vptraypayload(payload, VPTRayPayload {
-                    inv_pdf  = inv_pdf,
-                    contrib  = contrib,
-                    depth    = pt.depth,
-                    eta      = pt.eta,
-                    medium   = pt.medium,
-                    voldepth = pt.voldepth
-                });
-                make_option(
-                    make_ray(medium_sample.pos, ctx.ray.dir, 0, flt_max, ray_flag_bounce) // continue in the same direction
-                )
-            }
-
-        } else {
-            
-            //Russian roulette for NEE...?
-
-            // Bounce on surface
+        if pt.voldepth + 1 > medium.max_scattering {
+            // Only account for attenuated background radiance instead of scattering (= deterministically choose null-scattering at every potential event, which is equivalent to estimating the transmittance using ratio tracking).
             if let Option[BsdfSample]::Some(bsdf_sample) = mat.bsdf.sample(rnd, out_dir, false) {
-                let trans       = medium.eval(rnd, ctx.ray.org, ctx.surf.point); // this is (1, 1, 1) in vacuum
-                let vol_contrib = color_mul(trans, pt.contrib);
-                let contrib     = color_mul(vol_contrib, bsdf_sample.color/* Pdf and cosine are already applied!*/);
-                let rr_prob     = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
-                
-                if randf(rnd) >= rr_prob {
-                    Option[Ray]::None
-                } else {
-                    let inv_pdf     = if mat.bsdf.is_specular { 0 } else { 1:f32 / bsdf_sample.pdf };
-                    let new_contrib = color_divf(contrib, rr_prob);
-                    
-                    let is_transmission = math_builtins::signbit(vec3_dot(ctx.surf.local.col(2), bsdf_sample.in_dir));
-                    let (new_medium, newdepth, new_voldepth) = if is_transmission { (mat.interface.pick(ctx.surf.is_entering), pt.depth, 0) } else { (pt.medium, pt.depth + 1, pt.voldepth) };
+                let vol_trans = medium.eval(rnd, ctx.ray.org, ctx.surf.point);
+                return(onSurfaceBounce(ctx, rnd, payload, pt, mat, bsdf_sample, vol_trans, offset))
+            } else {
+                return(Option[Ray]::None)
+            }
+        } 
 
-                    write_vptraypayload(payload, VPTRayPayload {
-                        inv_pdf  = inv_pdf,
-                        contrib  = new_contrib,
-                        depth    = newdepth, //workaround for not counting entering the medium as 1 bounce...
-                        eta      = pt.eta * bsdf_sample.eta,
-                        medium   = new_medium,
-                        voldepth = new_voldepth
-                    });
-                    make_option(
-                        make_ray(ctx.surf.point, bsdf_sample.in_dir, offset, flt_max, ray_flag_bounce)
-                    )
-                }
+        // Next flight estimation
+        if let Option[MediumSample]::Some(medium_sample) = medium.sample(rnd, ctx.ray.org, ctx.surf.point) {
+            // Next Flight returned a distance inside the medium
+            onMediumBounce(ctx, rnd, payload, pt, framebuffer, medium_sample, medium, out_dir)
+        } else {
+            // Next Flight returned a distance outside the medium -> hit the surface
+            if let Option[BsdfSample]::Some(bsdf_sample) = mat.bsdf.sample(rnd, out_dir, false) {
+                let vol_trans = color_builtins::white; // (majorant) Tr(t) / pdf(t > d) = 1
+                onSurfaceBounce(ctx, rnd, payload, pt, mat, bsdf_sample, vol_trans, offset)
             } else {
                 Option[Ray]::None
             }

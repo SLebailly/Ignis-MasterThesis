@@ -1,0 +1,37 @@
+struct VPTRayPayload {
+    inv_pdf:  f32,
+    contrib:  Color,
+    depth:    i32,
+    eta:      f32,
+    medium:   i32,
+    voldepth: i32
+}
+
+fn @write_vptraypayload(payload: RayPayload, vpt: VPTRayPayload) -> () {
+    payload.set(0, vpt.inv_pdf);
+    payload.set(1, vpt.contrib.r);
+    payload.set(2, vpt.contrib.g);
+    payload.set(3, vpt.contrib.b);
+    payload.set(4, vpt.depth as f32);
+    payload.set(5, vpt.eta);
+    payload.set(6, vpt.medium as f32);
+    payload.set(7, vpt.voldepth as f32);
+}
+
+fn @unwrap_vptraypayload(payload: RayPayload) = VPTRayPayload {
+    inv_pdf  = payload.get(0),
+    contrib  = make_color(payload.get(1), payload.get(2), payload.get(3), 1),
+    depth    = payload.get(4) as i32,
+    eta      = payload.get(5),
+    medium   = payload.get(6) as i32,
+    voldepth = payload.get(7) as i32
+};
+
+fn @init_vpt_raypayload(payload: RayPayload) = write_vptraypayload(payload, VPTRayPayload {
+    inv_pdf  = 0,
+    contrib  = color_builtins::white,
+    depth    = 1,
+    eta      = 1,
+    medium   = -1,
+    voldepth = 0
+});

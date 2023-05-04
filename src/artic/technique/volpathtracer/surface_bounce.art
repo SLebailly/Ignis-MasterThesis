@@ -1,0 +1,45 @@
+/**
+ * Function that is called when bouncing on a surface in the volumetric path tracer.
+ * Note: the volume transmittance has to be weighed by the probability of the ray reaching the bounce hit point!
+ * pdf(t > d) = Tr(d)
+ * Meaning, for free flight sampling where the sample is outside the boundaries, the weighted transmittance should be white,
+ * while for a ray that deterministically goes straight through the medium (null-scattering at every bounce, c.f. ratio tracking),
+ * the weighted transmittance is the transmittance itself.
+ */
+fn @onSurfaceBounce(
+    ctx:         ShadingContext, // shading context
+    rnd:         &mut RndState,  // rnd
+    payload:     RayPayload,     // ray payload
+    pt:          VPTRayPayload,  // unwrapped payload
+    mat:         Material,       // material of surface at hit point
+    bsdf_sample: BsdfSample,     // bsdf sample at surface hit point
+    vol_trans:   Color,          // transmittance from ray origin to the surface hitpoint, weighted by PDF of reaching this hit point (pdf = transmittance if free flight, pdf = 1 if single scattering)
+    offset:      f32             // offset of the hitpoint to the actual surface to avoid surface acne
+) -> Option[Ray] {
+
+    let vol_contrib = color_mul(vol_trans, pt.contrib); // T * Lo
+    let contrib     = color_mul(vol_contrib, bsdf_sample.color/* Pdf and cosine are already applied!*/);
+    let rr_prob     = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
+    
+    if randf(rnd) >= rr_prob {
+        return(Option[Ray]::None)
+    } else {
+        let inv_pdf     = if mat.bsdf.is_specular { 0 } else { 1:f32 / bsdf_sample.pdf };
+        let new_contrib = color_divf(contrib, rr_prob);
+        
+        let is_transmission = math_builtins::signbit(vec3_dot(ctx.surf.local.col(2), bsdf_sample.in_dir));
+        let (new_medium, newdepth, new_voldepth) = if is_transmission { (mat.interface.pick(ctx.surf.is_entering), pt.depth, 0) } else { (pt.medium, pt.depth + 1, pt.voldepth) };
+
+        write_vptraypayload(payload, VPTRayPayload {
+            inv_pdf  = inv_pdf,
+            contrib  = new_contrib,
+            depth    = newdepth, //workaround for not counting entering the medium as 1 bounce...
+            eta      = pt.eta * bsdf_sample.eta,
+            medium   = new_medium,
+            voldepth = new_voldepth
+        });
+        return(make_option(
+            make_ray(ctx.surf.point, bsdf_sample.in_dir, offset, flt_max, ray_flag_bounce)
+        ))
+    }
+}

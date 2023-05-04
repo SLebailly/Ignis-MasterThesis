@@ -117,6 +117,9 @@ set(ARTIC_MAIN_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/technique/lightvisibility.art
     ${CMAKE_CURRENT_SOURCE_DIR}/technique/pathtracer.art
     ${CMAKE_CURRENT_SOURCE_DIR}/technique/photonmapper.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/technique/volpathtracer/common.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/technique/volpathtracer/surface_bounce.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/technique/volpathtracer/medium_bounce.art
     ${CMAKE_CURRENT_SOURCE_DIR}/technique/volpathtracer.art
     ${CMAKE_CURRENT_SOURCE_DIR}/technique/wireframe.art
     ${CMAKE_CURRENT_SOURCE_DIR}/texture/brick.art
