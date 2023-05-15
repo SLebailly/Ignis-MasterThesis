@@ -6,7 +6,7 @@
 	},
 	"camera": {
 		"type": "perspective",
-		"fov": 40, 
+		"fov": 40,
 		"near_clip": 0.1,
 		"far_clip": 100,
 		"transform": [ -1,0,0,0, 0,1,0,0, 0,0,-1,4, 0,0,0,1 ]
@@ -34,14 +34,13 @@
 		{
 			"type": "heterogeneous",
 			"name": "Medium",
-			"filename": "nvdb/bunny_cloud2.nvdb",
-			"g": 0.877,
+			"filename": "media/scattering.bin",
+			"g": 0,
+			"interpolate": false,
+			"majorant": [10, 10, 10],
 			"method": "regular",
-			"max_scattering": 3,
-
-			"scalar_density":   100,
-			"color_scattering": [1, 1, 1],
-			"color_absorption": [0.9, 0.9, 0.9]
+			"scalar_density": 10,
+			"max_scattering": 1
 		}
 	]
 }

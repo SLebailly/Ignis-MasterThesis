@@ -42,6 +42,16 @@
 		{"type":"area", "name":"AreaLight", "entity":"AreaLight", "radiance":[100,100,100]}
 	],
 	"media": [
-		{"type": "heterogeneous", "name": "Medium", "filename": "media/scattering.bin", "g": 0, "interpolate": false, "majorant": [1, 1, 1], "method": "delta_tracking", "scalar_density": 1, "max_scattering": 8192 }
+		{
+			"type": "heterogeneous",
+			"name": "Medium",
+			"filename": "media/scattering.bin",
+			"g": 0,
+			"interpolate": false,
+			"majorant": [1, 1, 1],
+			"method": "delta_tracking",
+			"scalar_density": 1,
+			"max_scattering": 8192
+		}
 	]
 }

@@ -1,7 +1,8 @@
 {
 	"technique": {
 		"type": "volpath",
-		"max_depth": 64
+		"max_depth": 64,
+		"nee": false
 	},
 	"camera": {
 		"type": "perspective",
@@ -16,34 +17,41 @@
 	"bsdfs": [
 		{"type":"diffuse", "name": "mat-Light", "reflectance":[0,0,0]},
 		{"type":"diffuse", "name": "mat-GrayWall", "reflectance":[0.8,0.8,0.8]},
-		{"type":"diffuse", "name": "mat-RedWall", "reflectance":[0.8,0,0]},
-		{"type":"diffuse", "name": "mat-GreenWall", "reflectance":[0,0.8,0]},
-		{"type":"diffuse", "name": "mat-BlueWall", "reflectance":[0,0,0.8]},
 		{"type":"diffuse", "name": "mat-ColoredWall", "reflectance":[0.106039, 0.195687, 0.800000]},
 		{"type":"passthrough", "name": "mat-Object"}
 	],
 	"shapes": [
 		{"type":"rectangle", "name":"AreaLight", "flip_normals":true, "transform": [0, 0.084366, -0.053688, -0.7, 0, 0.053688, 0.084366, 0.1, 0.1, 0, 0, 0, 0, 0, 0, 1]},
 		{"type":"external", "name":"Bottom", "filename":"meshes/Bottom.ply"},
-		{"type":"external", "name":"Top", "filename":"meshes/Top.ply"},
+		//{"type":"external", "name":"Top", "filename":"meshes/Top.ply"},
 		{"type":"external", "name":"Left", "filename":"meshes/Left.ply"},
 		{"type":"external", "name":"Right", "filename":"meshes/Right.ply"},
 		{"type":"external", "name":"Back", "filename":"meshes/Back.ply"},
-		{"type":"external", "name":"Object", "filename":"meshes/Cube2.obj", "face_normals": true, "transform": {"scale": 0.4, "translate": [0,-1.0,0]} }
+		{"type":"external", "name":"Object", "filename":"meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [0.29, 0.4, 0.338], "translate": [0,-1.4,0]} }
 	],
 	"entities": [
 		{"name":"AreaLight", "shape":"AreaLight", "bsdf":"mat-Light"},
 		{"name":"Bottom","shape":"Bottom", "bsdf":"mat-GrayWall"},
-		{"name":"Top","shape":"Top", "bsdf":"mat-GrayWall"},
-		{"name":"Left","shape":"Left", "bsdf":"mat-RedWall"},
-		{"name":"Right","shape":"Right", "bsdf":"mat-BlueWall"},
-		{"name":"Back","shape":"Back", "bsdf":"mat-GreenWall"},
-		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium", "shadow_visible": false}
+		//{"name":"Top","shape":"Top", "bsdf":"mat-GrayWall"},
+		{"name":"Left","shape":"Left", "bsdf":"mat-ColoredWall"},
+		{"name":"Right","shape":"Right", "bsdf":"mat-ColoredWall"},
+		{"name":"Back","shape":"Back", "bsdf":"mat-GrayWall"},
+		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium",  "shadow_visible": false}
 	],
 	"lights": [
-		{"type":"area", "name":"AreaLight", "entity":"AreaLight", "radiance":[100,100,100]}
+		{"type":"sky", "name":"Sky"},
+		{"type":"sun", "name":"Sun", "direction":[0.4082482904638631,0.4082482904638631,0.8164965809277261]}
+		//{"type":"area", "name":"AreaLight", "entity":"AreaLight", "radiance":[100,100,100]}
 	],
 	"media": [
-		{"type": "vacuum", "name": "Medium", "filename": "media/vaccuum.bin", "g": 0, "interpolate": false, "majorant": [0.1, 0.1, 0.1], "method": "delta_tracking", "scalar_density": 1, "max_scattering": 3 }
+		{
+			"type": "heterogeneous",
+			"name": "Medium",
+			"filename": "media/vaccuum.bin",
+			"g": 0,
+			"interpolate": false,
+			"method": "delta_tracking"
+
+		}
 	]
 }
