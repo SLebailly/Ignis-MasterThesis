@@ -14,6 +14,11 @@ namespace IG {
 #ifdef USE_SPARSE_GRID
 static std::string setup_nvdb_grid(const std::filesystem::path path, const std::string medium_name, const std::string grid_name, LoaderContext& ctx)
 {
+
+    if (grid_name == "none") {
+        return "";
+    }
+
     const std::string exported_id = medium_name + "_" + grid_name + "_nvdb";
 
     const auto data = ctx.Cache->ExportedData.find(exported_id);
@@ -103,7 +108,7 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
 #ifdef USE_SPARSE_GRID
         const auto bin_filename_density     = setup_nvdb_grid(filename, medium_name, grid_name_density, input.Tree.context());
         //TODO: check if grid_name_temparure is "none", if so, do not load the grid
-        const auto bin_filename_temperature = setup_nvdb_grid(filename, medium_name, grid_name_density, input.Tree.context());
+        const auto bin_filename_temperature = setup_nvdb_grid(filename, medium_name, grid_name_temperature, input.Tree.context());
 #else
         const auto bin_filename = setup_uniform_nvdb_grid(filename, medium_name, input.Tree.context());
 #endif
@@ -111,7 +116,6 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
         const std::string buffer_name_density     = buffer_name + "_density";
         const std::string buffer_name_temperature = buffer_name + "_temperature";
         size_t res_id_density = input.Tree.context().registerExternalResource(bin_filename_density);
-        size_t res_id_temperature = input.Tree.context().registerExternalResource(bin_filename_temperature);
 
         input.Stream << input.Tree.pullHeader()
             << "  let " << buffer_name_density << " = device.load_buffer_by_id(" << res_id_density << ");" << std::endl;
@@ -120,6 +124,7 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
             input.Stream << input.Tree.pullHeader()
                 << "  let " << buffer_name_temperature << " = Option[DeviceBuffer]::None;" << std::endl;
         } else {
+            size_t res_id_temperature = input.Tree.context().registerExternalResource(bin_filename_temperature);
             input.Stream << input.Tree.pullHeader()
                 << "  let " << buffer_name_temperature << " = Option[DeviceBuffer]::Some(device.load_buffer_by_id(" << res_id_temperature << "));" << std::endl;
         }

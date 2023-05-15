@@ -15,6 +15,11 @@ namespace IG {
 
 bool NanoVDBLoader::prepare(const std::filesystem::path& in_nvdb, const std::string gridName, const std::filesystem::path& out_data)
 {
+    if (!nanovdb::io::hasGrid(in_nvdb.u8string(), gridName)) {
+        IG_LOG(L_ERROR) << "No grid found for grid name " << gridName << "." << std::endl;
+        return false;
+    }
+
     auto handle   = nanovdb::io::readGrid(in_nvdb.u8string(), gridName);
     uint8_t* data = handle.data(); // Returns a non-const pointer to the data
     uint64_t size = handle.size(); // Returns the size in bytes of the raw memory buffer
