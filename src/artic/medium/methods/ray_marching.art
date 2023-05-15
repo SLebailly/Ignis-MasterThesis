@@ -78,8 +78,6 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
      * Evaluates the transmittance between two points in the medium
      */
     fn @eval_tr(p_start: Vec3, p_end: Vec3) -> Color {
-
-
         let loc_start  = vec3_clamp(pms.to_normalized_point(p_start), loc_min, loc_max);
         let loc_end    = vec3_clamp(pms.to_normalized_point(p_end),   loc_min, loc_max);
         let dir_u      = vec3_sub(p_end, p_start);
@@ -131,7 +129,7 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
             // determine position, transmittance and pdf based on previous calculations
             let pos   = vec3_add(p_start, vec3_mulf(dir_norm, dist));
             let trans = optical_thickness_to_transmittance(opt);
-            let pdf   = sampled_value_tr;
+            let pdf   = sampled_value_tr * vec3_min_value(color_to_vec3(props.coeff_extinction));
 
             make_medium_sample(pos, pdf, color_divf(trans, pdf), props)
         },

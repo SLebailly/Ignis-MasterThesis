@@ -89,6 +89,7 @@ set(ARTIC_MAIN_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/methods/delta_tracking.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/methods/ray_marching.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/methods/regular_tracking.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/methods/spectral_delta_tracking.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/shaders/common.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/shaders/principled_volume.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/shaders/simple_volume.art

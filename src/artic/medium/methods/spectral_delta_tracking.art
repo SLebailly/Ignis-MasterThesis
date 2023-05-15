@@ -134,13 +134,13 @@ fn @make_spectral_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSe
             /*
             cf. J. Novak - Monte Carlo Methods for Volumetric Light Transport Simulation (4. Distance Sampling):
             "The distance distribution strictly adheres to the Beer-Lambert law, i.e. it has a PDF proportional to the transmittance along the given ray"
-            => pdf = transmittance
+            => pdf = transmittance * mu_t
             */
 
             // determine position, transmittance and pdf based on previous calculations
             let pos   = vec3_add(p_start, vec3_mulf(dir_norm, dist));
             let trans = optical_thickness_to_transmittance(opt);
-            let pdf   = sampled_value_tr;
+            let pdf   = sampled_value_tr * vec3_max_value(color_to_vec3(props.coeff_extinction));
 
             make_medium_sample(pos, pdf, color_divf(trans, pdf), props)
         },

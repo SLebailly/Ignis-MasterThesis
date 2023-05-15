@@ -34,6 +34,9 @@ fn @make_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxel
             let emission = vec3_to_color(buffer.load_vec3(4 + (BUFFER_VOXEL_SIZE*i) + 8));
     
             (shader.volume_properties(make_simple_volume_voxel_value(sigma_a, sigma_s, emission)), 1)
+        },
+        sparse_maj_at_indx = @|_i, _j, _k, _min_dim| {
+            (majorant, width)
         }
     };
 
@@ -55,6 +58,9 @@ fn @make_debug_voxel_grid(buffer: DeviceBuffer, _shader: VolumeShader[SimpleVolu
             let sigma = make_color((x as f32 * scalar)  / (width as f32), (y as f32  * scalar)/ (height as f32), (z as f32  * scalar) / (depth as f32), 1:f32);
     
             (shader.volume_properties(make_simple_volume_voxel_value(sigma, sigma, sigma)), 1)
+        },
+        sparse_maj_at_indx = @|_i, _j, _k, _min_dim| {
+            (color_builtins::white, width)
         }
     };
 
@@ -70,6 +76,9 @@ fn @make_vacuum_voxel_grid(majorant: f32) -> Volume {
     fn @access_data() = VolumeAccessor {
         properties_at_indx = @|_x, _y, _z| {
             (make_vacuum_volume_properties(), 1)
+        },
+        sparse_maj_at_indx = @|_i, _j, _k, _min_dim| {
+            (make_gray_color(majorant), width)
         }
     };
 

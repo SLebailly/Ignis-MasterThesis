@@ -105,6 +105,22 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
                 let (value_t, path_t_option) = cache_path_get_value_temperature_option(i, j, k);
                 let min_dim = lowest_path_dim_option(path_d, path_t_option);
                 (principled_volume_shader.volume_properties(make_principled_volume_values(value_d, value_t)), min_dim)
+            },
+            sparse_maj_at_indx = @|i, j, k, maj_dim| {
+                //TODO: potentially cache the access path for later reuse
+                let (accessor_d, _path_d) = top_down_access(tree_density, (i, j, k), maj_dim);
+                let maj_d                 = accessor_d.get_maximum();
+                
+                let (maj_t, min_dim) = if let Option[NanoVDBTree[f32, f32]]::Some(tree_temperature) = tree_temperature_option {
+                    let (accessor_t, _path_t) = top_down_access(tree_temperature, (i, j, k), maj_dim);
+                    let maj_t                 = accessor_t.get_maximum();
+                    (maj_t, min(accessor_d.dimension, accessor_t.dimension))
+                } else {
+                    (maj_d, accessor_d.dimension)
+                };
+        
+                let maj_props = principled_volume_shader.volume_properties(make_principled_volume_values(maj_d, maj_t));
+                (maj_props.coeff_extinction, min_dim)
             }
         }
     }

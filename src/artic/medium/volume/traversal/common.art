@@ -6,6 +6,8 @@ struct PathSegment {
     local_properties: VolumeProperties
 }
 
+fn @make_path_segment(distance: f32, local_properties: VolumeProperties) = PathSegment { distance = distance, local_properties = local_properties };
+
 /*
  * A structure supporting the traversal of a volume in a certain direction by splitting the ray into segments of homogeneous properties
  */

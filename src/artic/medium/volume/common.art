@@ -15,7 +15,8 @@ struct VolumeProperties {
 
 // struct allowing access to the properties of each voxel (may enhance random access through top down/bottom up traversal whenever possible)
 struct VolumeAccessor{
-    properties_at_indx: fn (/* i */ i32, /* j */ i32, /* k */ i32) -> (/* properties */ VolumeProperties, /* sparse voxel dimension */ i32)
+    properties_at_indx: fn (/* i */ i32, /* j */ i32, /* k */ i32) -> (/* properties */ VolumeProperties, /* sparse voxel dimension */ i32),
+    sparse_maj_at_indx: fn (/* i */ i32, /* j */ i32, /* k */ i32, /* max sparse dimension */ i32) -> (/* majorant extinction */ Color, /* sparse voxel dimension */ i32)
 }
 
 // struct containing all the necessary data for a volume
@@ -42,7 +43,7 @@ struct Volume {
 fn @homogenize_nullscattering_properties(properties: VolumeProperties, homogenized_extinction: Color) -> VolumeProperties {
 
     let coeff_fictional  = color_sub(homogenized_extinction, properties.coeff_extinction);
-/*
+
     if (coeff_fictional.r < 0 || coeff_fictional.g < 0 || coeff_fictional.b < 0) {
         print_string("Homogenized extinction ");
         print_color(homogenized_extinction);
@@ -51,7 +52,7 @@ fn @homogenize_nullscattering_properties(properties: VolumeProperties, homogeniz
         print_nl();
         print_flush();
     }
-*/
+
     VolumeProperties {
         coeff_scattering = properties.coeff_scattering,
         coeff_absorption = properties.coeff_absorption,

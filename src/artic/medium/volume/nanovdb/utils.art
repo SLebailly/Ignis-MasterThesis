@@ -11,14 +11,20 @@ static LOG2CHILDREN_LOWER = LOG2DIM_LOWER + LOG2DIM_LEAF;
 static LOG2CHILDREN_UPPER = LOG2DIM_UPPER + LOG2CHILDREN_LOWER;
 
 // how many potential voxels a node can contain (!= children) in each dimension
-static DIM_VOXEL  = 1:u32 << LOG2DIM_VOXEL;      // 2^0 = 1
-static DIM_LEAF   = 1:u32 << LOG2CHILDREN_LEAF;  // 2^3 = 8
-static DIM_LOWER  = 1:u32 << LOG2CHILDREN_LOWER; // 2^(3+4) = 2^7 = 128
-static DIM_UPPER  = 1:u32 << LOG2CHILDREN_UPPER; // 2^(3+4+5) = 2^12 = 4096
+static DIM_VOXEL_U32  = 1:u32 << LOG2DIM_VOXEL;      // 2^0 = 1
+static DIM_LEAF_U32   = 1:u32 << LOG2CHILDREN_LEAF;  // 2^3 = 8
+static DIM_LOWER_U32  = 1:u32 << LOG2CHILDREN_LOWER; // 2^(3+4) = 2^7 = 128
+static DIM_UPPER_U32  = 1:u32 << LOG2CHILDREN_UPPER; // 2^(3+4+5) = 2^12 = 4096
 
-static MASK_LEAF  = DIM_LEAF  as u64 - 1:u64; // 0[...]00000111
-static MASK_LOWER = DIM_LOWER as u64 - 1:u64; // 0[...]01111111
-static MASK_UPPER = DIM_UPPER as u64 - 1:u64; // 
+static DIM_VOXEL  = DIM_VOXEL_U32 as i32; // 2^0 = 1
+static DIM_LEAF   = DIM_LEAF_U32  as i32;  // 2^3 = 8
+static DIM_LOWER  = DIM_LOWER_U32 as i32; // 2^(3+4) = 2^7 = 128
+static DIM_UPPER  = DIM_UPPER_U32 as i32; // 2^(3+4+5) = 2^12 = 4096
+
+static MASK_LEAF  = DIM_LEAF_U32  as u64 - 1:u64; // 0[...]00000111
+static MASK_LOWER = DIM_LOWER_U32 as u64 - 1:u64; // 0[...]01111111
+static MASK_UPPER = DIM_UPPER_U32 as u64 - 1:u64; // 
+
 
 
 
@@ -94,6 +100,9 @@ fn @leaf_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
  * dimesion: 1 = not sparse, 8 = leaf is sparse, 128 = lower internal node is sparse, 4096 = upper internal node is sparse
  */
 fn @indx_to_sparse_index((i: i32, j: i32, k: i32), dimension: i32) -> (/* i */ i32, /* j */ i32, /* k */ i32) {
+    if (dimension > DIM_UPPER) {
+        return((0, 0:i32, 0:i32))
+    }
     let mask = !(dimension - 1:i32);
     (i & mask, j & mask, k & mask)
 }

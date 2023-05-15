@@ -119,6 +119,7 @@ struct InternalTileAccessor[ValueT] {
 
 struct InternalNodeAccessor[ValueT, StatsT] {
     //get_flags:    fn () -> u64,
+    get_bounds:   fn () -> BBox,
     get_minimum:  fn () -> ValueT,
     get_maximum:  fn () -> ValueT,
     get_average:  fn () -> StatsT,
@@ -150,6 +151,15 @@ struct NanoVDBTree[ValueT, StatsT] {
     access_upper_node: fn (/* data_address */ i32) -> InternalNodeAccessor[ValueT, StatsT],
     access_lower_node: fn (/* data_address */ i32) -> InternalNodeAccessor[ValueT, StatsT],
     access_leaf_node:  fn (/* data_address */ i32) -> LeafNodeAccessor[ValueT, StatsT]
+}
+
+struct GenericNodeAccessor[ValueT] {
+    get_minimum:  fn () -> ValueT,
+    get_maximum:  fn () -> ValueT,
+    get_value:    fn () -> ValueT,
+    //get_bounds:   Option[fn () -> BBox],
+    is_sparse:    bool,
+    dimension:    i32
 }
 
 fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_size: i32, read_value: fn (/* buffer */ DeviceBuffer, /* index */ i32) -> ValueT, read_stats: fn (/* buffer */ DeviceBuffer, /* index */ i32) -> StatsT) -> NanoVDBTree[ValueT, StatsT] {
@@ -318,10 +328,22 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
         let tiles_address = align_32(data_address + 24 + 8 + (2 * size_of_mask) + value_size + value_size + stats_size + stats_size); // Upper: align_32(data_address + 8240) // 832 -> 9088 (=2380Hex)
 
         InternalNodeAccessor[ValueT, StatsT] {
-            get_minimum  = @|| read_value(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask))),
-            get_maximum  = @|| read_value(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask) + value_size)),
-            get_average  = @|| read_stats(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask) + value_size + value_size)),
-            get_std_devi = @|| read_stats(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask) + value_size + value_size + stats_size)),
+            get_bounds   = @| | make_bbox(
+                                    make_vec3(
+                                        buffer.load_f32(convert_address(data_address)),
+                                        buffer.load_f32(convert_address(data_address + 4)),
+                                        buffer.load_f32(convert_address(data_address + 8)),
+                                    ),
+                                    make_vec3(
+                                        buffer.load_f32(convert_address(data_address + 12)),
+                                        buffer.load_f32(convert_address(data_address + 16)),
+                                        buffer.load_f32(convert_address(data_address + 20)),
+                                    )
+                                ),
+            get_minimum  = @| | read_value(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask))),
+            get_maximum  = @| | read_value(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask) + value_size)),
+            get_average  = @| | read_stats(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask) + value_size + value_size)),
+            get_std_devi = @| | read_stats(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask) + value_size + value_size + stats_size)),
 
             tile_has_value    = @|n| check_mask(buffer, data_address + 32, n),
             tile_has_children = @|n| check_mask(buffer, data_address + 32 + size_of_mask, n),

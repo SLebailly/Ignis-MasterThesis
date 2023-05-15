@@ -119,14 +119,14 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
             dist = math_builtins::fmax[f32](0.0001, dist);//TODO: potentially lower eps
 
             // reject samples if the optical thickness is black (no transmittance) or if leaving the medium/hitting another object before interacting with the medium
-            if is_black_eps(opt, 1e-3) { return(reject_medium_sample()) }
+            //if is_black_eps(opt, 1e-3) { return(reject_medium_sample()) }
             if max_dist - dist <= flt_eps { return(reject_medium_sample()) }
 
 
             /*
             cf. J. Novak - Monte Carlo Methods for Volumetric Light Transport Simulation (4. Distance Sampling):
             "The distance distribution strictly adheres to the Beer-Lambert law, i.e. it has a PDF proportional to the transmittance along the given ray"
-            => pdf = transmittance
+            => pdf = transmittance * mu_t
             */
 
             // determine position, transmittance and pdf based on previous calculations
