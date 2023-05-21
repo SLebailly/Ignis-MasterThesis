@@ -7,8 +7,12 @@ fn @make_dda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: boo
 
     let accessor = volume.access_data();
 
-    let (indx_x, indx_y, indx_z) = volume.coord_to_indx(origin);
-    
+    let lower = make_vec3(0.00001, 0.00001, 0.00001);
+    let upper = make_vec3(0.99999, 0.99999, 0.99999);
+    let clamped_origin = vec3_min(vec3_max(origin, lower), upper);
+    let (indx_x, indx_y, indx_z) = volume.coord_to_indx(clamped_origin);
+
+
     let (lower_bounds, upper_bounds) = volume.bounds(indx_x, indx_y, indx_z, 1);
 
     // can be negative (depending on direction)
@@ -32,7 +36,7 @@ fn @make_dda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: boo
     let mut m_indx_y = indx_y;
     let mut m_indx_z = indx_z;
 
-    let mut m_t_max   = vec3_abs(vec3_safediv(vec3_sub(next_vxl_bounds, origin), ndir));
+    let mut m_t_max   = vec3_abs(vec3_safediv(vec3_sub(next_vxl_bounds, clamped_origin), ndir));
     let mut m_t_total = 0:f32;
 
     VolumeMarcher {
@@ -93,6 +97,109 @@ fn @make_dda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: boo
         
             // return
             (segment, new_t_total)
+        }
+    }
+}
+
+
+fn @make_majorant_dda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: bool, dim: i32, max_dist: f32) -> VolumeMarcher {
+
+    let accessor = volume.access_data();
+
+    let lower = make_vec3(0.0001, 0.0001, 0.0001);
+    let upper = make_vec3(0.9999, 0.9999, 0.9999);
+    let clamped_origin = vec3_min(vec3_max(origin, lower), upper);
+
+    let (vxl_indx_x, vxl_indx_y, vxl_indx_z) = volume.coord_to_indx(clamped_origin);
+    let (indx_x, indx_y, indx_z) = volume.to_sparse_indx(vxl_indx_x, vxl_indx_y, vxl_indx_z, dim);
+
+    let (lower_bounds, upper_bounds) = volume.bounds(indx_x, indx_y, indx_z, dim);
+
+    // can be negative (depending on direction)
+    let (step_x, next_bounds_x) = if (ndir.x > flt_eps) { (dim, upper_bounds.x) } else { (-dim, lower_bounds.x) };
+    let (step_y, next_bounds_y) = if (ndir.y > flt_eps) { (dim, upper_bounds.y) } else { (-dim, lower_bounds.y) };
+    let (step_z, next_bounds_z) = if (ndir.z > flt_eps) { (dim, upper_bounds.z) } else { (-dim, lower_bounds.z) };
+
+    let next_vxl_bounds = make_vec3(next_bounds_x, next_bounds_y, next_bounds_z);
+
+    let t_delta = vec3_mulf(vec3_abs(
+        vec3_safediv(
+            volume.voxel_dimensions,
+            ndir
+        )
+    ), dim as f32);
+
+
+    /**
+     * Variables that change during iteration
+     */
+    let mut m_indx_x = indx_x;
+    let mut m_indx_y = indx_y;
+    let mut m_indx_z = indx_z;
+
+    let mut m_t_max     = vec3_abs(vec3_safediv(vec3_sub(next_vxl_bounds, clamped_origin), ndir));
+    let mut m_t_max_min = vec3_min_value(m_t_max);
+    let mut m_t_total   = 0:f32;
+
+    VolumeMarcher {
+        has_next     = @|| {
+            m_t_total <= max_dist + flt_eps
+        },
+        next_segment = @|| {
+            let (new_x, new_y, new_z, new_t_max) = if m_t_max.x < m_t_max.y {
+                if m_t_max.x < m_t_max.z {
+                    (
+                        m_indx_x + step_x,
+                        m_indx_y,
+                        m_indx_z,
+                        vec3_add(m_t_max, make_vec3(t_delta.x, 0, 0))
+                    )
+                } else {
+                    (
+                        m_indx_x,
+                        m_indx_y,
+                        m_indx_z + step_z,
+                        vec3_add(m_t_max, make_vec3(0, 0, t_delta.z))
+                    )
+                }
+            } else {
+                if m_t_max.y < m_t_max.z {
+                    (
+                        m_indx_x,
+                        m_indx_y + step_y,
+                        m_indx_z,
+                        vec3_add(m_t_max, make_vec3(0, t_delta.y, 0))
+                    )
+                } else {
+                    (
+                        m_indx_x,
+                        m_indx_y,
+                        m_indx_z + step_z,
+                        vec3_add(m_t_max, make_vec3(0, 0, t_delta.z))
+                    )
+                }
+            };
+        
+            let new_t_total = math_builtins::fmin(m_t_max_min, max_dist);
+            let t           = new_t_total - m_t_total;
+
+            let (local_maj, _local_dim) = accessor.sparse_maj_at_indx(m_indx_x, m_indx_y, m_indx_z, dim);
+
+            let segment = PathSegment {
+                distance       = t,
+                local_properties = homogenize_nullscattering_properties(make_vacuum_volume_properties(), local_maj)
+            };
+
+            // adapt mutable variables
+            m_indx_x   = new_x;
+            m_indx_y   = new_y;
+            m_indx_z   = new_z;
+            m_t_max    = new_t_max;
+            m_t_total  = m_t_max_min;
+            m_t_max_min = vec3_min_value(m_t_max);
+        
+            // return
+            (segment, m_t_total)
         }
     }
 }

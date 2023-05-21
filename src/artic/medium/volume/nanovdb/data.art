@@ -138,7 +138,7 @@ struct LeafNodeAccessor[ValueT, StatsT] {
     get_average:  fn () -> StatsT,
     get_std_devi: fn () -> StatsT,
     
-    tile_has_value:    fn (/* n */ i32) -> bool,
+    tile_has_value: fn (/* n */ i32) -> bool,
 
     //is_active:    fn (/* n */ i32) -> bool,
     get_value:    fn (/* n */ i32) -> ValueT
@@ -346,7 +346,9 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
             get_std_devi = @| | read_stats(buffer, convert_address(data_address + 24 + 8 + (2 * size_of_mask) + value_size + value_size + stats_size)),
 
             tile_has_value    = @|n| check_mask(buffer, data_address + 32, n),
-            tile_has_children = @|n| check_mask(buffer, data_address + 32 + size_of_mask, n),
+            tile_has_children = @|n| {
+                check_mask(buffer, data_address + 32 + size_of_mask, n)
+            },
 
             access_tile =  @|n| {
                 let tile_address = tiles_address + (n * internal_tile_size);

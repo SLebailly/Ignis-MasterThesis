@@ -12,7 +12,7 @@ static CLAMP_MIN_DISTANCE   = 0.00001; // enforces a minimum distance to be step
 //      - Good question! Look for answers in papers
 // Question 2: How to determine transmittance at sampled point?
 //      - Calculation of transmittance is not defined in this method (at least not necessarily) but CAN be used as a stepwise function: cf. J. Novak - "Residual Ratio Trakcing for Estimating Attenuation in Participating Media" 2.3 Free-flight Sampling & Delta Tracking
-fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, _interpolate: bool, max_scattering: i32) -> Medium {
+fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, _interpolate: bool, max_scattering: i32, majorant_dimension: i32) -> Medium {
 
 
     // the values that will be used for clamping the local coordinates
@@ -21,34 +21,18 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
 
     let accessor = volume.access_data(); // storing the accessor at this level to be able to leverage bottom-up traversal for nvdb trees
 
-    fn @get_majorant_segment_local(lpos: Vec3, lndir: Vec3, scale: f32) -> (Color, f32) {
-        let cl_pos       = vec3_clamp(lpos, loc_min, loc_max);
-        let (i, j, k)    = volume.coord_to_indx(cl_pos);
-        let (maj, dim)   = accessor.sparse_maj_at_indx(i, j, k, 4096);
-        let (si, sj, sk) = indx_to_sparse_index((i, j, k), dim);
-        let (min, max)   = volume.bounds(si, sj, sk, dim);
 
-        let ray  = make_ray(lpos, lndir, 0, flt_max, 0);
-        let dist = intersect_ray_box_single(make_default_min_max(), false, ray, make_bbox(min, max));
-
-        if let Option[f32]::Some(t) = dist {
-            (maj, t * scale)
-        } else {
-            (maj, flt_max)
-        }
-
-    }
-
-    fn @sample_distance_local_2(rnd: &mut RndState, lpos: Vec3, lndir: Vec3, scale: f32) -> (/* dist */ f32, /* majorant */ Color, /* pdf */ f32) {
+    fn @sample_distance_local(rnd: &mut RndState, lpos: Vec3, lndir: Vec3, scale: f32, max_dist: f32) -> (/* dist */ f32, /* majorant */ Color, /* pdf */ f32) {
         // sample value of transmittance (uniformly)
         let sampled_value_tr = sample_transmittance_uniform(rnd); // = 1:f32 - (randf(rnd) * 0.99999)
 
-        let dda = make_majorant_dda_marcher(lpos, lndir, volume, false, 4096);
+        //let dda = make_dda_marcher(lpos, lndir, volume, false);
+        let dda = make_majorant_dda_marcher(lpos, lndir, volume, false, majorant_dimension, max_dist / scale);
         let mut majorant      = color_builtins::black;
         let mut sampled_dist  = flt_max;
         let mut majorant_dist = 0:f32;
         let mut mu_t_p        = 1:f32;
-
+        
         while dda.has_next() && sampled_dist > majorant_dist {
             let (segment, local_dist) = dda.next_segment();
 
@@ -65,42 +49,6 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
         (sampled_dist, majorant, sampled_value_tr * mu_t_p)
     }
 
-    fn @_sample_distance_local(rnd: &mut RndState, lpos: Vec3, lndir: Vec3, scale: f32) -> (/* dist */ f32, /* majorant */ Color, /* pdf */ f32) {
-        // sample value of transmittance (uniformly)
-        let sampled_value_tr = sample_transmittance_uniform(rnd); // = 1:f32 - (randf(rnd) * 0.99999)
-
-        let ray  = make_ray(lpos, lndir, 0, flt_max, 0);
-        let max_dist_opt = intersect_ray_box_single(make_default_min_max(), false, ray, make_bbox(make_vec3(0, 0, 0), make_vec3(1, 1, 1)));
-        let max_dist = if let Option[f32]::Some(max_dist_) = max_dist_opt { max_dist_  * scale } else { 0:f32 };
-
-        let max = volume.get_majorant_extinction(lpos, lndir);
-        let (mut maj, mut segment_dist) = (max, flt_max);//get_majorant_segment_local(vec3_clamp(lpos, loc_min, loc_max), lndir, scale);
-        let mut mu_t_p = vec3_max_value(color_to_vec3(maj));
-        let mut sampled_dist      = if mu_t_p < flt_eps { flt_max } else { - math_builtins::log(sampled_value_tr) / mu_t_p };
-
-        let mut counter = 0;
-
-        while sampled_dist > segment_dist && segment_dist < max_dist {
-            let (new_maj, new_segment_dist) = get_majorant_segment_local(vec3_clamp(vec3_add(lpos, vec3_mulf(lndir, segment_dist + 0.001)), loc_min, loc_max), lndir, scale);
-            maj    = vec3_to_color(vec3_max(color_to_vec3(new_maj), color_to_vec3(maj)));
-            mu_t_p = vec3_max_value(color_to_vec3(maj));
-            segment_dist = segment_dist + new_segment_dist;
-            sampled_dist = if mu_t_p < flt_eps { flt_max } else { - math_builtins::log(sampled_value_tr) / mu_t_p };
-            counter += 1;
-        }
-
-        //print_string("Found majorant after ");
-        //print_i32(counter);
-        //print_string(" iterations.\n");
-        //print_string("Max dist: ");
-        //print_f32(max_dist);
-        //print_string(", segment dist: ");
-        //print_f32(segment_dist);
-        //print_nl();
-
-        (sampled_dist, maj, sampled_value_tr * mu_t_p)
-    }
-
     /**
      * Samples the next Medium interaction (distribution of samples proportional to (majorant) Transmittance along the ray)
      */
@@ -110,6 +58,10 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
         let l_start = pms.to_normalized_point(p_start);
         let l_end   = pms.to_normalized_point(p_end);
 
+        if (l_start.x < -0.0001 || l_start.y < -0.0001 || l_start.z < -0.0001 || l_start.x > 1.0001 || l_start.y > 1.0001 || l_start.z > 1.0001) {
+            return(reject_medium_sample())
+        }
+
         // directions
         let dir        = vec3_sub(p_end, p_start);
         let max_dist   = vec3_len(dir);
@@ -118,24 +70,13 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
         let l_max_dist = vec3_len(l_dir);
         let l_n_dir    = vec3_divf(l_dir, l_max_dist);
 
-        /*
-        let cl_start = vec3_clamp(l_start, loc_min, loc_max);
-        let mu_t     = volume.get_majorant_extinction(cl_start, l_n_dir);
-        let mu_t_p   = vec3_max_value(color_to_vec3(mu_t));
 
-        // sample value of transmittance (uniformly)
-        let sampled_value_tr = sample_transmittance_uniform(rnd); // = 1:f32 - (randf(rnd) * 0.99999)
-        // transform the sampled value of transmittance to its corresponding optical thicknes (easier on computation for the iterator)
-        let sampled_value_opt = - math_builtins::log(sampled_value_tr); // tr = e^(-opt) <=> opt = - log(tr)
-        let sampled_dist      = if mu_t_p < flt_eps { flt_max } else { sampled_value_opt / mu_t_p };
-        */
-        let (sampled_dist, mu_t, pdf) = sample_distance_local_2(rnd, l_start, l_n_dir, max_dist / l_max_dist);
+        let (sampled_dist, mu_t, pdf) = sample_distance_local(rnd, l_start, l_n_dir, max_dist / l_max_dist, max_dist);
         if sampled_dist >= max_dist {
             reject_medium_sample()
         } else {
             let maj_opt = color_mulf(mu_t, sampled_dist);
             let maj_tr  = optical_thickness_to_transmittance(maj_opt);
-            //let pdf     = mu_t_p * sampled_value_tr; // = transmittance * mu_t
             let pos     = vec3_add(p_start, vec3_mulf(n_dir, sampled_dist));
             let (props, _dim)  = accessor.properties_at_indx(volume.coord_to_indx(pms.to_normalized_point(pos)));
 

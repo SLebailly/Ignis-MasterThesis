@@ -2,7 +2,7 @@ fn @make_heterogeneous_medium(ctx: ShadingContext, pms: PointMapperSet, volume: 
     //TODO: implement more methods and  add variable to pick between them
     //make_regular_tracking_medium(ctx, pms, volume, phase, interpolate, max_scattering)
     //make_ray_marching_medium(ctx, pms, volume, phase, interpolate, max_scattering, 0.001)
-    make_delta_tracking_medium(ctx, pms, volume, phase, interpolate, max_scattering)
+    make_delta_tracking_medium(ctx, pms, volume, phase, interpolate, max_scattering, 8)
 }
 
 

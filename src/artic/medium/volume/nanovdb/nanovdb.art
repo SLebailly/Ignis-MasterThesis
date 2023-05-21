@@ -56,8 +56,22 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
         let js = if j < 0 { 0 } else if j >= height { height - 1 } else { j };
         let ks = if k < 0 { 0 } else if k >= depth  { depth  - 1 } else { k };
 
-        //(is, js, ks)
-        (is + x_min, js + y_min, ks + z_min)
+        (is, js, ks)
+    }
+
+    fn @to_nvdb_index(i: i32, j:i32, k: i32) -> (i32, i32, i32) {
+        (i + x_min, j + y_min, k + z_min)
+    }
+
+    fn @from_nvdb_index(ni: i32, nj: i32, nk: i32) -> (i32, i32, i32) {
+        (ni - x_min, nj - y_min, nk - z_min)
+    }
+
+    fn @nvdb_to_sparse_index(i: i32, j: i32, k: i32, dim: i32) -> (i32, i32, i32) {
+        let (ni, nj, nk)    = to_nvdb_index(i, j, k);
+        let (sni, snj, snk) = general_to_sparse_index(ni, nj, nk, dim);
+
+        from_nvdb_index(sni, snj, snk)
     }
 
     fn @make_nvdb_accessor() -> VolumeAccessor {
@@ -68,11 +82,11 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
 
         fn @cache_path_get_value_density(i: i32, j: i32, k: i32) -> (f32, AccessPath) {
             if let Option[AccessPath]::Some(previous_path) = last_density_path {
-                let (value, path) = bottom_up_get_value(tree_density, clamp_index(i, j, k), previous_path);
+                let (value, path) = bottom_up_get_value(tree_density, to_nvdb_index(clamp_index(i, j, k)), previous_path);
                 last_density_path = Option[AccessPath]::Some(path);
                 return(value, path)
             } else {
-                let (value, path) = top_down_get_value(tree_density, clamp_index(i, j, k));
+                let (value, path) = top_down_get_value(tree_density, to_nvdb_index(clamp_index(i, j, k)));
                 last_density_path = Option[AccessPath]::Some(path);
                 return(value, path)
             }
@@ -80,11 +94,11 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
 
         fn @cache_path_get_value_temperature(i: i32, j: i32, k: i32, tree: NanoVDBTree[f32, f32]) -> (f32, AccessPath) {
             if let Option[AccessPath]::Some(previous_path) = last_temperature_path {
-                let (value, path) = bottom_up_get_value(tree, clamp_index(i, j, k), previous_path);
+                let (value, path) = bottom_up_get_value(tree, to_nvdb_index(clamp_index(i, j, k)), previous_path);
                 last_temperature_path = Option[AccessPath]::Some(path);
                 return(value, path)
             } else {
-                let (value, path) = top_down_get_value(tree, clamp_index(i, j, k));
+                let (value, path) = top_down_get_value(tree, to_nvdb_index(clamp_index(i, j, k)));
                 last_temperature_path = Option[AccessPath]::Some(path);
                 return(value, path)
             }
@@ -101,18 +115,22 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
         
         VolumeAccessor {
             properties_at_indx = @|i, j, k| {
-                let (value_d, path_d) = cache_path_get_value_density(i, j, k);
-                let (value_t, path_t_option) = cache_path_get_value_temperature_option(i, j, k);
-                let min_dim = lowest_path_dim_option(path_d, path_t_option);
-                (principled_volume_shader.volume_properties(make_principled_volume_values(value_d, value_t)), min_dim)
+                if (i < 0 || j < 0 || k < 0 || i >= width || j >= height || k >= depth) {
+                    (make_vacuum_volume_properties(), 1)
+                } else {
+                    let (value_d, path_d) = cache_path_get_value_density(i, j, k);
+                    let (value_t, path_t_option) = cache_path_get_value_temperature_option(i, j, k);
+                    let min_dim = lowest_path_dim_option(path_d, path_t_option);
+                    (principled_volume_shader.volume_properties(make_principled_volume_values(value_d, value_t)), min_dim)
+                }
             },
             sparse_maj_at_indx = @|i, j, k, maj_dim| {
                 //TODO: potentially cache the access path for later reuse
-                let (accessor_d, _path_d) = top_down_access(tree_density, (i, j, k), maj_dim);
+                let (accessor_d, _path_d) = top_down_access(tree_density, to_nvdb_index(clamp_index(i, j, k)), maj_dim);
                 let maj_d                 = accessor_d.get_maximum();
                 
                 let (maj_t, min_dim) = if let Option[NanoVDBTree[f32, f32]]::Some(tree_temperature) = tree_temperature_option {
-                    let (accessor_t, _path_t) = top_down_access(tree_temperature, (i, j, k), maj_dim);
+                    let (accessor_t, _path_t) = top_down_access(tree_temperature, to_nvdb_index(clamp_index(i, j, k)), maj_dim);
                     let maj_t                 = accessor_t.get_maximum();
                     (maj_t, min(accessor_d.dimension, accessor_t.dimension))
                 } else {
@@ -134,5 +152,5 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
         max_props.coeff_extinction
     }
 
-    make_volume(width, height, depth, make_nvdb_accessor, get_majorant_extinction)
+    make_volume(width, height, depth, make_nvdb_accessor, get_majorant_extinction, nvdb_to_sparse_index)
 }

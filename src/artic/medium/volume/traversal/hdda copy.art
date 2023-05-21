@@ -9,7 +9,7 @@ fn @make_hdda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: bo
 
     let (vxl_indx_x, vxl_indx_y, vxl_indx_z) = volume.coord_to_indx(origin);
     let dim = 1;//let (_current_props, dim) = accessor.properties_at_indx(vxl_indx_x, vxl_indx_y, vxl_indx_z);
-    let (indx_x, indx_y, indx_z) = indx_to_sparse_index((vxl_indx_x, vxl_indx_y, vxl_indx_z), dim);
+    let (indx_x, indx_y, indx_z) = volume.to_sparse_indx(vxl_indx_x, vxl_indx_y, vxl_indx_z, dim);
 
     let t_0 = 0:f32;
 
@@ -120,7 +120,8 @@ fn @make_hdda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: bo
     // Updates the HDDA to march with the specified dimension
     fn @update_dimension(current_dist: f32, new_dim: i32) {
         let current_pos = vec3_add(origin, vec3_mulf(ndir, current_dist));
-        let (voxel_x, voxel_y, voxel_z) = indx_to_sparse_index(volume.coord_to_indx(origin), new_dim);
+        let (oi, oj, ok) = volume.coord_to_indx(origin);
+        let (voxel_x, voxel_y, voxel_z) = volume.to_sparse_indx(oi, oj, ok, new_dim);
 
         let (lower_bounds, _upper_bounds) = volume.bounds(voxel_x, voxel_y, voxel_z, new_dim);
         let offset = vec3_sub(lower_bounds, current_pos);

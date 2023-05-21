@@ -19,7 +19,7 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
             
             let mut acc_opt = make_gray_color(0:f32);
 
-            let volume_marcher  = make_dda_marcher(local_start, local_dir_norm, volume, interpolate); //TODO: ensure that origin is within the volume (max 0.9999)
+            let volume_marcher  = make_hdda_marcher(local_start, local_dir_norm, volume, interpolate); //TODO: ensure that origin is within the volume (max 0.9999)
             while (volume_marcher.has_next()) { // ensure that we are still within the volume
                 
                 // get the values at the current position

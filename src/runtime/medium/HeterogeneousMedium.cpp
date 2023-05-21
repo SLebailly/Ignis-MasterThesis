@@ -167,7 +167,8 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
     const int max_scattering = mMedium->property("max_scattering").getInteger(8);
 
     if (method == "delta_tracking") {
-        input.Stream << "  let " << generator_name << ": MediumGenerator = @|ctx| { make_delta_tracking_medium(ctx, "<< pms_func << "(), " << volume_name << ", make_henyeygreenstein_phase(" << input.Tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ", " << max_scattering << ") };" << std::endl;
+        const int majorant_dimension = mMedium->property("majorant_dimension").getInteger(128);
+        input.Stream << "  let " << generator_name << ": MediumGenerator = @|ctx| { make_delta_tracking_medium(ctx, "<< pms_func << "(), " << volume_name << ", make_henyeygreenstein_phase(" << input.Tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ", " << max_scattering << ", " << majorant_dimension << ") };" << std::endl;
     } else if (method == "ray_marching") {
         const float step_distance = mMedium->property("step_distance").getNumber(0.001f);
         input.Stream << "  let " << generator_name << ": MediumGenerator = @|ctx| { make_ray_marching_medium(ctx, "<< pms_func << "(), " << volume_name << ", make_henyeygreenstein_phase(" << input.Tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ", " << max_scattering << ", " << step_distance << ") };" << std::endl;

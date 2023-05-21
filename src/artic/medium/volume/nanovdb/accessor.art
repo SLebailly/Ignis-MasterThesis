@@ -72,36 +72,22 @@ fn @get_majorant_from_path[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], pa
     if let Option[KeyAddressPair[i32]]::Some(lower_node_pair) = path.lower_node {
         // =============== Lower Node Level ===============
         let lower_node_accessor = tree.access_lower_node(lower_node_pair.address);
-        let bbox = lower_node_accessor.get_bounds();
-        print_string("===================== BBox on lower level: ");
-        print_vec3(bbox.min);
-        print_string(", ");
-        print_vec3(bbox.max);
-        print_nl();
         return(lower_node_accessor.get_maximum())
     }
 
     if let Option[KeyAddressPair[u64]]::Some(upper_node_pair) = path.upper_node {
         // =============== Upper Node Level ===============
         let upper_node_accessor = tree.access_upper_node(upper_node_pair.address);
-        let bbox = upper_node_accessor.get_bounds();
-        print_string("===================== BBox on upper level: ");
-        print_vec3(bbox.min);
-        print_string(", ");
-        print_vec3(bbox.max);
-        print_nl();
         return(upper_node_accessor.get_maximum())
     }
 
     // =============== Root level ===============
-    print_string("================= Root level I guess...\n");
     get_max_value(tree)
 }
 
 fn @top_down_get_path[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32, j: i32, k: i32), min_dim: i32) -> AccessPath {
 
     if min_dim > 4096 {
-        print_string(":::::MIN_DIM > 4096\n");
         return(make_empty_path())
     }
 
@@ -117,7 +103,6 @@ fn @top_down_get_path[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32
     if let Option[RootTileAccessor[ValueT]]::Some(root_tile_accessor) = root_node_accessor.access_tile_by_key(root_tile_key, root_tiles_amount) { // = 800 (320 Hex)
 
         if min_dim > 128 {
-            print_string(":::::min_dim > 128 => upper path\n");
             return(make_sparse_upper_path())
         }
 
@@ -155,7 +140,6 @@ fn @top_down_get_path[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32
         // child offset of root tile was 0 => Upper node was sparse
         return(make_sparse_upper_path())
     };
-    print_string(":::::ROot is sPaRsE\n");
     // Root was sparse
     make_empty_path()
 }
@@ -285,6 +269,19 @@ fn @top_down_access[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32, 
             let leaf_node_pair     = make_key_address_pair(lower_tile_index, leaf_node_address);
             // If the vxl has a value, return the voxel value else return the background value
             let path = make_voxel_path(upper_node_pair, lower_node_pair, leaf_node_pair);
+
+            if min_dim > 1 {
+                let accessor = GenericNodeAccessor[ValueT] {
+                    get_minimum  = leaf_node_accessor.get_minimum,
+                    get_maximum  = leaf_node_accessor.get_maximum,
+                    get_value    = root_node_accessor.get_background,
+                    //get_bounds   = Option[fn () -> BBox]::Some(upper_tile_accessor.get_bounds),
+                    is_sparse    = false,
+                    dimension    = 128
+                };
+                return(accessor, make_sparse_leaf_path(upper_node_pair, lower_node_pair))
+            }
+
             if leaf_node_accessor.tile_has_value(voxel_index) {
                 // return the value of the vxl
                 let accessor = GenericNodeAccessor[ValueT] {
@@ -320,6 +317,7 @@ fn @top_down_access[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32, 
         };
         return(accessor, make_sparse_upper_path())
     };
+    
     // Root was sparse
     let accessor = GenericNodeAccessor[ValueT] {
         get_minimum  = root_node_accessor.get_background,

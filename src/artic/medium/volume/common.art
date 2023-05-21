@@ -34,7 +34,8 @@ struct Volume {
     is_in_volume:      fn (/* coord */ Vec3) -> bool,
     is_in_vxl:         fn (/* coord */ Vec3, /* x */ i32, /* y */ i32, /* z */ i32) -> bool,
     bounds:            fn (/* i */ i32, /* j */ i32, /* k */ i32, /* dim */ i32) -> (/* lower */ Vec3, /* upper */ Vec3),
-    get_majorant_extinction: fn (/* origin */ Vec3, /* ndir */ Vec3) -> Color
+    get_majorant_extinction: fn (/* origin */ Vec3, /* ndir */ Vec3) -> Color,
+    to_sparse_indx:    fn (/* i */ i32, /* j */ i32, /* k */ i32, /* dim */ i32) -> (/* i */ i32, /* j */ i32, /* k */ i32)
 }
 
 /**
@@ -43,16 +44,7 @@ struct Volume {
 fn @homogenize_nullscattering_properties(properties: VolumeProperties, homogenized_extinction: Color) -> VolumeProperties {
 
     let coeff_fictional  = color_sub(homogenized_extinction, properties.coeff_extinction);
-
-    if (coeff_fictional.r < 0 || coeff_fictional.g < 0 || coeff_fictional.b < 0) {
-        print_string("Homogenized extinction ");
-        print_color(homogenized_extinction);
-        print_string(" is not majorant of ");
-        print_color(properties.coeff_extinction);
-        print_nl();
-        print_flush();
-    }
-
+    
     VolumeProperties {
         coeff_scattering = properties.coeff_scattering,
         coeff_absorption = properties.coeff_absorption,
@@ -84,7 +76,7 @@ fn @make_vacuum_volume_properties() -> VolumeProperties {
     make_volume_properties(make_gray_color(0:f32), make_gray_color(0:f32), make_gray_color(0:f32))
 }
 
-fn @make_volume(width: i32, height: i32, depth: i32, access_data: fn () -> VolumeAccessor, get_majorant_extinction: fn (/* origin */ Vec3, /* ndir */ Vec3) -> Color) -> Volume {
+fn @make_volume(width: i32, height: i32, depth: i32, access_data: fn () -> VolumeAccessor, get_majorant_extinction: fn (/* origin */ Vec3, /* ndir */ Vec3) -> Color, to_sparse_indx: fn (/* i */ i32, /* j */ i32, /* k */ i32, /* dim */ i32) -> (/* i */ i32, /* i */ i32, /* k */ i32)) -> Volume {
 
     let vxl_dimensions = vec3_div(vec3_expand(1:f32), make_vec3(width as f32, height as f32, depth as f32));
 
@@ -181,6 +173,7 @@ fn @make_volume(width: i32, height: i32, depth: i32, access_data: fn () -> Volum
         is_in_volume      = is_in_volume,
         //vxl_at_coord_lerp = vxl_at_coord_lerp,
         is_in_vxl         = is_in_vxl,
-        bounds            = bounds
+        bounds            = bounds,
+        to_sparse_indx    = to_sparse_indx
     }
 }
