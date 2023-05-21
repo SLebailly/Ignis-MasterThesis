@@ -56,8 +56,8 @@
 // - Tiles are accessed by NodeAccessor(node_address).access_tile(index/key)
 // - Tiles always return the child address, no accessor to the child. This way the address of the nodes can be saved for later reuse and a node can be accessed directly without having to navigate through the tree
 
-static GRID_DATA_OFFSET:        i32 = 0;
-static SIZE_OF_GRID_DATA:       i32 = 672;
+static GRID_DATA_OFFSET  = 0: i32;
+static SIZE_OF_GRID_DATA = 672: i32;
 
 
 struct GridDataAccessor {

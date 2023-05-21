@@ -1,8 +1,8 @@
 static default_temperature = 0:f32;
-static max_index = 99999999;
-static min_index = -max_index;
-static min_bbox = (min_index, min_index, min_index);
-static max_bbox = (max_index, max_index, max_index);
+static max_index           = 99999999;
+static min_index           = -max_index;
+static min_bbox            = (min_index, min_index, min_index);
+static max_bbox            = (max_index, max_index, max_index);
 
 fn @get_tree_option(buffer_option: Option[DeviceBuffer]) -> Option[NanoVDBTree[f32, f32]] {
     if let Option[DeviceBuffer]::Some(buffer) = buffer_option {

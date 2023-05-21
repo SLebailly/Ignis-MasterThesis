@@ -1,5 +1,7 @@
-// Implementation of a Ray Marching transmittance estimator
-// marches along the ray in fixed distance and integrates transmittance
+/**
+ * Implementation of a Ray-Marching Transmittance and Next-Flight Estimator
+ * marches along the ray in fixed distance and integrates transmittance
+ */
 fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, interpolate: bool, max_scattering: i32, step_distance: f32) -> Medium {
 
     // the values that will be used for clamping the local coordinates
@@ -123,7 +125,7 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
             /*
             cf. J. Novak - Monte Carlo Methods for Volumetric Light Transport Simulation (4. Distance Sampling):
             "The distance distribution strictly adheres to the Beer-Lambert law, i.e. it has a PDF proportional to the transmittance along the given ray"
-            => pdf = transmittance
+            => pdf = transmittance * mu_t
             */
 
             // determine position, transmittance and pdf based on previous calculations

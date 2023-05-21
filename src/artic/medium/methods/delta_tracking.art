@@ -1,19 +1,15 @@
-static CLAMP_MIN_DISTANCE   = 0.00001; // enforces a minimum distance to be stepped inside the medium
+static CLAMP_MIN_DISTANCE = 0.00001; // enforces a minimum distance to be stepped inside the medium
 
-// Implementation of the Delta Tracking (Woordcock Tracking, Pseudo Scattering,...) null collision method
-// Sample the point of the next light-medium collision along the line of flight:
-// 1- determine majorant pdf to make volume homogenenous
-// 2- sample a random point along the ray proportionally to said pdf
-// 3- at this point, use rejection sampling to determine if the collision is with a real or fictuous particla:
-//    a. If fictuous, sample next random point along the ray
-//    b. If real, this is the next ray-medium intersection point
-
-// Question 1: How to determine majorant? Is it for the whole medium or for the ray?
-//      - Good question! Look for answers in papers
-// Question 2: How to determine transmittance at sampled point?
-//      - Calculation of transmittance is not defined in this method (at least not necessarily) but CAN be used as a stepwise function: cf. J. Novak - "Residual Ratio Trakcing for Estimating Attenuation in Participating Media" 2.3 Free-flight Sampling & Delta Tracking
+/**
+ * Implementation of the Delta Tracking (Woordcock Tracking, Pseudo Scattering,...) null-collision method
+ * Sample the point of the next light-medium collision along the line of flight:
+ *  1- determine majorant pdf to make volume homogenenous
+ *  2- sample a random point along the ray proportionally to said pdf
+ *  3- at this point, use rejection sampling to determine if the collision is with a real or fictuous particle:
+ *      a. If fictuous, sample next random point along the ray
+ *      b. If real, this is the next ray-medium intersection point
+ */
 fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, _interpolate: bool, max_scattering: i32, majorant_dimension: i32) -> Medium {
-
 
     // the values that will be used for clamping the local coordinates
     let loc_min  = vec3_expand(VOLUME_BOUNDS_FLT_MIN);
@@ -21,7 +17,9 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
 
     let accessor = volume.access_data(); // storing the accessor at this level to be able to leverage bottom-up traversal for nvdb trees
 
-
+    /**
+     * Samples a distance along the ray
+     */
     fn @sample_distance_local(rnd: &mut RndState, lpos: Vec3, lndir: Vec3, scale: f32, max_dist: f32) -> (/* dist */ f32, /* majorant */ Color, /* pdf */ f32) {
         // sample value of transmittance (uniformly)
         let sampled_value_tr = sample_transmittance_uniform(rnd); // = 1:f32 - (randf(rnd) * 0.99999)

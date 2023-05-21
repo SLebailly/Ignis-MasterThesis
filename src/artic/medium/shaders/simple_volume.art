@@ -1,5 +1,6 @@
-// For simple voxel grids (custom format defined by bin file)
-
+/**
+ * Allows for scaling the values of our uniform voxel grid
+ */
 fn @make_simple_volume_shader(scalar: f32) -> VolumeShader[SimpleVolumeVoxelValue] {
     
     VolumeShader[SimpleVolumeVoxelValue] {

@@ -1,9 +1,10 @@
-// Implementation of Free-path sampling through Regular tracking
-// Sample the point of the next light-medium collision along the line of flight:
-// 1- compute random sampled value of transmittance between 0 and 1
-// 2- sweep along ray and compute the accumulated optical thickness until it first exceeds the sampled value
-// 3- coordinates where the accumulated optical thickness exceeds random variable is the sampled point.
-
+/**
+ * Implementation of Free-path sampling and Transmittance Estimation through Regular tracking
+ * Sample the point of the next light-medium collision along the line of flight:
+ *  1- compute random sampled value of transmittance between 0 and 1
+ *  2- sweep along ray and compute the accumulated optical thickness until it first exceeds the sampled value
+ *  3- coordinates where the accumulated optical thickness exceeds random variable is the sampled point.
+ */
 fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, interpolate: bool, max_scattering: i32) -> Medium {
 
     // the values that will be used for clamping the local coordinates

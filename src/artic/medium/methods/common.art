@@ -1,3 +1,6 @@
+/**
+ * Evaluates the exact optical thickness between two points (through regular tracking)
+ */
 fn @eval_optical_thickness(volume: Volume, local_start: Vec3, local_end: Vec3, interpolate: bool) -> Color {
     
     let dir_u      = vec3_sub(local_end, local_start);
@@ -22,7 +25,6 @@ fn @eval_optical_thickness(volume: Volume, local_start: Vec3, local_end: Vec3, i
     }
     acc_opt
 }
-
 
 /**
  * Uniform transmittance sampling

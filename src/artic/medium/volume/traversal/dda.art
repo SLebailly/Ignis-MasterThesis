@@ -1,5 +1,5 @@
 /**
- * Marches to the bounds of the next voxel 
+ * Marches to the bounds of the next voxel (on Voxel dimension)
  * Note: Direction needs to be normalized, origin needs to be within the volume
  * TODO: add interpolation
  */
@@ -101,7 +101,9 @@ fn @make_dda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: boo
     }
 }
 
-
+/**
+ * Iterates through voxels/nodes on a given dimension and returns the majorant of each voxel/node
+ */
 fn @make_majorant_dda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: bool, dim: i32, max_dist: f32) -> VolumeMarcher {
 
     let accessor = volume.access_data();

@@ -44,7 +44,7 @@ struct Volume {
 fn @homogenize_nullscattering_properties(properties: VolumeProperties, homogenized_extinction: Color) -> VolumeProperties {
 
     let coeff_fictional  = color_sub(homogenized_extinction, properties.coeff_extinction);
-    
+
     VolumeProperties {
         coeff_scattering = properties.coeff_scattering,
         coeff_absorption = properties.coeff_absorption,
@@ -116,49 +116,7 @@ fn @make_volume(width: i32, height: i32, depth: i32, access_data: fn () -> Volum
     fn @_indx_to_coord_center(x: i32, y: i32, z: i32) -> Vec3 {
         vec3_mul(make_vec3((x as f32) + 0.5, (y as f32) + 0.5, (z as f32) + 0.5), vxl_dimensions)
     }
-/*
-    fn @vxl_at_indx(x: i32, y: i32, z: i32) -> VolumeVoxel {
-
-        //clamp between 0 and width-height-depth
-        let xs = if x < 0 { 0 } else if x >= width  { width  - 1 } else { x };
-        let ys = if y < 0 { 0 } else if y >= height { height - 1 } else { y };
-        let zs = if z < 0 { 0 } else if z >= depth  { depth  - 1 } else { z };
-
-        read_voxel(xs, ys, zs)
-    }
-
-    fn @vxl_at_coord(coord: Vec3) -> VolumeVoxel {
-
-        let (x, y, z) = coord_to_indx(coord);
-
-        vxl_at_indx(x, y, z) 
-    }
-
-*/
-/*
-    fn @vxl_at_coord_lerp(coord: Vec3) -> VolumeVoxel {
-
-        let (ind_x, ind_y, ind_z) = coord_to_indx(coord);
-        
-        let vxl_center = indx_to_coord_center(ind_x, ind_y, ind_z);
-        let lcoord     = vec3_div(vec3_sub(coord, vxl_center), vxl_dimensions);
-
-        let (x_0, x_1, t_x) = if lcoord.x < 0 { (ind_x - 1, ind_x, 1:f32 + lcoord.x) } else { (ind_x, ind_x + 1, lcoord.x) };
-        let (y_0, y_1, t_y) = if lcoord.y < 0 { (ind_y - 1, ind_y, 1:f32 + lcoord.y) } else { (ind_y, ind_y + 1, lcoord.y) };
-        let (z_0, z_1, t_z) = if lcoord.z < 0 { (ind_y - 1, ind_y, 1:f32 + lcoord.z) } else { (ind_z, ind_z + 1, lcoord.z) };
-        
-        let vxl_00 = vxl_lerp(vxl_at_indx(x_0, y_0, z_0), vxl_at_indx(x_1, y_0, z_0), t_x);
-        let vxl_01 = vxl_lerp(vxl_at_indx(x_0, y_0, z_1), vxl_at_indx(x_1, y_0, z_1), t_x);
-        let vxl_10 = vxl_lerp(vxl_at_indx(x_0, y_1, z_0), vxl_at_indx(x_1, y_1, z_0), t_x);
-        let vxl_11 = vxl_lerp(vxl_at_indx(x_0, y_1, z_1), vxl_at_indx(x_1, y_1, z_1), t_x);
-
-        let vxl_0 = vxl_lerp(vxl_00, vxl_01, t_y);
-        let vxl_1 = vxl_lerp(vxl_10, vxl_11, t_y);
-
-        vxl_lerp(vxl_0, vxl_1, t_z)
-    }
-*/
-
+    
     Volume {
         width  = width,
         height = height,

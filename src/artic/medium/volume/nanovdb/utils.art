@@ -26,9 +26,9 @@ static MASK_LOWER = DIM_LOWER_U32 as u64 - 1:u64; // 0[...]01111111
 static MASK_UPPER = DIM_UPPER_U32 as u64 - 1:u64; // 
 
 
-
-
-// aligns a buffer index to the next 32B-aligned address
+/**
+ * aligns a buffer index to the next 32B-aligned address
+ */
 fn @align_32(index: i32) -> i32 {
     let offset = (32 - (index % 32));
     let result = if offset == 32 { index } else { index + offset };
@@ -36,34 +36,46 @@ fn @align_32(index: i32) -> i32 {
     result
 }
 
-// loads an u64 out of the buffer
+/**
+ * loads two times 32 bits out of the buffer (as i32) and combines them into a single u64
+ */
 fn @buffer_load_u64(buffer: DeviceBuffer, data_address: i32) -> u64 {
     let data_1 = buffer.load_i32(data_address)     as u64;
     let data_2 = buffer.load_i32(data_address + 1) as u64;
     (data_2 << 32 | data_1)
 }
 
-// Converts a buffer address to the Ignise Buffer ID (= divide by 4)
+/**
+ * Converts a buffer address (in Byte) to the Ignis Buffer ID (in 4 Bytes)
+ * Equivalent to dividing by 4.
+ */
 fn @convert_address(address: i32) -> i32 {
     (address >> 2) // divide by 4
 }
-  
+
+/**
+ * Reads a mask out of the buffer and checks if the given bit is set to true or false
+ */
 fn @check_mask(buffer: DeviceBuffer, mask_address: i32, bit: i32) -> bool {
     // 32 bit word size
-    //                                                         bit  / 32
+    //                                                        bit / 32
     let word = bitcast[u32](buffer.load_i32(convert_address(mask_address) + (bit >> 5)));
     //                   modulo
     (word & (1:u32 << ((bit as u32) & 31))) != 0
 }
 
+/**
+ * Transforms indices into Open/NanoVDB root keys
+ */
 fn @root_indices_to_key(i: i32, j: i32, k: i32) -> u64 {
     let child_total = LOG2CHILDREN_UPPER as u64;
     (bitcast[u32](k) as u64 >> child_total) | ((bitcast[u32](j) as u64 >> child_total) << 21) | ((bitcast[u32](i) as u64 >> child_total) << 42)
 }
 
 /**
- * Every index is unique (since the entry is for a voxel) mod 4096 (since there are only 4096x4096x4096 voxels per lower internal node)
- * => voxels (0, 0, 0) to (4095, 4095, 4095) are in one leaf etc
+ * Returns the array index of the upper tiles in which the voxel with the given indices is stored.
+ *  Every index is unique (since the entry is for a voxel) mod 4096 (since there are only 4096x4096x4096 voxels per lower internal node)
+ *  => voxels (0, 0, 0) to (4095, 4095, 4095) are in one leaf etc
  */
 fn @upper_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
     let mask = MASK_UPPER;
@@ -74,8 +86,9 @@ fn @upper_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
 }
 
 /**
- * Every index is unique (since the entry is for a voxel) mod 128 (since there are only 128x128x128 voxels per lower internal node)
- * => voxels (0, 0, 0) to (127, 127, 127) are in one leaf etc
+ * Returns the array index of the lower tiles in which the voxel with the given indices is stored.
+ *  Every index is unique (since the entry is for a voxel) mod 128 (since there are only 128x128x128 voxels per lower internal node)
+ *  => voxels (0, 0, 0) to (127, 127, 127) are in one leaf etc
  */
 fn @lower_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
     let mask = MASK_LOWER; // 0[...]01111111
@@ -86,8 +99,9 @@ fn @lower_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
 }
 
 /**
- * Every index is unique (since the entry is for a voxel) mod 8 (since there are only 8x8x8 voxels per leaf)
- * => voxels (0, 0, 0) to (7, 7, 7) are in one leaf, then (8, 8, 8) to (15, 15, 15) etc
+ * Returns the array index of the leaf tiles in which the voxel with the given indices is stored.
+ *  Every index is unique (since the entry is for a voxel) mod 8 (since there are only 8x8x8 voxels per leaf)
+ *  => voxels (0, 0, 0) to (7, 7, 7) are in one leaf, then (8, 8, 8) to (15, 15, 15) etc
  */
 fn @leaf_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
     let mask = MASK_LEAF; // 0[...]00111
@@ -97,7 +111,11 @@ fn @leaf_indices_to_array_index(i: i32, j: i32, k: i32) -> i32 {
 }
 
 /**
- * dimesion: 1 = not sparse, 8 = leaf is sparse, 128 = lower internal node is sparse, 4096 = upper internal node is sparse
+ * Transforms voxel indices into their respective sparse index in a given dimension (bottom left voxel in the node)
+ *  dimension: 1 = not sparse (voxel level), 8 = leaf is sparse, 128 = lower internal node is sparse, 4096 = upper internal node is sparse
+ *  
+ * Note: The indices in our index system are in domain [0, A+B], rather than the NanoVDB domain [-A, B].
+ *  Using this method for NanoVDB requires first mapping back the indices to the NanoVDB domain.
  */
 fn @general_to_sparse_index(i: i32, j: i32, k: i32, dimension: i32) -> (/* i */ i32, /* j */ i32, /* k */ i32) {
     if (dimension > DIM_UPPER) {

@@ -1,5 +1,7 @@
-// A shader takes a generic voxel value and transforms it into usable volume extinction coefficients
-// In other words it interprets the volume values
+/**
+ * A shader takes a generic voxel value and transforms it into usable volume extinction coefficients
+ * In other words it interprets the values stored in a voxel
+ */
 struct VolumeShader[VoxelValueT] {
     volume_properties: fn (/* input */ VoxelValueT) -> VolumeProperties
 }

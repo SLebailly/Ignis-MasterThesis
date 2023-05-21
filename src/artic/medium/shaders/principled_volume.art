@@ -1,10 +1,13 @@
-static SCALED_STEFAN_BOLTZMAN_SIGMA = 5.670373 / flt_pi;
+static SCALED_STEFAN_BOLTZMAN_SIGMA     = 5.670373 / flt_pi;
 static STEFAN_BOLTZMAN_SIGMA_SCALAR_INV = 100000000000000:f32; // divide by this number (x E-14)
-static MIN_BB_TEMPERATURE = 1000:f32; // value to clamp to so as to not produce negative colours
-static DENSITY_EPS = 0.0001:f32;
+static MIN_BB_TEMPERATURE               = 1000:f32; // value to clamp to so as to not produce negative colours
+static DENSITY_EPS                      = 0.0001:f32;
 
-// Blender Principled Volume Shader
-// constants that define the medium material (constant for each voxel in the whole medium)
+
+/**
+ * Principled Volume Shader as defined by Blender
+ * constants that define the medium material (constant for each voxel in the whole medium)
+ */
 struct PrincipledVolumeParameters { // = {Blender equivalent name}
     scalar_density: f32,     // = Density
     scalar_emission: f32,    // = Emission Strength
@@ -16,7 +19,9 @@ struct PrincipledVolumeParameters { // = {Blender equivalent name}
     scalar_temperature: f32  // = Temperature
 }
 
-// variables that serve as input (vary for each voxel) - blender calls these attributes
+/**
+ * variables that serve as input (vary for each voxel) - blender calls these attributes
+ */
 struct PrincipledVolumeValues {
     density: f32,
     temperature: f32
