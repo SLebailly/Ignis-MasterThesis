@@ -1,5 +1,6 @@
 /**
  * Marches to the bounds of the next voxel, with the ability to skip voxels when the node is sparse
+ * TODO: fix error in explosion file
  */
 fn @make_hdda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: bool) -> VolumeMarcher {
 

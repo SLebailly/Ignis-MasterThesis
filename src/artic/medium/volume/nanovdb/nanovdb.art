@@ -4,6 +4,7 @@ static min_index           = -max_index;
 static min_bbox            = (min_index, min_index, min_index);
 static max_bbox            = (max_index, max_index, max_index);
 
+
 fn @get_tree_option(buffer_option: Option[DeviceBuffer]) -> Option[NanoVDBTree[f32, f32]] {
     if let Option[DeviceBuffer]::Some(buffer) = buffer_option {
         Option[NanoVDBTree[f32, f32]]::Some(make_nvdb_tree[f32, f32](buffer, 4, 4, @|bf, i| bf.load_f32(i), @|bf, i| bf.load_f32(i)))

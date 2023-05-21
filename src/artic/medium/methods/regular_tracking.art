@@ -4,6 +4,8 @@
  *  1- compute random sampled value of transmittance between 0 and 1
  *  2- sweep along ray and compute the accumulated optical thickness until it first exceeds the sampled value
  *  3- coordinates where the accumulated optical thickness exceeds random variable is the sampled point.
+ * 
+ * TODO: remove NaN occurances
  */
 fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, interpolate: bool, max_scattering: i32) -> Medium {
 
@@ -12,71 +14,78 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
     let loc_max = vec3_expand(1 - VOLUME_BOUNDS_FLT_MIN);
 
     /**
-     * Evaluates the distance (and corresponding optical thickness) travelled along the ray before reaching the sampled transmittance value in the medium
+     * Next-Flight estimation using regular tracking
      */
-    fn @next_flight(p_start: Vec3, dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color, VolumeProperties) {
+    fn @next_flight(rnd: &mut RndState, p_start: Vec3, p_end: Vec3) -> Option[MediumSample] {
+        
+        // sample value of transmittance (uniformly)
+        let sampled_value_tr  = sample_transmittance_uniform(rnd); // = 1:f32 - (randf(rnd) * 0.99999)
+        let sampled_value_opt = transmittance_to_optical_thickness_f32(sampled_value_tr);
 
-        fn @next_flight_local(local_start: Vec3, local_dir_norm: Vec3, sampled_value_opt: f32) -> (f32, Color, VolumeProperties) {
-            
-            let mut acc_opt = make_gray_color(0:f32);
+        // local coordinates
+        let l_start = pms.to_normalized_point(p_start);
+        let l_end   = pms.to_normalized_point(p_end);
 
-            let volume_marcher  = make_hdda_marcher(local_start, local_dir_norm, volume, interpolate); //TODO: ensure that origin is within the volume (max 0.9999)
-            while (volume_marcher.has_next()) { // ensure that we are still within the volume
-                
-                // get the values at the current position
-                let (current_segment, current_dist) = volume_marcher.next_segment();
-
-                // total absorption coefficient in the voxel
-                // corresponding optical thickness (sigma_t * distance in the voxel)
-                let opt_thickness_in_vxl = current_segment.local_properties.optical_thickness(current_segment.distance);
-
-                // add the optical thickness to the total
-                let new_acc_opt = color_add(acc_opt, opt_thickness_in_vxl);
-
-                // take the minimum color channel value
-                let min_opt_thickness = vec3_min_value(color_to_vec3(new_acc_opt));
-
-                // optical thickness goes from 0 (full transparency) to sampled value
-                if (sampled_value_opt - min_opt_thickness > flt_eps) {
-                    //continue the iteration
-                    acc_opt = new_acc_opt;
-                } else {
-                    
-                    let remaining_opt_thickness_minvalue = sampled_value_opt - vec3_min_value(color_to_vec3(acc_opt));
-
-                    let min_opt = vec3_min_value(color_to_vec3(current_segment.local_properties.coeff_extinction));
-                   
-                    // min_opt is not zero (tested)
-                    let dist_delta = remaining_opt_thickness_minvalue / min_opt; // compute how far to go in the current voxel before reaching the threshold
-
-                    let opt_thickness_delta = current_segment.local_properties.optical_thickness(dist_delta);
-
-                    acc_opt = color_add(acc_opt, opt_thickness_delta);
-
-                    return((current_dist - current_segment.distance + dist_delta, acc_opt, current_segment.local_properties))
-                } 
-            }
-            //TODO: verify if flt_max is accurate here
-            (flt_max, acc_opt, make_vacuum_volume_properties())
+        if (l_start.x < -VOLUME_BOUNDS_FLT_MIN || l_start.y < -VOLUME_BOUNDS_FLT_MIN || l_start.z < -VOLUME_BOUNDS_FLT_MIN || l_start.x > 1:f32 + VOLUME_BOUNDS_FLT_MIN || l_start.y > 1:f32 + VOLUME_BOUNDS_FLT_MIN || l_start.z > 1:f32 + VOLUME_BOUNDS_FLT_MIN) {
+            return(reject_medium_sample())
         }
 
-        let loc_start = vec3_clamp(pms.to_normalized_point(p_start), loc_min, loc_max);
-        let loc_end   = vec3_clamp(pms.to_normalized_point(vec3_add(p_start, dir_norm)), loc_min, loc_max);
-        let loc_dir   = vec3_sub(loc_end, loc_start);
+        // directions
+        let dir        = vec3_sub(p_end, p_start);
+        let max_dist   = vec3_len(dir);
+        let n_dir      = vec3_divf(dir, max_dist);
+        let l_dir      = vec3_sub(l_end, l_start);
+        let l_max_dist = vec3_len(l_dir);
+        let l_n_dir    = vec3_divf(l_dir, l_max_dist);
+        let scale      = max_dist / l_max_dist; // local * scale = global
 
-        let sampled_opt = - math_builtins::log(sampled_value_tr); // tr = e^(-opt) <=> opt = - log(tr)
+        let mut acc_opt    = make_gray_color(0:f32); // accumulated optical thickness
+        let volume_marcher = make_dda_marcher(vec3_clamp(l_start, loc_min, loc_max), l_n_dir, volume, interpolate); // TODO: replace with HDDA when it works
+        while (volume_marcher.has_next()) { // ensure that we are still within the volume
+            
+            // get the values at the current position
+            let (current_segment, l_current_dist) = volume_marcher.next_segment();
 
-        let loc_dir_len2 = math_builtins::fmax(flt_eps, vec3_len2(loc_dir));
+            // optical thickness in the voxel (sigma_t * distance in the voxel)
+            let opt_thickness_in_vxl = current_segment.local_properties.optical_thickness(current_segment.distance * scale);
 
-        // the difference between the normalized vector (length 1) and the vector after transformation to local coordinates is the difference in scale between the distance in local and global coordinates
-        let scale_diff          = math_builtins::sqrt(loc_dir_len2);
-        let (loc_dist, loc_opt, loc_properties) = if (loc_dir_len2 > flt_eps) { next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_opt * scale_diff) } else { (0:f32, make_gray_color(0:f32), make_vacuum_volume_properties()) };
+            // add the optical thickness to the total
+            let new_acc_opt = color_add(acc_opt, opt_thickness_in_vxl);
 
-        //transform the local distance and corresponding optical thickness into global distance/optical thickness
-        let dist                = if loc_dist >= flt_max { flt_max } else { loc_dist / scale_diff };
-        let opt                 = color_divf(loc_opt, scale_diff);
+            // take the minimum color channel value
+            let min_opt_thickness = vec3_min_value(color_to_vec3(new_acc_opt));
 
-        (dist, opt, loc_properties)
+            // optical thickness goes from 0 (full transparency) to sampled value
+            if (sampled_value_opt - min_opt_thickness > flt_eps) {
+                // sampled distance is not in the current voxel, so continue the iteration (or reject sample if we exceed distance)
+                if (l_current_dist * scale > max_dist) { return(reject_medium_sample()) }
+                acc_opt = new_acc_opt;
+            } else {
+                // sampled distance is in the current voxel
+                let remaining_opt_thickness_minvalue = sampled_value_opt - vec3_min_value(color_to_vec3(acc_opt));
+
+                let mu_t_p = vec3_min_value(color_to_vec3(current_segment.local_properties.coeff_extinction));
+                
+                let dist_delta = remaining_opt_thickness_minvalue / mu_t_p; // compute how far to go in the current voxel before reaching the threshold
+
+                let opt_thickness_delta = current_segment.local_properties.optical_thickness(dist_delta);
+
+                acc_opt = color_add(acc_opt, opt_thickness_delta);
+
+                let sampled_dist = (l_current_dist - current_segment.distance) * scale + dist_delta;
+
+                // If exceeded the max_dist, reject the sample
+                if (sampled_dist > max_dist) { return(reject_medium_sample()) }
+                
+                let pos   = vec3_add(p_start, vec3_mulf(n_dir, sampled_dist));
+                let trans = optical_thickness_to_transmittance(acc_opt);
+                let pdf   = sampled_value_tr * mu_t_p;
+
+                return(make_medium_sample(pos, pdf, color_divf(trans, pdf), current_segment.local_properties))
+            } 
+        }
+
+        reject_medium_sample()
     }
 
     /**
@@ -105,38 +114,7 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
         pdf = |_, _, _| {
             1:f32
         },
-        sample = @|rnd, p_start, p_end| {
-
-            // sample value of transmittance (uniformly)
-            let sampled_value_tr = randf(rnd) * 0.999999;
-
-            let dir_u    = vec3_sub(p_end, p_start);
-            let max_dist = vec3_len(dir_u);
-            let dir_norm = vec3_mulf(dir_u, safe_div(1, max_dist));
-
-            // evaluate the corresponding distance for the sampled value of transmittance
-            let (mut dist, opt, props) = next_flight(p_start, dir_norm, sampled_value_tr);
-            // clamp the distance to a minimum distance to avoid staying in the same position
-            dist = math_builtins::fmax[f32](0.0001, dist);//TODO: potentially lower eps
-
-            // reject samples if the optical thickness is black (no transmittance) or if leaving the medium/hitting another object before interacting with the medium
-            //if is_black_eps(opt, 1e-3) { return(reject_medium_sample()) }
-            if max_dist - dist <= flt_eps { return(reject_medium_sample()) }
-
-
-            /*
-            cf. J. Novak - Monte Carlo Methods for Volumetric Light Transport Simulation (4. Distance Sampling):
-            "The distance distribution strictly adheres to the Beer-Lambert law, i.e. it has a PDF proportional to the transmittance along the given ray"
-            => pdf = transmittance * mu_t
-            */
-
-            // determine position, transmittance and pdf based on previous calculations
-            let pos   = vec3_add(p_start, vec3_mulf(dir_norm, dist));
-            let trans = optical_thickness_to_transmittance(opt);
-            let pdf   = sampled_value_tr * vec3_max_value(color_to_vec3(props.coeff_extinction));
-
-            make_medium_sample(pos, pdf, color_divf(trans, pdf), props)
-        },
+        sample = next_flight,
         is_homogeneous = false,
         max_scattering = max_scattering
     }
