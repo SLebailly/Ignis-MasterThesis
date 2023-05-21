@@ -8,8 +8,6 @@ static CLAMP_MIN_DISTANCE = 0.00001; // enforces a minimum distance to be steppe
  *  3- at this point, use rejection sampling to determine if the collision is with a real or fictuous particle:
  *      a. If fictuous, sample next random point along the ray
  *      b. If real, this is the next ray-medium intersection point
- * 
- * TODO: go over scaling and make sure that it is correct (medium appear lighter than regular tracking...)
  */
 fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, _interpolate: bool, max_scattering: i32, majorant_dimension: i32) -> Medium {
 
