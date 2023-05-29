@@ -8,13 +8,11 @@ fn @eval_optical_thickness(volume: Volume, local_start: Vec3, local_end: Vec3, i
     let dir_norm   = vec3_map(dir_u, @|x| safe_div(x, total_dist));
 
     let mut acc_opt = make_gray_color(0:f32);
-    let mut test_dist = 0:f32;
 
     let volume_marcher  = make_dda_marcher(local_start, dir_norm, volume, interpolate); //TODO: ensure that origin is within the volume (max 0.9999)
     while (volume_marcher.has_next()) { // ensure that we are still within the volume
         
         let (current_segment, current_dist) = volume_marcher.next_segment();
-        test_dist = current_dist;
 
         if current_dist + VOLUME_BOUNDS_FLT_MIN >= total_dist {
             let segment_dist = current_segment.distance - (current_dist - total_dist);
