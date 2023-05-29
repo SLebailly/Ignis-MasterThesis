@@ -40,7 +40,7 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
         let scale      = max_dist / l_max_dist; // local * scale = global
 
         let mut acc_opt    = make_gray_color(0:f32); // accumulated optical thickness
-        let volume_marcher = make_dda_marcher(vec3_clamp(l_start, loc_min, loc_max), l_n_dir, volume, interpolate); // TODO: replace with HDDA when it works
+        let volume_marcher = make_hdda_marcher(vec3_clamp(l_start, loc_min, loc_max), l_n_dir, volume, interpolate); // TODO: replace with HDDA when it works
         while (volume_marcher.has_next()) { // ensure that we are still within the volume
             
             // get the values at the current position
