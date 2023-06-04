@@ -43,7 +43,7 @@
 			"name": "Medium",
 			"filename": "nvdb/fire.nvdb",
 			"g": 0,
-			"method": "delta_tracking",
+			"method": "regular",
 			"max_scattering":     3,
 
 			"shader": "pbrt_volume",
