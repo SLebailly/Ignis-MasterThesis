@@ -1,0 +1,26 @@
+
+struct MonochromaticVolumeParameters { 
+    scalar_density: f32,
+    scalar_absorption: f32,
+    scalar_scattering: f32
+}
+
+
+
+fn @make_monochromatic_volume_parameters(scalar_density: f32, scalar_absorption: f32, scalar_scattering: f32) = MonochromaticVolumeParameters {
+    scalar_density    = scalar_density,
+    scalar_absorption = scalar_absorption,
+    scalar_scattering = scalar_scattering
+};
+
+
+fn @make_monochromatic_volume_shader(params: MonochromaticVolumeParameters) -> VolumeShader[NanoVDBVolumeValues] {
+    
+    VolumeShader[NanoVDBVolumeValues] {
+        volume_properties = @|values| {
+            let vxl_density = if values.density > DENSITY_EPS { values.density * params.scalar_density } else { 0 };
+            make_volume_properties(make_gray_color(vxl_density * params.scalar_scattering), make_gray_color(vxl_density * params.scalar_absorption), color_builtins::black)
+        }
+    
+    }
+}

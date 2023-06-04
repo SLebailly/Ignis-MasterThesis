@@ -19,18 +19,6 @@ struct PrincipledVolumeParameters { // = {Blender equivalent name}
     scalar_temperature: f32  // = Temperature
 }
 
-/**
- * variables that serve as input (vary for each voxel) - blender calls these attributes
- */
-struct PrincipledVolumeValues {
-    density: f32,
-    temperature: f32
-}
-
-fn @make_principled_volume_values(density: f32, temperature: f32) = PrincipledVolumeValues {
-    density = density,
-    temperature = temperature
-};
 
 fn @make_principled_volume_parameters(scalar_density: f32, scalar_emission: f32, color_scattering: Color, color_absorption: Color, color_emission: Color, color_blackbody: Color, scalar_blackbody: f32, scalar_temperature: f32) = PrincipledVolumeParameters {
     scalar_density     = scalar_density,
@@ -44,14 +32,15 @@ fn @make_principled_volume_parameters(scalar_density: f32, scalar_emission: f32,
 };
 
 
-fn @make_principled_volume_shader(params: PrincipledVolumeParameters) -> VolumeShader[PrincipledVolumeValues] {
+fn @make_principled_volume_shader(params: PrincipledVolumeParameters) -> VolumeShader[NanoVDBVolumeValues] {
     
     let color_scattering_inv = color_sub(make_gray_color(1:f32), params.color_scattering); // 1 - color_scattering
     let color_absorption_inv = color_sub(make_gray_color(1:f32), params.color_absorption); // 1 - color_absorption
 
-    fn @blackbody_emission(values: PrincipledVolumeValues) -> Color {
+    fn @blackbody_emission(temperature: f32) -> Color {
+
         /* Add temperature from attribute. */
-        let local_temp = params.scalar_temperature * values.temperature;
+        let local_temp = params.scalar_temperature * temperature;
         if (local_temp < MIN_BB_TEMPERATURE) {
             return(make_gray_color(0:f32))
         }
@@ -70,14 +59,21 @@ fn @make_principled_volume_shader(params: PrincipledVolumeParameters) -> VolumeS
     }
 
     
-    VolumeShader[PrincipledVolumeValues] {
+    VolumeShader[NanoVDBVolumeValues] {
         volume_properties = @|values| {
+
+            let value_temp = if let Option[f32]::Some(temperature) = values.temperature_opt {
+                temperature
+            } else {
+                values.density
+            };
+
             let vxl_density = if values.density > DENSITY_EPS { values.density * params.scalar_density } else { 0 };
         
             let coeff_absorption = if vxl_density > DENSITY_EPS { color_mulf(color_mul(color_scattering_inv, color_absorption_inv), vxl_density) } else { make_gray_color(0:f32) };
             let coeff_scattering = if vxl_density > DENSITY_EPS { color_mulf(params.color_scattering, vxl_density) } else { make_gray_color(0:f32) };
             let coeff_emission   = if params.scalar_emission > flt_eps { color_mulf(params.color_emission, params.scalar_emission) } else { make_gray_color(0:f32) };
-            let bb_emission      = if params.scalar_blackbody > flt_eps && params.scalar_temperature > flt_eps && values.temperature > flt_eps { blackbody_emission(values) } else { make_gray_color(0:f32) };
+            let bb_emission      = if params.scalar_blackbody > flt_eps && params.scalar_temperature > flt_eps && value_temp > flt_eps { blackbody_emission(value_temp) } else { make_gray_color(0:f32) };
 
             make_volume_properties(coeff_scattering, coeff_absorption, color_add(coeff_emission, bb_emission))
         }

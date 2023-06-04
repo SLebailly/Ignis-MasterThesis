@@ -1,0 +1,57 @@
+/**
+ * A shader that mimicks the values used by PBRT
+ */
+fn @make_pbrt_volume_shader(params: PBRTVolumeParameters) -> VolumeShader[NanoVDBVolumeValues] {
+    
+    fn @get_emission(values: NanoVDBVolumeValues) -> Color {
+        if params.scalar_emission > 0:f32 {
+            if let Option[f32]::Some(temperature) = values.temperature_opt {
+                let value_temp = (temperature - params.offset_temperature) * params.scalar_temperature;
+                if (value_temp > 100:f32) {
+                    color_mulf(math::blackbody(value_temp), params.scalar_emission)
+                } else {
+                    color_builtins::black
+                }
+            } else {
+                color_mulf(params.color_emission, params.scalar_emission)
+            }
+        } else {
+            color_builtins::black
+        }
+    }
+
+    VolumeShader[NanoVDBVolumeValues] {
+        volume_properties = @|values: NanoVDBVolumeValues| {
+            let vxl_density = if values.density > DENSITY_EPS { values.density * params.scalar_density } else { 0 };
+        
+            let coeff_absorption = if vxl_density > DENSITY_EPS { color_mulf(params.color_absorption, vxl_density) } else { color_builtins::black };
+            let coeff_scattering = if vxl_density > DENSITY_EPS { color_mulf(params.color_scattering, vxl_density) } else { color_builtins::black };
+            let le               = get_emission(values);
+
+            make_volume_properties(coeff_scattering, coeff_absorption, le)
+        }
+    }
+}
+
+/**
+ * Values used by the PBRT renderer (v4) to map density to VolumeProperties
+ */
+struct PBRTVolumeParameters {
+    scalar_density: f32,     // = -
+    offset_temperature: f32, // = temperatureOffset
+    scalar_temperature: f32, // = temperatureScale
+    scalar_emission: f32,    // = LeScale
+    color_emission: Color,   // = Le
+    color_scattering: Color, // = sigma_s
+    color_absorption: Color  // = sigma_a
+}
+
+fn @make_pbrt_volume_parameters(scalar_density: f32, scalar_emission: f32, color_scattering: Color, color_absorption: Color, color_emission: Color, scalar_temperature: f32, offset_temperature: f32) = PBRTVolumeParameters {
+    scalar_density = scalar_density,
+    offset_temperature = offset_temperature,
+    scalar_temperature = scalar_temperature,
+    scalar_emission = scalar_emission,
+    color_emission = color_emission,
+    color_scattering = color_scattering,
+    color_absorption = color_absorption
+};

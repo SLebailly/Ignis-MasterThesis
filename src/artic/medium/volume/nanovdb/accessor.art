@@ -145,6 +145,8 @@ fn @top_down_get_path[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32
 }
 
 // traverse the tree from the root to the bottom to find the value of the Voxel
+// Warning: i, j, k are NanoVDB indices !!! (ranging from [-A, B] instead of [0, A+B])
+// use to_nanovdb_indeces() to convert from Ignis to NanoVDB indices
 fn @top_down_access[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32, j: i32, k: i32), min_dim: i32) -> (GenericNodeAccessor[ValueT], AccessPath) {
 
     let tree_accessor = tree.access_tree_data();

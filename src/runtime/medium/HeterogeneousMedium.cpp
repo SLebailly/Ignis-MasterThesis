@@ -90,18 +90,71 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
     input.Tree.addNumber("g", *mMedium, 0.0f);
     const std::string pms_func = generateReferencePMS(input);
 
-    if (extension == ".nvdb") {        
-        // Principled Volume Shader Parameters
-        std::string shader_name         = "pvs_" + medium_name;
-        std::string shader_params       = "pvs_params_" + medium_name;
-        const float scalar_density      = mMedium->property("scalar_density" ).getNumber(1.0f);
-        const float scalar_emission     = mMedium->property("scalar_emission").getNumber(0.0f);
-        const Vector3f color_scattering = mMedium->property("color_scattering").getVector3(Vector3f(0.5f, 0.5f, 0.5f));
-        const Vector3f color_absorption = mMedium->property("color_absorption").getVector3(Vector3f(0.8f, 0.8f, 0.8f));
-        const Vector3f color_emission   = mMedium->property("color_emission"  ).getVector3(Vector3f(1.0f, 1.0f, 1.0f));
-        const Vector3f color_blackbody  = mMedium->property("color_blackbody" ).getVector3(Vector3f(0.0f, 0.0f, 0.0f)); //TODO: set defaults according to blender
-        const float scalar_blackbody    = std::min(std::max(mMedium->property("scalar_blackbody" ).getNumber(1.0f), 0.0f), 1.0f); //clamped between 0 and 1
-        const float scalar_temperature  = mMedium->property("scalar_temperature").getNumber(0.0f);
+    if (extension == ".nvdb") {
+        std::string shader              = mMedium->property("shader").getString("monochromatic");
+        std::string shader_name         = "shader_" + medium_name;
+        if (shader == "principled_volume") {
+            // Principled Volume Shader Parameters
+            std::string shader_params       = "pvs_params_" + medium_name;
+            const float scalar_density      = mMedium->property("scalar_density" ).getNumber(1.0f);
+            const float scalar_emission     = mMedium->property("scalar_emission").getNumber(0.0f);
+            const Vector3f color_scattering = mMedium->property("color_scattering").getVector3(Vector3f(0.5f, 0.5f, 0.5f));
+            const Vector3f color_absorption = mMedium->property("color_absorption").getVector3(Vector3f(0.8f, 0.8f, 0.8f));
+            const Vector3f color_emission   = mMedium->property("color_emission"  ).getVector3(Vector3f(1.0f, 1.0f, 1.0f));
+            const Vector3f color_blackbody  = mMedium->property("color_blackbody" ).getVector3(Vector3f(0.0f, 0.0f, 0.0f)); //TODO: set defaults according to blender
+            const float scalar_blackbody    = std::min(std::max(mMedium->property("scalar_blackbody" ).getNumber(1.0f), 0.0f), 1.0f); //clamped between 0 and 1
+            const float scalar_temperature  = mMedium->property("scalar_temperature").getNumber(0.0f);
+
+            input.Stream << input.Tree.pullHeader()
+                         << "  let " << shader_params  << " = make_principled_volume_parameters("
+                            << scalar_density << ", "
+                            << scalar_emission << ", "
+                            << LoaderUtils::inlineColor(color_scattering) << ", "
+                            << LoaderUtils::inlineColor(color_absorption) << ", "
+                            << LoaderUtils::inlineColor(color_emission)   << ", "
+                            << LoaderUtils::inlineColor(color_blackbody)  << ", "
+                            << scalar_blackbody << ","
+                            << scalar_temperature
+                         << ");"  << std::endl
+            	         << "  let " << shader_name << " = make_principled_volume_shader(" << shader_params << ");" << std::endl;
+        } else if (shader == "pbrt_volume") {
+            // PBRT Volume Shader Parameters
+            std::string shader_params       = "pbrtv_params_" + medium_name;
+            const float scalar_density      = mMedium->property("scalar_density" ).getNumber(1.0f);
+            const float scalar_emission     = mMedium->property("scalar_emission").getNumber(0.0f);
+            const Vector3f color_scattering = mMedium->property("color_scattering").getVector3(Vector3f(0.5f, 0.5f, 0.5f));
+            const Vector3f color_absorption = mMedium->property("color_absorption").getVector3(Vector3f(0.8f, 0.8f, 0.8f));
+            const Vector3f color_emission   = mMedium->property("color_emission"  ).getVector3(Vector3f(1.0f, 1.0f, 1.0f));
+            const float scalar_temperature  = mMedium->property("scalar_temperature").getNumber(0.0f);
+            const float cutoff_temperature  = mMedium->property("cutoff_temperature").getNumber(0.0f);
+            const float offset_temperature  = mMedium->property("offset_temperature").getNumber(cutoff_temperature);
+
+            input.Stream << input.Tree.pullHeader()
+                         << "  let " << shader_params  << " = make_pbrt_volume_parameters("
+                            << scalar_density << ", "
+                            << scalar_emission << ", "
+                            << LoaderUtils::inlineColor(color_scattering) << ", "
+                            << LoaderUtils::inlineColor(color_absorption) << ", "
+                            << LoaderUtils::inlineColor(color_emission)   << ", "
+                            << scalar_temperature << ", "
+                            << offset_temperature
+                         << ");"  << std::endl
+            	         << "  let " << shader_name << " = make_pbrt_volume_shader(" << shader_params << ");" << std::endl;
+        } else {
+            // monochromatic
+            std::string shader_params       = "mono_params_" + medium_name;
+            const float scalar_density      = mMedium->property("scalar_density").getNumber(1.0f);
+            const float scalar_absorption   = mMedium->property("scalar_absorption").getNumber(1.0f);
+            const float scalar_scattering   = mMedium->property("scalar_scattering").getNumber(1.0f);
+            input.Stream << input.Tree.pullHeader()
+                << "  let " << shader_params  << " = make_monochromatic_volume_parameters("
+                << scalar_density << ", "
+                << scalar_absorption << ", "
+                << scalar_scattering
+                << ");"  << std::endl
+                << "  let " << shader_name << " = make_monochromatic_volume_shader(" << shader_params << ");" << std::endl;
+        }
+        
         const std::string grid_name_density     = mMedium->property("grid_density").getString("density");
         const std::string grid_name_temperature = mMedium->property("grid_temperature").getString("none");
 
@@ -129,18 +182,8 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
                 << "  let " << buffer_name_temperature << " = Option[DeviceBuffer]::Some(device.load_buffer_by_id(" << res_id_temperature << "));" << std::endl;
         }
         input.Stream << input.Tree.pullHeader()
-        #ifdef USE_SPARSE_GRID
-            << "  let " << shader_params  << " = make_principled_volume_parameters("
-                                                    << scalar_density << ", "
-                                                    << scalar_emission << ", "
-                                                    << LoaderUtils::inlineColor(color_scattering) << ", "
-                                                    << LoaderUtils::inlineColor(color_absorption) << ", "
-                                                    << LoaderUtils::inlineColor(color_emission)   << ", "
-                                                    << LoaderUtils::inlineColor(color_blackbody)  << ", "
-                                                    << scalar_blackbody << ","
-                                                    << scalar_temperature
-                                                << ");"  << std::endl
-            << "  let " << shader_name    << " = make_principled_volume_shader(" << shader_params << ");" << std::endl
+#ifdef USE_SPARSE_GRID
+            
             << "  let " << volume_name    << " = make_nvdb_volume_f32(" << buffer_name_density << ", " << buffer_name_temperature << ", " << shader_name << ");" << std::endl;
 #else
             << "  let " << shader_name    << " = make_simple_volume_shader(1);" << std::endl
