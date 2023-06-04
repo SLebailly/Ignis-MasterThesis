@@ -6,7 +6,8 @@ CMakeSettings.json
 
 # Heterogeneous Media grids
 scenes/media/*.json
-scenes/nvdb/*.nvdb
+scenes/ship/
+*.nvdb
 scenes/dragon
 
 # Visual Studio stuff

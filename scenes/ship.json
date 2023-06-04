@@ -1,0 +1,4103 @@
+{
+  "technique": {
+    "type": "volpath",
+    "max_depth": 3,
+    "clamp": 0.0
+  },
+	"camera": {
+		"type": "perspective", 
+		"fov": 25, 
+		"near_clip": 0.1,
+		"far_clip": 100,
+		"transform": [ -1,0,0,0, 0,1,0,0, 0,0,-1,4, 0,0,0,1 ]
+	},
+	"film": {
+		"size": [1920, 1080]
+	}, 
+  "shapes": [
+    {
+      "type": "ply",
+      "name": "defaultMaterial.001",
+      "filename": "meshes/defaultMaterial.001.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.002",
+      "filename": "meshes/defaultMaterial.002.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial",
+      "filename": "meshes/defaultMaterial.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.009",
+      "filename": "meshes/defaultMaterial.009.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.018",
+      "filename": "meshes/defaultMaterial.018.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.020",
+      "filename": "meshes/defaultMaterial.020.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.052",
+      "filename": "meshes/defaultMaterial.052.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.050",
+      "filename": "meshes/defaultMaterial.050.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.057",
+      "filename": "meshes/defaultMaterial.057.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.059",
+      "filename": "meshes/defaultMaterial.059.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.064",
+      "filename": "meshes/defaultMaterial.064.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.066",
+      "filename": "meshes/defaultMaterial.066.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.071",
+      "filename": "meshes/defaultMaterial.071.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.073",
+      "filename": "meshes/defaultMaterial.073.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.078",
+      "filename": "meshes/defaultMaterial.078.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.080",
+      "filename": "meshes/defaultMaterial.080.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.085",
+      "filename": "meshes/defaultMaterial.085.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.087",
+      "filename": "meshes/defaultMaterial.087.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.092",
+      "filename": "meshes/defaultMaterial.092.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.094",
+      "filename": "meshes/defaultMaterial.094.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.017",
+      "filename": "meshes/defaultMaterial.017.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.049",
+      "filename": "meshes/defaultMaterial.049.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.058",
+      "filename": "meshes/defaultMaterial.058.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.065",
+      "filename": "meshes/defaultMaterial.065.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.072",
+      "filename": "meshes/defaultMaterial.072.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.079",
+      "filename": "meshes/defaultMaterial.079.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.086",
+      "filename": "meshes/defaultMaterial.086.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.093",
+      "filename": "meshes/defaultMaterial.093.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.019",
+      "filename": "meshes/defaultMaterial.019.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.051",
+      "filename": "meshes/defaultMaterial.051.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.056",
+      "filename": "meshes/defaultMaterial.056.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.063",
+      "filename": "meshes/defaultMaterial.063.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.070",
+      "filename": "meshes/defaultMaterial.070.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.077",
+      "filename": "meshes/defaultMaterial.077.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.084",
+      "filename": "meshes/defaultMaterial.084.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.091",
+      "filename": "meshes/defaultMaterial.091.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.034",
+      "filename": "meshes/defaultMaterial.034.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.035",
+      "filename": "meshes/defaultMaterial.035.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.036",
+      "filename": "meshes/defaultMaterial.036.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.037",
+      "filename": "meshes/defaultMaterial.037.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.038",
+      "filename": "meshes/defaultMaterial.038.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.039",
+      "filename": "meshes/defaultMaterial.039.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.003",
+      "filename": "meshes/defaultMaterial.003.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.021",
+      "filename": "meshes/defaultMaterial.021.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.025",
+      "filename": "meshes/defaultMaterial.025.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.024",
+      "filename": "meshes/defaultMaterial.024.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.023",
+      "filename": "meshes/defaultMaterial.023.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.022",
+      "filename": "meshes/defaultMaterial.022.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.004",
+      "filename": "meshes/defaultMaterial.004.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.008",
+      "filename": "meshes/defaultMaterial.008.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.007",
+      "filename": "meshes/defaultMaterial.007.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.006",
+      "filename": "meshes/defaultMaterial.006.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.005",
+      "filename": "meshes/defaultMaterial.005.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.030",
+      "filename": "meshes/defaultMaterial.030.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.032",
+      "filename": "meshes/defaultMaterial.032.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.010",
+      "filename": "meshes/defaultMaterial.010.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.028",
+      "filename": "meshes/defaultMaterial.028.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.031",
+      "filename": "meshes/defaultMaterial.031.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.033",
+      "filename": "meshes/defaultMaterial.033.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.011",
+      "filename": "meshes/defaultMaterial.011.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.029",
+      "filename": "meshes/defaultMaterial.029.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.040",
+      "filename": "meshes/defaultMaterial.040.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.042",
+      "filename": "meshes/defaultMaterial.042.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.044",
+      "filename": "meshes/defaultMaterial.044.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.041",
+      "filename": "meshes/defaultMaterial.041.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.043",
+      "filename": "meshes/defaultMaterial.043.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.045",
+      "filename": "meshes/defaultMaterial.045.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.014",
+      "filename": "meshes/defaultMaterial.014.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.046",
+      "filename": "meshes/defaultMaterial.046.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.053",
+      "filename": "meshes/defaultMaterial.053.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.060",
+      "filename": "meshes/defaultMaterial.060.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.067",
+      "filename": "meshes/defaultMaterial.067.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.074",
+      "filename": "meshes/defaultMaterial.074.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.081",
+      "filename": "meshes/defaultMaterial.081.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.088",
+      "filename": "meshes/defaultMaterial.088.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.016",
+      "filename": "meshes/defaultMaterial.016.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.048",
+      "filename": "meshes/defaultMaterial.048.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.055",
+      "filename": "meshes/defaultMaterial.055.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.062",
+      "filename": "meshes/defaultMaterial.062.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.069",
+      "filename": "meshes/defaultMaterial.069.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.076",
+      "filename": "meshes/defaultMaterial.076.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.083",
+      "filename": "meshes/defaultMaterial.083.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.090",
+      "filename": "meshes/defaultMaterial.090.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.015",
+      "filename": "meshes/defaultMaterial.015.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.047",
+      "filename": "meshes/defaultMaterial.047.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.054",
+      "filename": "meshes/defaultMaterial.054.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.061",
+      "filename": "meshes/defaultMaterial.061.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.068",
+      "filename": "meshes/defaultMaterial.068.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.075",
+      "filename": "meshes/defaultMaterial.075.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.082",
+      "filename": "meshes/defaultMaterial.082.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.089",
+      "filename": "meshes/defaultMaterial.089.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.012",
+      "filename": "meshes/defaultMaterial.012.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.026",
+      "filename": "meshes/defaultMaterial.026.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.013",
+      "filename": "meshes/defaultMaterial.013.ply"
+    },
+    {
+      "type": "ply",
+      "name": "defaultMaterial.027",
+      "filename": "meshes/defaultMaterial.027.ply"
+    }
+  ],
+  "bsdfs": [
+    {
+      "type": "diffuse",
+      "name": "__bsdf_black",
+      "reflectance": 0
+    },
+    {
+      "type": "diffuse",
+      "name": "__bsdf_error",
+      "reflectance": [
+        1,
+        0.75,
+        0.8
+      ]
+    },
+    {
+      "type": "principled",
+      "name": "Turret_inner",
+      "base_color": "_tex_10",
+      "metallic": "_tex_11.z",
+      "roughness": "_tex_11.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Turret",
+      "bsdf": "Turret_inner",
+      "normal": "norm(Nx*((2*_tex_12-color(1)).xyz).x + Ny*((2*_tex_12-color(1)).xyz).y + N*((2*_tex_12-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Turret_3_inner",
+      "base_color": "_tex_10",
+      "metallic": "_tex_11.z",
+      "roughness": "_tex_11.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Turret_3",
+      "bsdf": "Turret_3_inner",
+      "normal": "norm(Nx*((2*_tex_12-color(1)).xyz).x + Ny*((2*_tex_12-color(1)).xyz).y + N*((2*_tex_12-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Voile_s_inner",
+      "base_color": "_tex_13",
+      "metallic": "_tex_14.z",
+      "roughness": "_tex_14.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Voile_s",
+      "bsdf": "Voile_s_inner",
+      "normal": "norm(Nx*((2*_tex_15-color(1)).xyz).x + Ny*((2*_tex_15-color(1)).xyz).y + N*((2*_tex_15-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Turret_7_inner",
+      "base_color": "_tex_10",
+      "metallic": "_tex_11.z",
+      "roughness": "_tex_11.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Turret_7",
+      "bsdf": "Turret_7_inner",
+      "normal": "norm(Nx*((2*_tex_12-color(1)).xyz).x + Ny*((2*_tex_12-color(1)).xyz).y + N*((2*_tex_12-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Body_Main_inner",
+      "base_color": "_tex_16",
+      "metallic": "_tex_17.z",
+      "roughness": "_tex_17.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Body_Main",
+      "bsdf": "Body_Main_inner",
+      "normal": "norm(Nx*((2*_tex_18-color(1)).xyz).x + Ny*((2*_tex_18-color(1)).xyz).y + N*((2*_tex_18-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Voile_B_inner",
+      "base_color": "_tex_19",
+      "metallic": "_tex_20.z",
+      "roughness": "_tex_20.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Voile_B",
+      "bsdf": "Voile_B_inner",
+      "normal": "norm(Nx*((2*_tex_21-color(1)).xyz).x + Ny*((2*_tex_21-color(1)).xyz).y + N*((2*_tex_21-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Side_Voile_FL_inner",
+      "base_color": "_tex_22",
+      "metallic": "_tex_23.z",
+      "roughness": "_tex_23.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Side_Voile_FL",
+      "bsdf": "Side_Voile_FL_inner",
+      "normal": "norm(Nx*((2*_tex_24-color(1)).xyz).x + Ny*((2*_tex_24-color(1)).xyz).y + N*((2*_tex_24-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Trap_Door_Sphere_inner",
+      "base_color": "_tex_25",
+      "metallic": "_tex_26.z",
+      "roughness": "_tex_26.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Trap_Door_Sphere",
+      "bsdf": "Trap_Door_Sphere_inner",
+      "normal": "norm(Nx*((2*_tex_27-color(1)).xyz).x + Ny*((2*_tex_27-color(1)).xyz).y + N*((2*_tex_27-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Turret_4_inner",
+      "base_color": "_tex_10",
+      "metallic": "_tex_11.z",
+      "roughness": "_tex_11.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Turret_4",
+      "bsdf": "Turret_4_inner",
+      "normal": "norm(Nx*((2*_tex_12-color(1)).xyz).x + Ny*((2*_tex_12-color(1)).xyz).y + N*((2*_tex_12-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Gear_inner",
+      "base_color": "_tex_28",
+      "metallic": "_tex_29.z",
+      "roughness": "_tex_29.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Gear",
+      "bsdf": "Gear_inner",
+      "normal": "norm(Nx*((2*_tex_30-color(1)).xyz).x + Ny*((2*_tex_30-color(1)).xyz).y + N*((2*_tex_30-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Side_voile_BL_inner",
+      "base_color": "_tex_31",
+      "metallic": "_tex_32.z",
+      "roughness": "_tex_32.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Side_voile_BL",
+      "bsdf": "Side_voile_BL_inner",
+      "normal": "norm(Nx*((2*_tex_33-color(1)).xyz).x + Ny*((2*_tex_33-color(1)).xyz).y + N*((2*_tex_33-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Turret_1_inner",
+      "base_color": "_tex_10",
+      "metallic": "_tex_11.z",
+      "roughness": "_tex_11.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Turret_1",
+      "bsdf": "Turret_1_inner",
+      "normal": "norm(Nx*((2*_tex_12-color(1)).xyz).x + Ny*((2*_tex_12-color(1)).xyz).y + N*((2*_tex_12-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Side_Voile_BR_inner",
+      "base_color": "_tex_34",
+      "metallic": "_tex_35.z",
+      "roughness": "_tex_35.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Side_Voile_BR",
+      "bsdf": "Side_Voile_BR_inner",
+      "normal": "norm(Nx*((2*_tex_36-color(1)).xyz).x + Ny*((2*_tex_36-color(1)).xyz).y + N*((2*_tex_36-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Side_Voile_FR_inner",
+      "base_color": "_tex_37",
+      "metallic": "_tex_38.z",
+      "roughness": "_tex_38.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Side_Voile_FR",
+      "bsdf": "Side_Voile_FR_inner",
+      "normal": "norm(Nx*((2*_tex_39-color(1)).xyz).x + Ny*((2*_tex_39-color(1)).xyz).y + N*((2*_tex_39-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Turret_5_inner",
+      "base_color": "_tex_10",
+      "metallic": "_tex_11.z",
+      "roughness": "_tex_11.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Turret_5",
+      "bsdf": "Turret_5_inner",
+      "normal": "norm(Nx*((2*_tex_12-color(1)).xyz).x + Ny*((2*_tex_12-color(1)).xyz).y + N*((2*_tex_12-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Body_HQ_inner",
+      "base_color": "_tex_40",
+      "metallic": "_tex_41.z",
+      "roughness": "_tex_41.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Body_HQ",
+      "bsdf": "Body_HQ_inner",
+      "normal": "norm(Nx*((2*_tex_42-color(1)).xyz).x + Ny*((2*_tex_42-color(1)).xyz).y + N*((2*_tex_42-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Turret_2_inner",
+      "base_color": "_tex_10",
+      "metallic": "_tex_11.z",
+      "roughness": "_tex_11.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Turret_2",
+      "bsdf": "Turret_2_inner",
+      "normal": "norm(Nx*((2*_tex_12-color(1)).xyz).x + Ny*((2*_tex_12-color(1)).xyz).y + N*((2*_tex_12-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Body_Wings_inner",
+      "base_color": "_tex_43",
+      "metallic": "_tex_44.z",
+      "roughness": "_tex_44.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Body_Wings",
+      "bsdf": "Body_Wings_inner",
+      "normal": "norm(Nx*((2*_tex_45-color(1)).xyz).x + Ny*((2*_tex_45-color(1)).xyz).y + N*((2*_tex_45-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Railgun_Reactor_inner",
+      "base_color": "_tex_46",
+      "metallic": "_tex_47.z",
+      "roughness": "_tex_47.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Railgun_Reactor",
+      "bsdf": "Railgun_Reactor_inner",
+      "normal": "norm(Nx*((2*_tex_48-color(1)).xyz).x + Ny*((2*_tex_48-color(1)).xyz).y + N*((2*_tex_48-color(1)).xyz).z)"
+    },
+    {
+      "type": "principled",
+      "name": "Turret_6_inner",
+      "base_color": "_tex_10",
+      "metallic": "_tex_11.z",
+      "roughness": "_tex_11.y",
+      "anisotropic": 0.0,
+      "sheen": 0.0,
+      "sheen_tint": 0.5,
+      "clearcoat": 0.0,
+      "clearcoat_roughness": 0.029999999329447746,
+      "flatness": 0.0,
+      "specular_transmission": 0.0,
+      "specular_tint": 0.0,
+      "ior": 1.5
+    },
+    {
+      "type": "transform",
+      "name": "Turret_6",
+      "bsdf": "Turret_6_inner",
+      "normal": "norm(Nx*((2*_tex_12-color(1)).xyz).x + Ny*((2*_tex_12-color(1)).xyz).y + N*((2*_tex_12-color(1)).xyz).z)"
+    }
+  ],
+  "entities": [
+    {
+      "name": "defaultMaterial.001-defaultMaterial.001",
+      "shape": "defaultMaterial.001",
+      "bsdf": "Trap_Door_Sphere",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.002-defaultMaterial.002",
+      "shape": "defaultMaterial.002",
+      "bsdf": "Body_HQ",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial-defaultMaterial",
+      "shape": "defaultMaterial",
+      "bsdf": "Body_Main",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.009-defaultMaterial.009",
+      "shape": "defaultMaterial.009",
+      "bsdf": "Body_Wings",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.018-defaultMaterial.018",
+      "shape": "defaultMaterial.018",
+      "bsdf": "Turret",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.020-defaultMaterial.020",
+      "shape": "defaultMaterial.020",
+      "bsdf": "Turret",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.052-defaultMaterial.052",
+      "shape": "defaultMaterial.052",
+      "bsdf": "Turret_1",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.050-defaultMaterial.050",
+      "shape": "defaultMaterial.050",
+      "bsdf": "Turret_1",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.057-defaultMaterial.057",
+      "shape": "defaultMaterial.057",
+      "bsdf": "Turret_2",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.059-defaultMaterial.059",
+      "shape": "defaultMaterial.059",
+      "bsdf": "Turret_2",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.064-defaultMaterial.064",
+      "shape": "defaultMaterial.064",
+      "bsdf": "Turret_3",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.066-defaultMaterial.066",
+      "shape": "defaultMaterial.066",
+      "bsdf": "Turret_3",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.071-defaultMaterial.071",
+      "shape": "defaultMaterial.071",
+      "bsdf": "Turret_4",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.073-defaultMaterial.073",
+      "shape": "defaultMaterial.073",
+      "bsdf": "Turret_4",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.078-defaultMaterial.078",
+      "shape": "defaultMaterial.078",
+      "bsdf": "Turret_5",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.080-defaultMaterial.080",
+      "shape": "defaultMaterial.080",
+      "bsdf": "Turret_5",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.085-defaultMaterial.085",
+      "shape": "defaultMaterial.085",
+      "bsdf": "Turret_6",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.087-defaultMaterial.087",
+      "shape": "defaultMaterial.087",
+      "bsdf": "Turret_6",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.092-defaultMaterial.092",
+      "shape": "defaultMaterial.092",
+      "bsdf": "Turret_7",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.094-defaultMaterial.094",
+      "shape": "defaultMaterial.094",
+      "bsdf": "Turret_7",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.017-defaultMaterial.017",
+      "shape": "defaultMaterial.017",
+      "bsdf": "Turret",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.049-defaultMaterial.049",
+      "shape": "defaultMaterial.049",
+      "bsdf": "Turret_1",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.058-defaultMaterial.058",
+      "shape": "defaultMaterial.058",
+      "bsdf": "Turret_2",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.065-defaultMaterial.065",
+      "shape": "defaultMaterial.065",
+      "bsdf": "Turret_3",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.072-defaultMaterial.072",
+      "shape": "defaultMaterial.072",
+      "bsdf": "Turret_4",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.079-defaultMaterial.079",
+      "shape": "defaultMaterial.079",
+      "bsdf": "Turret_5",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.086-defaultMaterial.086",
+      "shape": "defaultMaterial.086",
+      "bsdf": "Turret_6",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.093-defaultMaterial.093",
+      "shape": "defaultMaterial.093",
+      "bsdf": "Turret_7",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.019-defaultMaterial.019",
+      "shape": "defaultMaterial.019",
+      "bsdf": "Turret",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.051-defaultMaterial.051",
+      "shape": "defaultMaterial.051",
+      "bsdf": "Turret_1",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.056-defaultMaterial.056",
+      "shape": "defaultMaterial.056",
+      "bsdf": "Turret_2",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.063-defaultMaterial.063",
+      "shape": "defaultMaterial.063",
+      "bsdf": "Turret_3",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.070-defaultMaterial.070",
+      "shape": "defaultMaterial.070",
+      "bsdf": "Turret_4",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.077-defaultMaterial.077",
+      "shape": "defaultMaterial.077",
+      "bsdf": "Turret_5",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.084-defaultMaterial.084",
+      "shape": "defaultMaterial.084",
+      "bsdf": "Turret_6",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.091-defaultMaterial.091",
+      "shape": "defaultMaterial.091",
+      "bsdf": "Turret_7",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.034-defaultMaterial.034",
+      "shape": "defaultMaterial.034",
+      "bsdf": "Gear",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.035-defaultMaterial.035",
+      "shape": "defaultMaterial.035",
+      "bsdf": "Gear",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.036-defaultMaterial.036",
+      "shape": "defaultMaterial.036",
+      "bsdf": "Gear",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.037-defaultMaterial.037",
+      "shape": "defaultMaterial.037",
+      "bsdf": "Gear",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.038-defaultMaterial.038",
+      "shape": "defaultMaterial.038",
+      "bsdf": "Gear",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.039-defaultMaterial.039",
+      "shape": "defaultMaterial.039",
+      "bsdf": "Gear",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.003-defaultMaterial.003",
+      "shape": "defaultMaterial.003",
+      "bsdf": "Body_HQ",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.021-defaultMaterial.021",
+      "shape": "defaultMaterial.021",
+      "bsdf": "Railgun_Reactor",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.025-defaultMaterial.025",
+      "shape": "defaultMaterial.025",
+      "bsdf": "Railgun_Reactor",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.024-defaultMaterial.024",
+      "shape": "defaultMaterial.024",
+      "bsdf": "Railgun_Reactor",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.023-defaultMaterial.023",
+      "shape": "defaultMaterial.023",
+      "bsdf": "Railgun_Reactor",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.022-defaultMaterial.022",
+      "shape": "defaultMaterial.022",
+      "bsdf": "Railgun_Reactor",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.004-defaultMaterial.004",
+      "shape": "defaultMaterial.004",
+      "bsdf": "Railgun_Reactor",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.008-defaultMaterial.008",
+      "shape": "defaultMaterial.008",
+      "bsdf": "Railgun_Reactor",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.007-defaultMaterial.007",
+      "shape": "defaultMaterial.007",
+      "bsdf": "Railgun_Reactor",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.006-defaultMaterial.006",
+      "shape": "defaultMaterial.006",
+      "bsdf": "Railgun_Reactor",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.005-defaultMaterial.005",
+      "shape": "defaultMaterial.005",
+      "bsdf": "Railgun_Reactor",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.030-defaultMaterial.030",
+      "shape": "defaultMaterial.030",
+      "bsdf": "Side_voile_BL",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.032-defaultMaterial.032",
+      "shape": "defaultMaterial.032",
+      "bsdf": "Side_Voile_BR",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.010-defaultMaterial.010",
+      "shape": "defaultMaterial.010",
+      "bsdf": "Side_Voile_FL",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.028-defaultMaterial.028",
+      "shape": "defaultMaterial.028",
+      "bsdf": "Side_Voile_FR",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.031-defaultMaterial.031",
+      "shape": "defaultMaterial.031",
+      "bsdf": "Side_voile_BL",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.033-defaultMaterial.033",
+      "shape": "defaultMaterial.033",
+      "bsdf": "Side_Voile_BR",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.011-defaultMaterial.011",
+      "shape": "defaultMaterial.011",
+      "bsdf": "Side_Voile_FL",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.029-defaultMaterial.029",
+      "shape": "defaultMaterial.029",
+      "bsdf": "Side_Voile_FR",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.040-defaultMaterial.040",
+      "shape": "defaultMaterial.040",
+      "bsdf": "Trap_Door_Sphere",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.042-defaultMaterial.042",
+      "shape": "defaultMaterial.042",
+      "bsdf": "Trap_Door_Sphere",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.044-defaultMaterial.044",
+      "shape": "defaultMaterial.044",
+      "bsdf": "Trap_Door_Sphere",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.041-defaultMaterial.041",
+      "shape": "defaultMaterial.041",
+      "bsdf": "Trap_Door_Sphere",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.043-defaultMaterial.043",
+      "shape": "defaultMaterial.043",
+      "bsdf": "Trap_Door_Sphere",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.045-defaultMaterial.045",
+      "shape": "defaultMaterial.045",
+      "bsdf": "Trap_Door_Sphere",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.014-defaultMaterial.014",
+      "shape": "defaultMaterial.014",
+      "bsdf": "Turret",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.046-defaultMaterial.046",
+      "shape": "defaultMaterial.046",
+      "bsdf": "Turret_1",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.053-defaultMaterial.053",
+      "shape": "defaultMaterial.053",
+      "bsdf": "Turret_2",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.060-defaultMaterial.060",
+      "shape": "defaultMaterial.060",
+      "bsdf": "Turret_3",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.067-defaultMaterial.067",
+      "shape": "defaultMaterial.067",
+      "bsdf": "Turret_4",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.074-defaultMaterial.074",
+      "shape": "defaultMaterial.074",
+      "bsdf": "Turret_5",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.081-defaultMaterial.081",
+      "shape": "defaultMaterial.081",
+      "bsdf": "Turret_6",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.088-defaultMaterial.088",
+      "shape": "defaultMaterial.088",
+      "bsdf": "Turret_7",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.016-defaultMaterial.016",
+      "shape": "defaultMaterial.016",
+      "bsdf": "Turret",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.048-defaultMaterial.048",
+      "shape": "defaultMaterial.048",
+      "bsdf": "Turret_1",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.055-defaultMaterial.055",
+      "shape": "defaultMaterial.055",
+      "bsdf": "Turret_2",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.062-defaultMaterial.062",
+      "shape": "defaultMaterial.062",
+      "bsdf": "Turret_3",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.069-defaultMaterial.069",
+      "shape": "defaultMaterial.069",
+      "bsdf": "Turret_4",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.076-defaultMaterial.076",
+      "shape": "defaultMaterial.076",
+      "bsdf": "Turret_5",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.083-defaultMaterial.083",
+      "shape": "defaultMaterial.083",
+      "bsdf": "Turret_6",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.090-defaultMaterial.090",
+      "shape": "defaultMaterial.090",
+      "bsdf": "Turret_7",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.015-defaultMaterial.015",
+      "shape": "defaultMaterial.015",
+      "bsdf": "Turret",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.047-defaultMaterial.047",
+      "shape": "defaultMaterial.047",
+      "bsdf": "Turret_1",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.054-defaultMaterial.054",
+      "shape": "defaultMaterial.054",
+      "bsdf": "Turret_2",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.061-defaultMaterial.061",
+      "shape": "defaultMaterial.061",
+      "bsdf": "Turret_3",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.068-defaultMaterial.068",
+      "shape": "defaultMaterial.068",
+      "bsdf": "Turret_4",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.075-defaultMaterial.075",
+      "shape": "defaultMaterial.075",
+      "bsdf": "Turret_5",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.082-defaultMaterial.082",
+      "shape": "defaultMaterial.082",
+      "bsdf": "Turret_6",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.089-defaultMaterial.089",
+      "shape": "defaultMaterial.089",
+      "bsdf": "Turret_7",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.012-defaultMaterial.012",
+      "shape": "defaultMaterial.012",
+      "bsdf": "Voile_B",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.026-defaultMaterial.026",
+      "shape": "defaultMaterial.026",
+      "bsdf": "Voile_s",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.013-defaultMaterial.013",
+      "shape": "defaultMaterial.013",
+      "bsdf": "Voile_B",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "defaultMaterial.027-defaultMaterial.027",
+      "shape": "defaultMaterial.027",
+      "bsdf": "Voile_s",
+      "transform": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10.000001907348633,
+        0.0,
+        0.35999998450279236,
+        0.0,
+        0.0,
+        10.000001907348633,
+        3.299999952316284,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "lights": [
+    {
+      "type": "point",
+      "name": "Light",
+      "position": [
+        4.076245307922363,
+        1.0054539442062378,
+        5.903861999511719
+      ],
+      "power": [
+        1000.0,
+        1000.0,
+        1000.0
+      ]
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.001-defaultMaterial.001",
+      "entity": "defaultMaterial.001-defaultMaterial.001",
+      "radiance": "_tex_0"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.002-defaultMaterial.002",
+      "entity": "defaultMaterial.002-defaultMaterial.002",
+      "radiance": "_tex_1"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial-defaultMaterial",
+      "entity": "defaultMaterial-defaultMaterial",
+      "radiance": "_tex_2"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.018-defaultMaterial.018",
+      "entity": "defaultMaterial.018-defaultMaterial.018",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.020-defaultMaterial.020",
+      "entity": "defaultMaterial.020-defaultMaterial.020",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.052-defaultMaterial.052",
+      "entity": "defaultMaterial.052-defaultMaterial.052",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.050-defaultMaterial.050",
+      "entity": "defaultMaterial.050-defaultMaterial.050",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.057-defaultMaterial.057",
+      "entity": "defaultMaterial.057-defaultMaterial.057",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.059-defaultMaterial.059",
+      "entity": "defaultMaterial.059-defaultMaterial.059",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.064-defaultMaterial.064",
+      "entity": "defaultMaterial.064-defaultMaterial.064",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.066-defaultMaterial.066",
+      "entity": "defaultMaterial.066-defaultMaterial.066",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.071-defaultMaterial.071",
+      "entity": "defaultMaterial.071-defaultMaterial.071",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.073-defaultMaterial.073",
+      "entity": "defaultMaterial.073-defaultMaterial.073",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.078-defaultMaterial.078",
+      "entity": "defaultMaterial.078-defaultMaterial.078",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.080-defaultMaterial.080",
+      "entity": "defaultMaterial.080-defaultMaterial.080",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.085-defaultMaterial.085",
+      "entity": "defaultMaterial.085-defaultMaterial.085",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.087-defaultMaterial.087",
+      "entity": "defaultMaterial.087-defaultMaterial.087",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.092-defaultMaterial.092",
+      "entity": "defaultMaterial.092-defaultMaterial.092",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.094-defaultMaterial.094",
+      "entity": "defaultMaterial.094-defaultMaterial.094",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.017-defaultMaterial.017",
+      "entity": "defaultMaterial.017-defaultMaterial.017",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.049-defaultMaterial.049",
+      "entity": "defaultMaterial.049-defaultMaterial.049",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.058-defaultMaterial.058",
+      "entity": "defaultMaterial.058-defaultMaterial.058",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.065-defaultMaterial.065",
+      "entity": "defaultMaterial.065-defaultMaterial.065",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.072-defaultMaterial.072",
+      "entity": "defaultMaterial.072-defaultMaterial.072",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.079-defaultMaterial.079",
+      "entity": "defaultMaterial.079-defaultMaterial.079",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.086-defaultMaterial.086",
+      "entity": "defaultMaterial.086-defaultMaterial.086",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.093-defaultMaterial.093",
+      "entity": "defaultMaterial.093-defaultMaterial.093",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.019-defaultMaterial.019",
+      "entity": "defaultMaterial.019-defaultMaterial.019",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.051-defaultMaterial.051",
+      "entity": "defaultMaterial.051-defaultMaterial.051",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.056-defaultMaterial.056",
+      "entity": "defaultMaterial.056-defaultMaterial.056",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.063-defaultMaterial.063",
+      "entity": "defaultMaterial.063-defaultMaterial.063",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.070-defaultMaterial.070",
+      "entity": "defaultMaterial.070-defaultMaterial.070",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.077-defaultMaterial.077",
+      "entity": "defaultMaterial.077-defaultMaterial.077",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.084-defaultMaterial.084",
+      "entity": "defaultMaterial.084-defaultMaterial.084",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.091-defaultMaterial.091",
+      "entity": "defaultMaterial.091-defaultMaterial.091",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.034-defaultMaterial.034",
+      "entity": "defaultMaterial.034-defaultMaterial.034",
+      "radiance": "_tex_4"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.035-defaultMaterial.035",
+      "entity": "defaultMaterial.035-defaultMaterial.035",
+      "radiance": "_tex_4"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.036-defaultMaterial.036",
+      "entity": "defaultMaterial.036-defaultMaterial.036",
+      "radiance": "_tex_4"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.037-defaultMaterial.037",
+      "entity": "defaultMaterial.037-defaultMaterial.037",
+      "radiance": "_tex_4"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.038-defaultMaterial.038",
+      "entity": "defaultMaterial.038-defaultMaterial.038",
+      "radiance": "_tex_4"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.039-defaultMaterial.039",
+      "entity": "defaultMaterial.039-defaultMaterial.039",
+      "radiance": "_tex_4"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.003-defaultMaterial.003",
+      "entity": "defaultMaterial.003-defaultMaterial.003",
+      "radiance": "_tex_1"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.021-defaultMaterial.021",
+      "entity": "defaultMaterial.021-defaultMaterial.021",
+      "radiance": "_tex_5"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.025-defaultMaterial.025",
+      "entity": "defaultMaterial.025-defaultMaterial.025",
+      "radiance": "_tex_5"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.024-defaultMaterial.024",
+      "entity": "defaultMaterial.024-defaultMaterial.024",
+      "radiance": "_tex_5"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.023-defaultMaterial.023",
+      "entity": "defaultMaterial.023-defaultMaterial.023",
+      "radiance": "_tex_5"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.022-defaultMaterial.022",
+      "entity": "defaultMaterial.022-defaultMaterial.022",
+      "radiance": "_tex_5"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.004-defaultMaterial.004",
+      "entity": "defaultMaterial.004-defaultMaterial.004",
+      "radiance": "_tex_5"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.008-defaultMaterial.008",
+      "entity": "defaultMaterial.008-defaultMaterial.008",
+      "radiance": "_tex_5"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.007-defaultMaterial.007",
+      "entity": "defaultMaterial.007-defaultMaterial.007",
+      "radiance": "_tex_5"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.006-defaultMaterial.006",
+      "entity": "defaultMaterial.006-defaultMaterial.006",
+      "radiance": "_tex_5"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.005-defaultMaterial.005",
+      "entity": "defaultMaterial.005-defaultMaterial.005",
+      "radiance": "_tex_5"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.030-defaultMaterial.030",
+      "entity": "defaultMaterial.030-defaultMaterial.030",
+      "radiance": "_tex_6"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.032-defaultMaterial.032",
+      "entity": "defaultMaterial.032-defaultMaterial.032",
+      "radiance": "_tex_7"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.010-defaultMaterial.010",
+      "entity": "defaultMaterial.010-defaultMaterial.010",
+      "radiance": "_tex_8"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.028-defaultMaterial.028",
+      "entity": "defaultMaterial.028-defaultMaterial.028",
+      "radiance": "_tex_9"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.031-defaultMaterial.031",
+      "entity": "defaultMaterial.031-defaultMaterial.031",
+      "radiance": "_tex_6"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.033-defaultMaterial.033",
+      "entity": "defaultMaterial.033-defaultMaterial.033",
+      "radiance": "_tex_7"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.011-defaultMaterial.011",
+      "entity": "defaultMaterial.011-defaultMaterial.011",
+      "radiance": "_tex_8"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.029-defaultMaterial.029",
+      "entity": "defaultMaterial.029-defaultMaterial.029",
+      "radiance": "_tex_9"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.040-defaultMaterial.040",
+      "entity": "defaultMaterial.040-defaultMaterial.040",
+      "radiance": "_tex_0"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.042-defaultMaterial.042",
+      "entity": "defaultMaterial.042-defaultMaterial.042",
+      "radiance": "_tex_0"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.044-defaultMaterial.044",
+      "entity": "defaultMaterial.044-defaultMaterial.044",
+      "radiance": "_tex_0"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.041-defaultMaterial.041",
+      "entity": "defaultMaterial.041-defaultMaterial.041",
+      "radiance": "_tex_0"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.043-defaultMaterial.043",
+      "entity": "defaultMaterial.043-defaultMaterial.043",
+      "radiance": "_tex_0"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.045-defaultMaterial.045",
+      "entity": "defaultMaterial.045-defaultMaterial.045",
+      "radiance": "_tex_0"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.014-defaultMaterial.014",
+      "entity": "defaultMaterial.014-defaultMaterial.014",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.046-defaultMaterial.046",
+      "entity": "defaultMaterial.046-defaultMaterial.046",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.053-defaultMaterial.053",
+      "entity": "defaultMaterial.053-defaultMaterial.053",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.060-defaultMaterial.060",
+      "entity": "defaultMaterial.060-defaultMaterial.060",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.067-defaultMaterial.067",
+      "entity": "defaultMaterial.067-defaultMaterial.067",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.074-defaultMaterial.074",
+      "entity": "defaultMaterial.074-defaultMaterial.074",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.081-defaultMaterial.081",
+      "entity": "defaultMaterial.081-defaultMaterial.081",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.088-defaultMaterial.088",
+      "entity": "defaultMaterial.088-defaultMaterial.088",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.016-defaultMaterial.016",
+      "entity": "defaultMaterial.016-defaultMaterial.016",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.048-defaultMaterial.048",
+      "entity": "defaultMaterial.048-defaultMaterial.048",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.055-defaultMaterial.055",
+      "entity": "defaultMaterial.055-defaultMaterial.055",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.062-defaultMaterial.062",
+      "entity": "defaultMaterial.062-defaultMaterial.062",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.069-defaultMaterial.069",
+      "entity": "defaultMaterial.069-defaultMaterial.069",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.076-defaultMaterial.076",
+      "entity": "defaultMaterial.076-defaultMaterial.076",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.083-defaultMaterial.083",
+      "entity": "defaultMaterial.083-defaultMaterial.083",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.090-defaultMaterial.090",
+      "entity": "defaultMaterial.090-defaultMaterial.090",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.015-defaultMaterial.015",
+      "entity": "defaultMaterial.015-defaultMaterial.015",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.047-defaultMaterial.047",
+      "entity": "defaultMaterial.047-defaultMaterial.047",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.054-defaultMaterial.054",
+      "entity": "defaultMaterial.054-defaultMaterial.054",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.061-defaultMaterial.061",
+      "entity": "defaultMaterial.061-defaultMaterial.061",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.068-defaultMaterial.068",
+      "entity": "defaultMaterial.068-defaultMaterial.068",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.075-defaultMaterial.075",
+      "entity": "defaultMaterial.075-defaultMaterial.075",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.082-defaultMaterial.082",
+      "entity": "defaultMaterial.082-defaultMaterial.082",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "area",
+      "name": "defaultMaterial.089-defaultMaterial.089",
+      "entity": "defaultMaterial.089-defaultMaterial.089",
+      "radiance": "_tex_3"
+    },
+    {
+      "type": "env",
+      "name": "__scene_world",
+      "radiance": "color(0.05087608844041824, 0.05087608844041824, 0.05087608844041824, 1.0)",
+      "transform": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "type": "image",
+      "name": "_tex_0",
+      "filename": "textures\\Trap_Door_Sphere_emissive.jpeg",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_1",
+      "filename": "textures\\Body_HQ_emissive.jpeg",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_2",
+      "filename": "textures\\Body_Main_emissive.jpeg",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_3",
+      "filename": "textures\\Turret_7_emissive.jpeg",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_4",
+      "filename": "textures\\Gear_emissive.jpeg",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_5",
+      "filename": "textures\\Railgun_Reactor_emissive.jpeg",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_6",
+      "filename": "textures\\Side_voile_BL_emissive.jpeg",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_7",
+      "filename": "textures\\Side_Voile_BR_emissive.jpeg",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_8",
+      "filename": "textures\\Side_Voile_FL_emissive.jpeg",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_9",
+      "filename": "textures\\Side_Voile_FR_emissive.jpeg",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_10",
+      "filename": "textures\\Turret_7_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_11",
+      "filename": "textures\\Turret_7_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_12",
+      "filename": "textures\\Turret_7_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_13",
+      "filename": "textures\\Voile_s_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_14",
+      "filename": "textures\\Voile_s_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_15",
+      "filename": "textures\\Voile_s_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_16",
+      "filename": "textures\\Body_Main_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_17",
+      "filename": "textures\\Body_Main_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_18",
+      "filename": "textures\\Body_Main_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_19",
+      "filename": "textures\\Voile_B_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_20",
+      "filename": "textures\\Voile_B_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_21",
+      "filename": "textures\\Voile_B_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_22",
+      "filename": "textures\\Side_Voile_FL_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_23",
+      "filename": "textures\\Side_Voile_FL_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_24",
+      "filename": "textures\\Side_Voile_FL_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_25",
+      "filename": "textures\\Trap_Door_Sphere_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_26",
+      "filename": "textures\\Trap_Door_Sphere_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_27",
+      "filename": "textures\\Trap_Door_Sphere_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_28",
+      "filename": "textures\\Gear_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_29",
+      "filename": "textures\\Gear_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_30",
+      "filename": "textures\\Gear_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_31",
+      "filename": "textures\\Side_voile_BL_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_32",
+      "filename": "textures\\Side_voile_BL_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_33",
+      "filename": "textures\\Side_voile_BL_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_34",
+      "filename": "textures\\Side_Voile_BR_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_35",
+      "filename": "textures\\Side_Voile_BR_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_36",
+      "filename": "textures\\Side_Voile_BR_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_37",
+      "filename": "textures\\Side_Voile_FR_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_38",
+      "filename": "textures\\Side_Voile_FR_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_39",
+      "filename": "textures\\Side_Voile_FR_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_40",
+      "filename": "textures\\Body_HQ_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_41",
+      "filename": "textures\\Body_HQ_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_42",
+      "filename": "textures\\Body_HQ_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_43",
+      "filename": "textures\\Body_Wings_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_44",
+      "filename": "textures\\Body_Wings_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_45",
+      "filename": "textures\\Body_Wings_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_46",
+      "filename": "textures\\Railgun_Reactor_baseColor.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": false
+    },
+    {
+      "type": "image",
+      "name": "_tex_47",
+      "filename": "textures\\Railgun_Reactor_metallicRoughness.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    },
+    {
+      "type": "image",
+      "name": "_tex_48",
+      "filename": "textures\\Railgun_Reactor_normal.png",
+      "wrap_mode": "repeat",
+      "filter_type": "bilinear",
+      "linear": true
+    }
+  ]
+}
