@@ -111,4 +111,6 @@ fn @null_scattering(payload: RayPayload, pt: VPTRayPayload, mu_f: Color, medium_
     make_option(
         make_ray(medium_sample.pos, in_dir, 0, flt_max, ray_flag_bounce) // continue in the same direction
     )
+    // für rekursion: $ Zeichen
+    
 }

@@ -38,12 +38,12 @@ fn @make_hdda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: bo
     fn @m_update_dimension() -> VolumeProperties {
         m_t_0 = m_t_total; // store current progress
         let eps = 0.0001:f32;
-        let current_pos = vec3_add(origin, vec3_mulf(ndir, m_t_total + eps));
+        let current_pos = vec3_add(origin, vec3_mulf(ndir, m_t_total));
 
         //TODO: optimize this.... There has to be a better way...?
         let flt_correction = vec3_mulf(make_vec3(step_x as f32, step_y as f32, step_z as f32), eps);
         let (lower, upper) = volume.bounds(m_indx_x, m_indx_y, m_indx_z, m_dim);
-        let clamped_pos = vec3_add(vec3_min(vec3_max(current_pos, lower), upper), flt_correction);
+        let clamped_pos = vec3_min(vec3_max(vec3_add(current_pos, flt_correction), lower), upper);
         let (current_x, current_y, current_z) = volume.coord_to_indx(clamped_pos);
 
         let (props, new_dim) = accessor.properties_at_indx(current_x, current_y, current_z);

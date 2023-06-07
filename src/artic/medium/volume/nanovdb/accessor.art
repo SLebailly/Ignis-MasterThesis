@@ -220,10 +220,7 @@ fn @top_down_access[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32, 
             // =============== Lower Node Level ===============
             let lower_node_address  = upper_tile_accessor.get_child_address();
             let lower_node_accessor = tree.access_lower_node(lower_node_address);
-            let lower_tile_index    = lower_indices_to_array_index(i, j, k);
             let lower_node_pair     = make_key_address_pair(upper_tile_index, lower_node_address);
-            let lower_tile_accessor = lower_node_accessor.access_tile(lower_tile_index);
-            let leaf_node_sparse    = !lower_node_accessor.tile_has_children(lower_tile_index);
 
             if min_dim > 8 {
                 let accessor = GenericNodeAccessor[ValueT] {
@@ -237,6 +234,9 @@ fn @top_down_access[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32, 
                 return(accessor, make_sparse_leaf_path(upper_node_pair, lower_node_pair))
             }
 
+            let lower_tile_index    = lower_indices_to_array_index(i, j, k);
+            let lower_tile_accessor = lower_node_accessor.access_tile(lower_tile_index);
+            let leaf_node_sparse    = !lower_node_accessor.tile_has_children(lower_tile_index);
             // If the lower tile has no children, return the tile value (if it has one) else return the background value
             if leaf_node_sparse {
                 // leaf is sparse
@@ -267,22 +267,24 @@ fn @top_down_access[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32, 
             // =============== Leaf Node Level ===============
             let leaf_node_address  = lower_tile_accessor.get_child_address();
             let leaf_node_accessor = tree.access_leaf_node(leaf_node_address);
+            if min_dim > 1 {
+                let accessor = GenericNodeAccessor[ValueT] {
+                    get_minimum  = leaf_node_accessor.get_minimum,
+// <bug>
+                    get_maximum  = leaf_node_accessor.get_maximum,
+// </bug>
+                    get_value    = root_node_accessor.get_background,
+                    //get_bounds   = Option[fn () -> BBox]::Some(upper_tile_accessor.get_bounds),
+                    is_sparse    = false,
+                    dimension    = 8
+                };
+                return(accessor, make_sparse_leaf_path(upper_node_pair, lower_node_pair))
+            }
+
             let voxel_index        = leaf_indices_to_array_index(i, j, k);
             let leaf_node_pair     = make_key_address_pair(lower_tile_index, leaf_node_address);
             // If the vxl has a value, return the voxel value else return the background value
             let path = make_voxel_path(upper_node_pair, lower_node_pair, leaf_node_pair);
-
-            if min_dim > 1 {
-                let accessor = GenericNodeAccessor[ValueT] {
-                    get_minimum  = leaf_node_accessor.get_minimum,
-                    get_maximum  = leaf_node_accessor.get_maximum,
-                    get_value    = root_node_accessor.get_background,
-                    //get_bounds   = Option[fn () -> BBox]::Some(upper_tile_accessor.get_bounds),
-                    is_sparse    = false,
-                    dimension    = 128
-                };
-                return(accessor, make_sparse_leaf_path(upper_node_pair, lower_node_pair))
-            }
 
             if leaf_node_accessor.tile_has_value(voxel_index) {
                 // return the value of the vxl

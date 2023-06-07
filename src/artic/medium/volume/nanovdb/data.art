@@ -141,7 +141,8 @@ struct LeafNodeAccessor[ValueT, StatsT] {
     tile_has_value: fn (/* n */ i32) -> bool,
 
     //is_active:    fn (/* n */ i32) -> bool,
-    get_value:    fn (/* n */ i32) -> ValueT
+    get_value:    fn (/* n */ i32) -> ValueT,
+    is_sparse: fn () -> bool
 }
 
 struct NanoVDBTree[ValueT, StatsT] {
@@ -386,7 +387,8 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
             std_devi: f32, // typically 4B, standard deviation of all the active values in this node and its child nodes
             //mvalues (32bit aligned) // 64B
         */
-        let value_mask_address = data_address + 12 + 3 + 1;
+        let flags = data_address + 12 + 3;
+        let value_mask_address = flags + 1;
         let values_address     = align_32(value_mask_address + 64 + value_size + value_size + stats_size + stats_size);
         
         LeafNodeAccessor[ValueT, StatsT]  {
@@ -399,6 +401,7 @@ fn @make_nvdb_tree[ValueT, StatsT](buffer: DeviceBuffer, value_size: i32, stats_
             tile_has_value = @|n| check_mask(buffer, value_mask_address, n),
 
             get_value      = @|n| read_value(buffer, convert_address(values_address + (n * value_size))),
+            is_sparse      = @| | check_mask(buffer, flags, 4)
         }
     }
 

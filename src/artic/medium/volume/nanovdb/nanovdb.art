@@ -158,6 +158,7 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
                 };
         
                 let maj_props = volume_shader.volume_properties(make_nvdb_volume_values(maj_d, maj_t_option));
+
                 (maj_props.coeff_extinction, min_dim)
             }
         }

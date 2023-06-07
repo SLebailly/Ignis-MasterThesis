@@ -1,7 +1,0 @@
-/**
- * Implementation of the Delta Tracking (Woordcock Tracking, Pseudo Scattering,...) null-collision method, sampling a single wave-length
- * TODO: implement this method
- */
-fn @make_spectral_delta_tracking_medium(ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, interpolate: bool, max_scattering: i32, majorant_dimension: i32) -> Medium {
-    make_delta_tracking_medium(ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, interpolate: bool, max_scattering: i32, majorant_dimension: i32)
-}

@@ -1,7 +1,7 @@
 {
 	"technique": {
 		"type": "volpath",
-		"max_depth": 50,
+		"max_depth": 5,
 		"nee": false
 	},
 	"camera": {
@@ -22,35 +22,33 @@
 		{"type":"external", "name":"Bottom", "filename":"../meshes/Bottom.ply", "transform": {"scale": [90, 1, 90]}},
         {"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [0.8, 0.78, 0.6], "translate": [0,-0.3,0], "rotate": [180, 0, 0]} }
 	],
-	"entities": [
+	"entities": [ 
 		{"name":"Bottom","shape":"Bottom", "bsdf":"mat-GrayWall"},
 		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium" }
 	],
-	"textures": [
-		{
-			"type": "image",
-			"name": "env",
-			"filename": "../textures/environment/clouds.exr"
-		}
-	],
 	"lights": [
-        {"type":"env", "name":"Environment", "radiance":"env"}
+		{"type":"sky", "name":"Sky"},
+		{"type":"sun", "name":"Sun", "direction":[0.4082482904638631,0.4082482904638631,0.8164965809277261]}
 	],
     "media": [
 		{
 			"type": "heterogeneous",
 			"name": "Medium",
-			"filename": "nvdb/bunny_cloud.nvdb",
+			"filename": "nvdb/wdas_cloud_quarter.nvdb",
 			"g": 0.877,
 			"method": "regular",
-			"max_scattering": 3,
+			"marcher": "DDA",
+			"step_distance": 0.001,
+			"max_scattering": 999999,
+			"majorant_dimension": 128,
 
-			"shader": "principled_volume",
+			"shader": "monochromatic",
 			"scalar_density":   100,
-			"color_scattering": [1, 1, 1],
-			"color_absorption": [0.9, 0.9, 0.9],
+			"scalar_absorption": 0,
+			"scalar_scattering": 1,
+			//"color_scattering": [0, 0, 0],
+			//"color_absorption": [0, 0, 0]
 
-			"majorant_dimension": 8
 		}
 	]
 }

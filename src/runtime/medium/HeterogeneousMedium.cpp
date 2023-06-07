@@ -216,7 +216,8 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
         const float step_distance = mMedium->property("step_distance").getNumber(0.001f);
         input.Stream << "  let " << generator_name << ": MediumGenerator = @|ctx| { make_ray_marching_medium(ctx, "<< pms_func << "(), " << volume_name << ", make_henyeygreenstein_phase(" << input.Tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ", " << max_scattering << ", " << step_distance << ") };" << std::endl;
     } else {
-        input.Stream << "  let " << generator_name << ": MediumGenerator = @|ctx| { make_regular_tracking_medium(ctx, "<< pms_func << "(), " << volume_name << ", make_henyeygreenstein_phase(" << input.Tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ", " << max_scattering << ") };" << std::endl;
+        const std::string marcher = mMedium->property("marcher").getString("DDA");
+        input.Stream << "  let " << generator_name << ": MediumGenerator = @|ctx| { make_regular_tracking_medium(ctx, "<< pms_func << "(), " << volume_name << ", make_henyeygreenstein_phase(" << input.Tree.getInline("g") << "), " << (interpolate ? "true" : "false") << ", " << max_scattering << ", " << (marcher == "DDA" ? "make_dda_marcher" : "make_hdda_marcher") << ") };" << std::endl;
     }
     input.Tree.endClosure();
 }
