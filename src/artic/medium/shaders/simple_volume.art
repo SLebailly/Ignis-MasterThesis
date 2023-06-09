@@ -4,6 +4,6 @@
 fn @make_simple_volume_shader(scalar: f32) -> VolumeShader[SimpleVolumeVoxelValue] {
     
     VolumeShader[SimpleVolumeVoxelValue] {
-        volume_properties = @|values: SimpleVolumeVoxelValue| make_volume_properties(color_mulf(values.sigma_s, scalar), color_mulf(values.sigma_a, scalar), make_gray_color(0:f32))
+        volume_properties = @|values: SimpleVolumeVoxelValue| make_volume_properties(color_mulf(values.sigma_s, scalar), color_mulf(values.sigma_a, scalar), color_mulf(values.emission, scalar))
     }
 }

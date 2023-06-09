@@ -44,18 +44,12 @@ struct Volume {
 fn @homogenize_nullscattering_properties(properties: VolumeProperties, homogenized_extinction: Color) -> VolumeProperties {
 
     let coeff_fictional  = color_sub(homogenized_extinction, properties.coeff_extinction);
-
-    let mut yeet = homogenized_extinction;
-    if (coeff_fictional.r < 0 || coeff_fictional.g < 0 || coeff_fictional.b < 0) {
-        let nan = 0:f32/0:f32;
-        yeet = make_color(nan, nan, nan, 1:f32);
-    }
-
+    
     VolumeProperties {
         coeff_scattering = properties.coeff_scattering,
         coeff_absorption = properties.coeff_absorption,
         coeff_fictional  = coeff_fictional,
-        coeff_extinction = yeet,
+        coeff_extinction = homogenized_extinction,
 
         emitted_radiance = properties.emitted_radiance,
 
