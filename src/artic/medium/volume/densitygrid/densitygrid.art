@@ -1,0 +1,34 @@
+fn @make_density_grid(buffer: DeviceBuffer, shader: VolumeShader[NanoVDBVolumeValues], majorant: Color) -> Volume {
+    
+    let width    = buffer.load_i32_host(0);
+    let height   = buffer.load_i32_host(1);
+    let depth    = buffer.load_i32_host(2);
+    let has_temp = buffer.load_i32_host(3) > 0;
+
+    fn @access_data() = VolumeAccessor {
+        properties_at_indx = @|x, y, z| {
+            //clamp between 0 and width-height-depth
+            let xs = if x < 0 { 0 } else if x >= width  { width  - 1 } else { x };
+            let ys = if y < 0 { 0 } else if y >= height { height - 1 } else { y };
+            let zs = if z < 0 { 0 } else if z >= depth  { depth  - 1 } else { z };
+    
+            let i = xs + (ys * width) + (zs * width * height);
+    
+            // every Voxel consists of 2 f32
+            let value_d     = buffer.load_f32(4 + (2*i));
+            let value_t_opt = if (has_temp) {
+                make_option(buffer.load_f32(4 + (2*i) + 1))
+            } else {
+                Option[f32]::None
+            };
+    
+            (shader.volume_properties(make_nvdb_volume_values(value_d, value_t_opt)), 1)
+        },
+        sparse_maj_at_indx = @|_i, _j, _k, _min_dim| {
+            (majorant, width)
+        }
+    };
+
+    make_volume(width, height, depth, access_data, @|_origin: Vec3, _ndir: Vec3| majorant, general_to_sparse_index) //TODO: Add actual majorant (maybe constant for the whole grid) here
+
+}

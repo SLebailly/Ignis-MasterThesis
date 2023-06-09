@@ -95,6 +95,7 @@ set(ARTIC_MAIN_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/shaders/principled_volume.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/shaders/simple_volume.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/common.art
+    ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/densitygrid/densitygrid.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/traversal/common.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/traversal/dda.art
     ${CMAKE_CURRENT_SOURCE_DIR}/medium/volume/traversal/hdda.art

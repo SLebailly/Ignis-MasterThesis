@@ -6,12 +6,10 @@
 #include "Logger.h"
 #include "loader/LoaderUtils.h"
 
-#define USE_SPARSE_GRID
-
 
 namespace IG {
 
-#ifdef USE_SPARSE_GRID
+
 static std::string setup_nvdb_grid(const std::filesystem::path path, const std::string medium_name, const std::string grid_name, LoaderContext& ctx)
 {
 
@@ -36,8 +34,8 @@ static std::string setup_nvdb_grid(const std::filesystem::path path, const std::
     ctx.Cache->ExportedData[exported_id] = out_path;
     return out_path;
 }
-#else
-static std::string setup_uniform_nvdb_grid(const std::filesystem::path path, const std::string medium_name, LoaderContext& ctx)
+
+static std::string setup_uniform_nvdb_grid(const std::filesystem::path path, const std::string medium_name, const std::string grid_name_density, const std::string grid_name_temperature, LoaderContext& ctx)
 {
     const std::string exported_id = medium_name + "_nvdb";
 
@@ -48,16 +46,15 @@ static std::string setup_uniform_nvdb_grid(const std::filesystem::path path, con
     std::filesystem::create_directories("data/"); // Make sure this directory exists
     std::string out_path = "data/nvdb_" + medium_name + ".bin";
 
-    if (!NanoVDBLoader::prepare_naive_grid(path, out_path))
+    if (!NanoVDBLoader::prepare_uniform_grid(path, out_path, grid_name_density, grid_name_temperature))
         ctx.signalError();
 
 
-    IG_LOG(L_INFO) << "Created naive bin buffer file from NVDB File." << std::endl;
+    IG_LOG(L_INFO) << "Created uniform bin buffer file from NVDB File." << std::endl;
 
     ctx.Cache->ExportedData[exported_id] = out_path;
     return out_path;
 }
-#endif
 
 HeterogeneousMedium::HeterogeneousMedium(const std::string& name, const std::shared_ptr<SceneObject>& medium)
     : Medium(name, "heterogeneous")
@@ -158,13 +155,17 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
         const std::string grid_name_density     = mMedium->property("grid_density").getString("density");
         const std::string grid_name_temperature = mMedium->property("grid_temperature").getString("none");
 
-#ifdef USE_SPARSE_GRID
-        const auto bin_filename_density     = setup_nvdb_grid(filename, medium_name, grid_name_density, input.Tree.context());
-        //TODO: check if grid_name_temparure is "none", if so, do not load the grid
-        const auto bin_filename_temperature = setup_nvdb_grid(filename, medium_name, grid_name_temperature, input.Tree.context());
-#else
-        const auto bin_filename = setup_uniform_nvdb_grid(filename, medium_name, input.Tree.context());
-#endif
+        const std::string grid_type             = mMedium->property("grid_type").getString("sparse");
+
+        std::string bin_filename_density;
+        std::string bin_filename_temperature;
+        if (grid_type == "uniform") {
+            bin_filename_density = setup_uniform_nvdb_grid(filename, medium_name, grid_name_density, grid_name_temperature, input.Tree.context());
+        } else {
+            bin_filename_density     = setup_nvdb_grid(filename, medium_name, grid_name_density, input.Tree.context());
+            //TODO: check if grid_name_temparure is "none", if so, do not load the grid
+            bin_filename_temperature = setup_nvdb_grid(filename, medium_name, grid_name_temperature, input.Tree.context());
+        }
 
         const std::string buffer_name_density     = buffer_name + "_density";
         const std::string buffer_name_temperature = buffer_name + "_temperature";
@@ -173,22 +174,24 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
         input.Stream << input.Tree.pullHeader()
             << "  let " << buffer_name_density << " = device.load_buffer_by_id(" << res_id_density << ");" << std::endl;
 
-        if (grid_name_temperature == "none") {
+
+
+        if (grid_type == "uniform") {
+            const Vector3f majorant = mMedium->property("majorant").getVector3(Vector3f(100.0f, 100.0f, 100.0f));
             input.Stream << input.Tree.pullHeader()
-                << "  let " << buffer_name_temperature << " = Option[DeviceBuffer]::None;" << std::endl;
+            << "  let " << volume_name    << " = make_density_grid(" << buffer_name_density << ", " << shader_name << ", " << LoaderUtils::inlineColor(majorant) << ");" << std::endl;
         } else {
-            size_t res_id_temperature = input.Tree.context().registerExternalResource(bin_filename_temperature);
+            if (grid_name_temperature == "none") {
+                input.Stream << input.Tree.pullHeader()
+                    << "  let " << buffer_name_temperature << " = Option[DeviceBuffer]::None;" << std::endl;
+            } else {
+                size_t res_id_temperature = input.Tree.context().registerExternalResource(bin_filename_temperature);
+                input.Stream << input.Tree.pullHeader()
+                    << "  let " << buffer_name_temperature << " = make_option(device.load_buffer_by_id(" << res_id_temperature << "));" << std::endl;
+            }
             input.Stream << input.Tree.pullHeader()
-                << "  let " << buffer_name_temperature << " = Option[DeviceBuffer]::Some(device.load_buffer_by_id(" << res_id_temperature << "));" << std::endl;
-        }
-        input.Stream << input.Tree.pullHeader()
-#ifdef USE_SPARSE_GRID
-            
             << "  let " << volume_name    << " = make_nvdb_volume_f32(" << buffer_name_density << ", " << buffer_name_temperature << ", " << shader_name << ");" << std::endl;
-#else
-            << "  let " << shader_name    << " = make_simple_volume_shader(1);" << std::endl
-            << "  let " << volume_name    << " = make_voxel_grid(" << buffer_name << ", " << shader_name << ");" << std::endl;
-#endif
+        }
     } else if (extension == ".bin") {
 
         std::string shader_name  = "vs_" + medium_name;
