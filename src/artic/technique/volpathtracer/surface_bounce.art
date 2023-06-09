@@ -19,7 +19,7 @@ fn @onSurfaceBounce(
 
     let vol_contrib = color_mul(vol_trans, pt.contrib); // T * Lo
     let contrib     = color_mul(vol_contrib, bsdf_sample.color/* Pdf and cosine are already applied!*/);
-    let rr_prob     = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
+    let rr_prob     = if mat.bsdf.is_specular { 1:f32 } else { russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95) };
     
     if randf(rnd) >= rr_prob {
         return(Option[Ray]::None)
