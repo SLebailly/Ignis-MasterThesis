@@ -49,7 +49,7 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
     /**
      * Samples the next Medium interaction (distribution of samples proportional to (majorant) Transmittance along the ray)
      */
-    fn @next_flight(rnd: &mut RndState, p_start: Vec3, p_end: Vec3) -> Option[MediumSample] {
+    fn @free_flight(rnd: &mut RndState, p_start: Vec3, p_end: Vec3) -> Option[MediumSample] {
 
         // local coordinates
         let l_start = pms.to_normalized_point(p_start);
@@ -142,7 +142,7 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
                 mu_t_p * tr
             }
         },
-        sample = next_flight,
+        sample = free_flight,
         is_homogeneous = false,
         max_scattering = max_scattering
     }

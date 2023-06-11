@@ -6,10 +6,10 @@
 	},
 	"camera": {
 		"type": "perspective", 
-		"fov": 25, 
+		"fov": 110, 
 		"near_clip": 0.1,
 		"far_clip": 100,
-		"transform": [ -1,0,0,0, 0,1,0,0, 0,0,-1,4, 0,0,0,1 ]
+		"transform": [ -1,0,0,0, 0,1,0,0, 0,0,-1,10, 0,0,0,1 ]
 	},
 	"film": {
 		"size": [1920, 1080]
@@ -19,18 +19,16 @@
 		{"type":"diffuse", "name": "mat-GrayWall", "reflectance":[0.8,0.8,0.8]}
 	],
 	"shapes": [
-		{"type":"external", "name":"Bottom", "filename":"../meshes/Bottom.ply", "transform": {"scale": [90, 1, 90]}},
-        {"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [0.8, 0.78, 0.6], "translate": [0,-0.3,0], "rotate": [180, 0, 0]} }
+        {"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [5.77, 5.72, 4.38], "translate": [0, 0,0], "rotate": [0, 0, 0]} }
 	],
 	"entities": [
-		{"name":"Bottom","shape":"Bottom", "bsdf":"mat-GrayWall"},
 		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium" }
 	],
 	"textures": [
 		{
 			"type": "image",
 			"name": "env",
-			"filename": "../textures/environment/clouds.exr"
+			"filename": "../textures/environment/green_sanctuary_8k.hdr"
 		}
 	],
 	"lights": [
@@ -41,14 +39,15 @@
 			"type": "heterogeneous",
 			"name": "Medium",
 			"filename": "nvdb/bunny_cloud.nvdb",
-			"g": 0.877,
+			"g": 0.001,
 			"method": "regular",
+			"grid_type": "uniform",
 			"max_scattering": 3,
 
-			"shader": "principled_volume",
+			"shader": "monochromatic",
 			"scalar_density":   100,
-			"color_scattering": [1, 1, 1],
-			"color_absorption": [0.9, 0.9, 0.9],
+			"scalar_scattering": 1,
+			"scalar_absorption": 0.5,
 
 			"majorant_dimension": 8
 		}
