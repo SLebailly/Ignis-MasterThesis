@@ -1,6 +1,6 @@
 static BUFFER_VOXEL_SIZE = 12;
 
-// For simple voxel grids (custom format defined by bin file)
+// For simple uniform voxel grids (custom format defined by bin file)
 struct SimpleVolumeVoxelValue {
     sigma_a:  Color,
     sigma_s:  Color,
@@ -13,7 +13,7 @@ fn @make_simple_volume_voxel_value(sigma_a: Color, sigma_s: Color, emission: Col
     emission = emission
 };
 
-fn @make_voxel_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxelValue], majorant: Color) -> Volume {
+fn @make_uniform_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVoxelValue], majorant: Color) -> Volume {
     
     let width  = buffer.load_i32_host(0);
     let height = buffer.load_i32_host(1);

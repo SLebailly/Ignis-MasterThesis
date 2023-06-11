@@ -65,7 +65,7 @@ fn @make_principled_volume_shader(params: PrincipledVolumeParameters) -> VolumeS
             let value_temp = if let Option[f32]::Some(temperature) = values.temperature_opt {
                 temperature
             } else {
-                values.density
+                0:f32
             };
 
             let vxl_density = if values.density > DENSITY_EPS { values.density * params.scalar_density } else { 0 };
