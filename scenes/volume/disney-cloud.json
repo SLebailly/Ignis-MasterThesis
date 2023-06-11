@@ -6,25 +6,22 @@
 	},
 	"camera": {
 		"type": "perspective", 
-		"fov": 25, 
+		"fov": 90, 
 		"near_clip": 0.1,
 		"far_clip": 100,
-		"transform": [ -1,0,0,0, 0,1,0,0, 0,0,-1,4, 0,0,0,1 ]
+		"transform": [ -1,0,0,0, 0,1,0,0, 0,0,-1,8, 0,0,0,1 ]
 	},
 	"film": {
 		"size": [1920, 1080]
 	}, 
 	"bsdfs": [
-		{"type":"passthrough", "name": "mat-Object"},
-		{"type":"diffuse", "name": "mat-GrayWall", "reflectance":[0.8,0.8,0.8]}
+		{"type":"passthrough", "name": "mat-Passthrough"},
 	],
 	"shapes": [
-		{"type":"external", "name":"Bottom", "filename":"../meshes/Bottom.ply", "transform": {"scale": [90, 1, 90]}},
-        {"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [0.8, 0.78, 0.6], "translate": [0,-0.3,0], "rotate": [180, 0, 0]} }
+        {"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [4.98, 3.38, 6.13], "translate": [0,0.1,0], "rotate": [0, 0, 0]} }
 	],
 	"entities": [ 
-		{"name":"Bottom","shape":"Bottom", "bsdf":"mat-GrayWall"},
-		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium" }
+		{"name":"Object","shape":"Object", "bsdf":"mat-Passthrough", "inner_medium": "Medium" }
 	],
 	"lights": [
 		{"type":"sky", "name":"Sky"},
@@ -35,17 +32,17 @@
 			"type": "heterogeneous",
 			"name": "Medium",
 			"filename": "nvdb/wdas_cloud_quarter.nvdb",
-			"g": 0.877,
-			"method": "regular",
-			"marcher": "DDA",
+			"g": -0.6,
+			"method": "delta_tracking",
+			"marcher": "HDDA",
 			"step_distance": 0.001,
-			"max_scattering": 999999,
+			"max_scattering": 3,
 			"majorant_dimension": 128,
 
 			"shader": "monochromatic",
-			"scalar_density":   100,
-			"scalar_absorption": 0,
-			"scalar_scattering": 1,
+			"scalar_density":   50,
+			"scalar_absorption": 0.01,
+			"scalar_scattering": 0.1
 			//"color_scattering": [0, 0, 0],
 			//"color_absorption": [0, 0, 0]
 
