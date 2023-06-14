@@ -1,5 +1,5 @@
 // TODO: Implement "A null-scattering path integral formulation of light transport", (Miller et. al, 2019)
-fn @make_volume_path_renderer(max_path_len: i32, min_path_len: i32, light_selector: LightSelector, media: MediaTable, framebuffer: AOVImage, clamp_value: f32, enable_nee: bool, enable_nee: bool) -> Technique {
+fn @make_volume_path_renderer(max_path_len: i32, _min_path_len: i32, light_selector: LightSelector, media: MediaTable, framebuffer: AOVImage, clamp_value: f32, enable_nee: bool) -> Technique {
     let offset : f32 = 0.001;
 
     let handle_color = if clamp_value > 0 {
@@ -99,15 +99,15 @@ fn @make_volume_path_renderer(max_path_len: i32, min_path_len: i32, light_select
                 let pdf_s    = emit.pdf.as_solid(dot, ctx.hit.distance * ctx.hit.distance);
                 let mis      = if enable_nee { 1 / (1 + inv_pdf * light_selector.pdf(mat.light, ctx.ray.org) * pdf_s) } else { 1:f32 };
 
-                let mut hash = fnv_init();
-                hash = fnv_hash(hash, ctx.ray.org.x as u32);
-                hash = fnv_hash(hash, ctx.ray.org.y as u32);
-                hash = fnv_hash(hash, ctx.ray.org.z as u32);
-                hash = fnv_hash(hash, ctx.surf.point.x as u32);
-                hash = fnv_hash(hash, ctx.surf.point.y as u32);
-                hash = fnv_hash(hash, ctx.surf.point.z as u32);
+                let mut hash = hash_init();
+                hash = hash_combine(hash, ctx.ray.org.x as u32);
+                hash = hash_combine(hash, ctx.ray.org.y as u32);
+                hash = hash_combine(hash, ctx.ray.org.z as u32);
+                hash = hash_combine(hash, ctx.surf.point.x as u32);
+                hash = hash_combine(hash, ctx.surf.point.y as u32);
+                hash = hash_combine(hash, ctx.surf.point.z as u32);
 
-                let vol      = medium.eval(hash, ctx.ray.org, ctx.surf.point);
+                let vol      = medium.eval(create_random_generator(hash), ctx.ray.org, ctx.surf.point);
                 let contrib  = handle_color(color_mulf(color_mul(pt.contrib, color_mul(emit.intensity, vol)), mis));
                 
                 return(make_option(contrib))

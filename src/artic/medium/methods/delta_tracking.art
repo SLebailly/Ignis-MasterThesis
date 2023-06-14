@@ -20,9 +20,9 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
     /**
      * Samples a distance along the ray
      */
-    fn @sample_distance_local(rnd: &mut RndState, lpos: Vec3, lndir: Vec3, scale: f32, max_dist: f32) -> (/* dist */ f32, /* majorant */ Color, /* pdf */ f32) {
+    fn @sample_distance_local(rnd: RandomGenerator, lpos: Vec3, lndir: Vec3, scale: f32, max_dist: f32) -> (/* dist */ f32, /* majorant */ Color, /* pdf */ f32) {
         // sample value of transmittance (uniformly)
-        let sampled_value_tr = sample_transmittance_uniform(rnd); // = 1:f32 - (randf(rnd) * 0.99999)
+        let sampled_value_tr = sample_transmittance_uniform(rnd); // = 1:f32 - (rnd.next_f32() * 0.99999)
 
         let dda = make_majorant_dda_marcher(lpos, lndir, volume, false, majorant_dimension, max_dist / scale);
         let mut majorant      = color_builtins::black;
@@ -49,7 +49,7 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
     /**
      * Samples the next Medium interaction (distribution of samples proportional to (majorant) Transmittance along the ray)
      */
-    fn @free_flight(rnd: &mut RndState, p_start: Vec3, p_end: Vec3) -> Option[MediumSample] {
+    fn @free_flight(rnd: RandomGenerator, p_start: Vec3, p_end: Vec3) -> Option[MediumSample] {
 
         // local coordinates
         let l_start = pms.to_normalized_point(p_start);
@@ -85,7 +85,7 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
     /**
      * Evaluates the transmittance between two points in the medium using Ratio Tracking
      */
-    fn @eval_tr(rnd: &mut RndState, p_start: Vec3, p_end: Vec3) -> Color {
+    fn @eval_tr(rnd: RandomGenerator, p_start: Vec3, p_end: Vec3) -> Color {
         let dir        = vec3_sub(p_end, p_start);
         let max_dist   = vec3_len(dir);
         let n_dir      = vec3_divf(dir, max_dist);

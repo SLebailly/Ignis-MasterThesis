@@ -8,7 +8,7 @@
  */
 fn @onMediumBounce(
     ctx:           ShadingContext, // shading context
-    rnd:           &mut RndState,  // rnd
+    rnd:           RandomGenerator,// rnd
     payload:       RayPayload,     // wrapped payload
     pt:            VPTRayPayload,  // unwrapped payload
     framebuffer:   AOVImage,       // frame buffer (necessary to splat the pixel color on absorption/emission)
@@ -32,7 +32,7 @@ fn @onMediumBounce(
     let p_s = if mu_s_p <= flt_eps { 0:f32 } else { mu_s_p / mu_t_p };
     let p_f = 1 - p_a - p_s;
 
-    let r = randf(rnd);
+    let r = rnd.next_f32();
 
     if r < p_a {
         // Absorption event
@@ -63,14 +63,14 @@ fn @absorption(ctx: ShadingContext, pt: VPTRayPayload, framebuffer: AOVImage, mu
  * Handles the scattering event
  * Ray is scattered in a direction sampled from the phase function
  */
-fn @scattering(rnd: &mut RndState, payload: RayPayload, pt: VPTRayPayload, mu_s: Color, medium_sample: MediumSample, prob_scattering: f32, medium: Medium, out_dir: Vec3) -> Option[Ray] {
+fn @scattering(rnd: RandomGenerator, payload: RayPayload, pt: VPTRayPayload, mu_s: Color, medium_sample: MediumSample, prob_scattering: f32, medium: Medium, out_dir: Vec3) -> Option[Ray] {
     let phase_sample  = medium.phase(medium_sample.pos).sample(rnd, out_dir); // sample new direction
     let path_contrib  = color_mul(medium_sample.color, color_mulf(color_divf(mu_s, prob_scattering), phase_sample.weight));
     let contrib       = color_mul(pt.contrib, path_contrib);
 
     let rr_prob      = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
 
-    if randf(rnd) >= rr_prob {
+    if rnd.next_f32() >= rr_prob {
         Option[Ray]::None
     } else {
         let new_contrib = color_mulf(contrib, 1 / rr_prob);

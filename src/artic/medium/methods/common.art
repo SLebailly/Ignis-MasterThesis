@@ -27,14 +27,14 @@ fn @eval_optical_thickness(volume: Volume, local_start: Vec3, local_end: Vec3, i
 /**
  * Uniform transmittance sampling
  */
-fn @sample_transmittance_uniform(rnd: &mut RndState) -> f32 {
-    1:f32 - (randf(rnd) * 0.99999)
+fn @sample_transmittance_uniform(rnd: RandomGenerator) -> f32 {
+    1:f32 - (rnd.next_f32() * 0.99999)
 }
 
 /**
  * Samples a distance with pdf proportional to transmittance (with transmittance uniformly distributed)
  */
-fn @sample_dist_proptrans(rnd: &mut RndState, mu_t: f32) -> f32 {
+fn @sample_dist_proptrans(rnd: RandomGenerator, mu_t: f32) -> f32 {
     let trans = sample_transmittance_uniform(rnd);
     (-math_builtins::log(trans)/mu_t)
 }

@@ -8,7 +8,7 @@
  */
 fn @onSurfaceBounce(
     ctx:         ShadingContext, // shading context
-    rnd:         &mut RndState,  // rnd
+    rnd:         RandomGenerator,// rnd
     payload:     RayPayload,     // ray payload
     pt:          VPTRayPayload,  // unwrapped payload
     mat:         Material,       // material of surface at hit point
@@ -21,7 +21,7 @@ fn @onSurfaceBounce(
     let contrib     = color_mul(vol_contrib, bsdf_sample.color/* Pdf and cosine are already applied!*/);
     let rr_prob     = if mat.bsdf.is_specular { 1:f32 } else { russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95) };
     
-    if randf(rnd) >= rr_prob {
+    if rnd.next_f32() >= rr_prob {
         return(Option[Ray]::None)
     } else {
         let inv_pdf     = if mat.bsdf.is_specular { 0 } else { 1:f32 / bsdf_sample.pdf };

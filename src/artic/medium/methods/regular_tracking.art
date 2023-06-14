@@ -16,10 +16,10 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
     /**
      * Next-Flight estimation using regular tracking
      */
-    fn @next_flight(rnd: &mut RndState, p_start: Vec3, p_end: Vec3) -> Option[MediumSample] {
+    fn @next_flight(rnd: RandomGenerator, p_start: Vec3, p_end: Vec3) -> Option[MediumSample] {
         
         // sample value of transmittance (uniformly)
-        let sampled_value_tr  = sample_transmittance_uniform(rnd); // = 1:f32 - (randf(rnd) * 0.99999)
+        let sampled_value_tr  = sample_transmittance_uniform(rnd); // = 1:f32 - (rnd.next_f32() * 0.99999)
         let sampled_value_opt = transmittance_to_optical_thickness_f32(sampled_value_tr);
 
         if (sampled_value_opt < flt_eps) {

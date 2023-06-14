@@ -105,7 +105,7 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
         sample = @|rnd, p_start, p_end| {
 
             // sample value of transmittance (uniformly)
-            let sampled_value_tr = randf(rnd) * 0.99999;
+            let sampled_value_tr = rnd.next_f32() * 0.99999;
 
 
             let dir_u    = vec3_sub(p_end, p_start);
