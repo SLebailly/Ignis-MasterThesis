@@ -84,3 +84,9 @@ imgui.ini
 
 # Do not export imgui settings
 imgui.ini
+
+# scenes
+scenes/volume/media/*.json
+scenes/volume/media/pbrt_plume.bin
+scenes/bistro/
+*8k.hdr

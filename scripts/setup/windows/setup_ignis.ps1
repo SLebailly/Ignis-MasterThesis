@@ -29,6 +29,7 @@ $ZLIB_LIB="$DEPS_ROOT\zlib\lib\zlib.lib".Replace("\", "/")
 $ZLIB_INCLUDE="$DEPS_ROOT\zlib\include".Replace("\", "/")
 $SDL2_LIB="$DEPS_ROOT\SDL2\lib\x64\SDL2.lib".Replace("\", "/")
 $SDL2_INCLUDE="$DEPS_ROOT\SDL2\include".Replace("\", "/")
+$NANOVDB_INCLUDE="$DEPS_ROOT\nanovdb".Replace("\", "/")
 
 & $CMAKE_BIN $Config.CMAKE_EXTRA_ARGS -DCMAKE_BUILD_TYPE="Release" `
     -DBUILD_TESTING=OFF `
@@ -44,6 +45,7 @@ $SDL2_INCLUDE="$DEPS_ROOT\SDL2\include".Replace("\", "/")
     -DZLIB_INCLUDE_DIR="$ZLIB_INCLUDE" `
     -DSDL2_LIBRARY="$SDL2_LIB" `
     -DSDL2_INCLUDE_DIR="$SDL2_INCLUDE" `
+    -DNANOVDB_INCLUDE_DIR="$NANOVDB_INCLUDE" `
     -DIG_WITH_ASSERTS:BOOL=ON `
     "$IGNIS_ROOT"
 

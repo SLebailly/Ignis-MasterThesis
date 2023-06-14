@@ -1,0 +1,60 @@
+{
+	"technique": {
+		"type": "volpath",
+		"max_depth": 64,
+		"nee": false
+	},
+	"camera": {
+		"type": "perspective",
+		"fov": 90,
+		"near_clip": 0.1,
+		"far_clip": 100,
+		"transform": {"translate": [1, 0.1, 0.3], "rotate": [63.5, 0, 65.8]}
+	},
+	"film": {
+		"size": [1000, 1000]
+	},
+	"bsdfs": [
+		{"type":"diffuse", "name": "mat-GrayWall", "reflectance":[0.8,0.8,0.8]},
+		{"type":"diffuse", "name": "mat-ColoredWall", "reflectance":[0.106039, 0.195687, 0.800000]},
+		{"type":"diffuse", "name": "mat-Sphere", "reflectance":[1, 1, 1]},
+		{"type":"conductor", "name": "mat-Reflecting", "material": "titanium", "roughness": 0.1},
+		{"type":"passthrough", "name": "mat-Object"}
+	],
+	"shapes": [
+		{"type":"external", "name":"Bottom", "filename":"../meshes/Bottom.ply", "transform": {"scale": [2, 1, 2]}, "translate": [0,0.5,0] },
+		{"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [0.64, 0.853, 0.64], "translate": [0,-0.31,0]} },
+		{"type":"sphere", "name":"Sphere"}
+	],
+	"entities": [
+		{"name":"Bottom","shape":"Bottom", "bsdf":"mat-Reflecting"},
+		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium",  "shadow_visible": false, "rotate": [90, 90, 90]},
+		{"name":"Sphere","shape":"Sphere", "bsdf":"mat-Sphere", "transform": {"translate": [0,-0.31,0], "scale": 0.15}}
+	],
+	"textures": [
+		{
+			"type": "image",
+			"name": "env",
+			"filename": "../textures/environment/skylight-dusk-full.exr"
+		}
+	],
+	"lights": [
+		//{"type":"sky", "name":"Sky"},
+		//{"type":"sun", "name":"Sun", "direction":[0.4082482904638631,0.4082482904638631,0.8164965809277261]},
+		{"type":"area", "name":"AreaLight", "entity":"Sphere", "radiance":[1,1,1]},
+        {"type":"env", "name":"Environment", "radiance":"env"}
+	],
+	"media": [
+		{
+			"type": "heterogeneous",
+			"name": "Medium",
+			"filename": "media/pbrt_plume.bin",
+			"g": -0.85,
+			"majorant": [150, 150, 150],
+			"method": "regular",
+			"shader": "simple_volume",
+			"scalar_density": 15,
+			"max_scattering": 3
+		}
+	]
+}
