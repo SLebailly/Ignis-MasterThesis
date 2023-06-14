@@ -7,7 +7,7 @@
 #include "Logger.h"
 
 namespace IG {
-void SphereProvider::handle(LoaderContext& ctx, ShapeMTAccessor& acc, const std::string& name, const SceneObject& elem)
+void SphereProvider::handle(LoaderContext& ctx, ShapeMTAccessor& acc, const std::string& name, SceneObject& elem)
 {
     float radius    = 1;
     Vector3f origin = Vector3f::Zero();
@@ -45,7 +45,7 @@ void SphereProvider::handle(LoaderContext& ctx, ShapeMTAccessor& acc, const std:
     VectorSerializer serializer(data, false);
     serializer.write(origin);
     serializer.write(radius);
-    const uint32 id = ctx.Shapes->addShape(name, Shape{ this, 0, 0, 0, bbox, offset });
+    const uint32 id = ctx.Shapes->addShape(name, Shape{ this, 0, 0, bbox, offset });
 
     ctx.Shapes->addSphereShape(id, SphereShape{ origin, radius });
 

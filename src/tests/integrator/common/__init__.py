@@ -72,5 +72,19 @@ def compute_scene_average(scene, spp=8):
     with ignis.loadFromString(scene_str) as runtime:
         for _i in range(spp):
             runtime.step()
-        color = np.asarray(runtime.getFramebuffer()) / runtime.IterationCount
+        color = np.asarray(runtime.getFramebufferForHost()) / runtime.IterationCount
         return np.average(color)
+
+
+def compute_scene(scene, spp=8, spi=0, seed=0):
+    scene_str = json.dumps(scene)
+
+    ignis = load_api()
+    opts = ignis.RuntimeOptions.makeDefault()
+    opts.Seed = seed
+    opts.SPI = spi
+
+    with ignis.loadFromString(scene_str, opts) as runtime:
+        for _i in range(spp):
+            runtime.step()
+        return np.copy(np.asarray(runtime.getFramebufferForHost()) / runtime.IterationCount)

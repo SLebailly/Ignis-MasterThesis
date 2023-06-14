@@ -16,7 +16,7 @@ namespace IG {
 ShadingTree::ShadingTree(LoaderContext& ctx)
     : mContext(ctx)
     , mTranspiler(*this)
-    , mForceSpecialization(false)
+    , mSpecialization(RuntimeOptions::SpecializationMode::Default)
 {
     beginClosure("_root");
     setupGlobalParameters();
@@ -173,7 +173,7 @@ std::string ShadingTree::handlePropertyNumber(const std::string& name, const Sce
     }
 }
 
-void ShadingTree::addNumber(const std::string& name, const SceneObject& obj, const std::optional<float>& def, const NumberOptions& options)
+void ShadingTree::addNumber(const std::string& name, SceneObject& obj, const std::optional<float>& def, const NumberOptions& options)
 {
     if (hasParameter(name)) {
         IG_LOG(L_ERROR) << "Multiple use of parameter '" << name << "'" << std::endl;
@@ -194,7 +194,7 @@ void ShadingTree::addNumber(const std::string& name, const SceneObject& obj, con
     currentClosure().Parameters[name] = inline_str;
 }
 
-void ShadingTree::addColor(const std::string& name, const SceneObject& obj, const std::optional<Vector3f>& def, const ColorOptions& options)
+void ShadingTree::addColor(const std::string& name, SceneObject& obj, const std::optional<Vector3f>& def, const ColorOptions& options)
 {
     if (hasParameter(name)) {
         IG_LOG(L_ERROR) << "Multiple use of parameter '" << name << "'" << std::endl;
@@ -228,7 +228,7 @@ void ShadingTree::addColor(const std::string& name, const SceneObject& obj, cons
     currentClosure().Parameters[name] = inline_str;
 }
 
-void ShadingTree::addVector(const std::string& name, const SceneObject& obj, const std::optional<Vector3f>& def, const VectorOptions& options)
+void ShadingTree::addVector(const std::string& name, SceneObject& obj, const std::optional<Vector3f>& def, const VectorOptions& options)
 {
     if (hasParameter(name)) {
         IG_LOG(L_ERROR) << "Multiple use of parameter '" << name << "'" << std::endl;
@@ -263,7 +263,7 @@ void ShadingTree::addVector(const std::string& name, const SceneObject& obj, con
 }
 
 // Only use this if no basic color information suffices
-void ShadingTree::addTexture(const std::string& name, const SceneObject& obj, const std::optional<Vector3f>& def, const TextureOptions& options)
+void ShadingTree::addTexture(const std::string& name, SceneObject& obj, const std::optional<Vector3f>& def, const TextureOptions& options)
 {
     if (hasParameter(name)) {
         IG_LOG(L_ERROR) << "Multiple use of parameter '" << name << "'" << std::endl;
@@ -298,7 +298,7 @@ void ShadingTree::addTexture(const std::string& name, const SceneObject& obj, co
     currentClosure().Parameters[name] = inline_str;
 }
 
-float ShadingTree::computeNumber(const std::string& name, const SceneObject& obj, float def)
+ShadingTree::BakeOutputNumber ShadingTree::computeNumber(const std::string& name, SceneObject& obj, float def, const GenericBakeOptions& options)
 {
     const auto prop = obj.property(name);
 
@@ -308,24 +308,27 @@ float ShadingTree::computeNumber(const std::string& name, const SceneObject& obj
         IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
         [[fallthrough]];
     case SceneProperty::PT_NONE:
-        return def;
+        return BakeOutputNumber::AsConstant(def);
     case SceneProperty::PT_INTEGER:
     case SceneProperty::PT_NUMBER:
-        return prop.getNumber();
+        return BakeOutputNumber::AsConstant(prop.getNumber());
     case SceneProperty::PT_VECTOR3:
-        return prop.getVector3().mean();
+        return BakeOutputNumber::AsConstant(prop.getVector3().mean());
     case SceneProperty::PT_STRING: {
-        if (const auto it = mContext.Cache->ExprComputation.find(prop.getString()); it != mContext.Cache->ExprComputation.end())
-            return it->second.mean();
+        if (const auto it = mContext.Cache->ExprComputation.find(prop.getString()); it != mContext.Cache->ExprComputation.end()) {
+            const auto output = std::any_cast<BakeOutputColor>(it->second);
+            return BakeOutputNumber{ output.Value.mean(), output.WasConstant };
+        }
 
         IG_LOG(L_DEBUG) << "Computing number for expression '" << prop.getString() << "'" << std::endl;
-        LoaderContext ctx_copy = mContext.copyForBake();
-        return ShadingTree(ctx_copy).bakeTextureExpressionAverage(name, prop.getString(), Vector3f::Constant(def)).mean();
+        LoaderContext ctx_copy  = mContext.copyForBake();
+        const auto color_output = ShadingTree(ctx_copy).bakeTextureExpressionAverage(name, prop.getString(), Vector3f::Constant(def), options);
+        return BakeOutputNumber{ color_output.Value.mean(), color_output.WasConstant };
     }
     }
 }
 
-Vector3f ShadingTree::computeColor(const std::string& name, const SceneObject& obj, const Vector3f& def)
+ShadingTree::BakeOutputColor ShadingTree::computeColor(const std::string& name, SceneObject& obj, const Vector3f& def, const GenericBakeOptions& options)
 {
     const auto prop = obj.property(name);
 
@@ -335,24 +338,24 @@ Vector3f ShadingTree::computeColor(const std::string& name, const SceneObject& o
         IG_LOG(L_ERROR) << "Parameter '" << name << "' has invalid type" << std::endl;
         [[fallthrough]];
     case SceneProperty::PT_NONE:
-        return def;
+        return BakeOutputColor::AsConstant(def);
     case SceneProperty::PT_INTEGER:
     case SceneProperty::PT_NUMBER:
-        return Vector3f::Constant(prop.getNumber());
+        return BakeOutputColor::AsConstant(Vector3f::Constant(prop.getNumber()));
     case SceneProperty::PT_VECTOR3:
-        return prop.getVector3();
+        return BakeOutputColor::AsConstant(prop.getVector3());
     case SceneProperty::PT_STRING: {
         if (const auto it = mContext.Cache->ExprComputation.find(prop.getString()); it != mContext.Cache->ExprComputation.end())
-            return it->second;
+            return std::any_cast<BakeOutputColor>(it->second);
 
         IG_LOG(L_DEBUG) << "Computing color for expression '" << prop.getString() << "'" << std::endl;
         LoaderContext ctx_copy = mContext.copyForBake();
-        return ShadingTree(ctx_copy).bakeTextureExpressionAverage(name, prop.getString(), def);
+        return ShadingTree(ctx_copy).bakeTextureExpressionAverage(name, prop.getString(), def, options);
     }
     }
 }
 
-ShadingTree::BakeOutputTexture ShadingTree::bakeTexture(const std::string& name, const SceneObject& obj, const std::optional<Vector3f>& def, const TextureBakeOptions& options)
+ShadingTree::BakeOutputTexture ShadingTree::bakeTexture(const std::string& name, SceneObject& obj, const std::optional<Vector3f>& def, const TextureBakeOptions& options)
 {
     // options only affect bake process with PExpr expressions
 
@@ -382,7 +385,7 @@ ShadingTree::BakeOutputTexture ShadingTree::bakeTexture(const std::string& name,
     }
 }
 
-std::pair<size_t, size_t> ShadingTree::computeTextureResolution(const std::string& name, const SceneObject& obj)
+std::pair<size_t, size_t> ShadingTree::computeTextureResolution(const std::string& name, SceneObject& obj)
 {
     const auto prop = obj.property(name);
 
@@ -468,7 +471,7 @@ Vector3f ShadingTree::computeConstantColor(const std::string& name, const Transp
         expr_art = "make_gray_color(" + expr_art + ")";
 
     // Constant expression with no ctx and textures
-    const std::string script = BakeShader::setupConstantColor("  let main_func = @|| " + expr_art + ";");
+    const std::string script = BakeShader::setupConstantColor("  let main_func = @|| {" + pullHeader() + expr_art + "};");
 
     void* shader  = mContext.Options.Compiler->compile(mContext.Options.Compiler->prepare(script), "ig_constant_color");
     auto callback = reinterpret_cast<BakeShader::ConstantColorFunc>(shader);
@@ -489,9 +492,9 @@ Image ShadingTree::computeImage(const std::string& name, const Transpiler::Resul
         IG_LOG(L_WARNING) << "Given expression for '" << name << "' contains variables outside `uv`. Baking process might be incomplete" << std::endl;
 
     std::stringstream inner_script;
-    for (const auto& tex : result.Textures) {
+    for (const auto& tex : result.Textures)
         inner_script << loadTexture(tex);
-    }
+    inner_script << pullHeader() << std::endl;
 
     std::string expr_art = result.Expr;
     if (result.ScalarOutput)
@@ -547,26 +550,29 @@ ShadingTree::BakeOutputTexture ShadingTree::bakeTextureExpression(const std::str
     }
 }
 
-Vector3f ShadingTree::bakeTextureExpressionAverage(const std::string& name, const std::string& expr, const Vector3f& def)
+ShadingTree::BakeOutputColor ShadingTree::bakeTextureExpressionAverage(const std::string& name, const std::string& expr, const Vector3f& def, const GenericBakeOptions& options)
 {
     auto res = mTranspiler.transpile(expr);
 
     if (!res.has_value()) {
-        return def;
+        return BakeOutputColor::AsConstant(def);
     } else {
         const auto& result = res.value();
 
         if (result.Textures.empty() && result.Variables.empty()) {
-            const Vector3f color = computeConstantColor(name, result);
+            const auto color = BakeOutputColor::AsConstant(computeConstantColor(name, result));
 
             mContext.Cache->ExprComputation[expr] = color;
             return color;
+        } else if (options.SkipTextures) {
+            return BakeOutputColor::AsConstant(def);
+        } else {
+            const Image image                     = computeImage(name, result, TextureBakeOptions{ 0, 0, 1, 1, true });
+            const Vector4f average                = image.computeAverage();
+            const auto color                      = BakeOutputColor::AsConstant(average.block<3, 1>(0, 0));
+            mContext.Cache->ExprComputation[expr] = color;
+            return color;
         }
-
-        const Image image                     = computeImage(name, result, TextureBakeOptions{ 0, 0, 1, 1, true });
-        const Vector4f average                = image.computeAverage();
-        mContext.Cache->ExprComputation[expr] = average.block<3, 1>(0, 0);
-        return average.block<3, 1>(0, 0);
     }
 }
 
@@ -655,8 +661,10 @@ bool ShadingTree::checkIfEmbed(float val, const NumberOptions& options) const
         return false;
     default:
     case EmbedType::Default:
-        if (mForceSpecialization || mContext.Options.ForceSpecialization)
+        if (mSpecialization == RuntimeOptions::SpecializationMode::Force || mContext.Options.Specialization == RuntimeOptions::SpecializationMode::Force)
             return true;
+        else if (mSpecialization == RuntimeOptions::SpecializationMode::Disable || mContext.Options.Specialization == RuntimeOptions::SpecializationMode::Disable)
+            return false;
         else if (options.SpecializeZero && std::abs(val) <= FltEps)
             return true;
         else if (options.SpecializeOne && std::abs(val - 1) <= FltEps)
@@ -675,8 +683,10 @@ bool ShadingTree::checkIfEmbed(const Vector3f& color, const ColorOptions& option
         return false;
     default:
     case EmbedType::Default:
-        if (mForceSpecialization || mContext.Options.ForceSpecialization)
+        if (mSpecialization == RuntimeOptions::SpecializationMode::Force || mContext.Options.Specialization == RuntimeOptions::SpecializationMode::Force)
             return true;
+        else if (mSpecialization == RuntimeOptions::SpecializationMode::Disable || mContext.Options.Specialization == RuntimeOptions::SpecializationMode::Disable)
+            return false;
         else if (options.SpecializeBlack && color.isZero(FltEps))
             return true;
         else if (options.SpecializeWhite && color.isOnes(FltEps))
@@ -695,8 +705,10 @@ bool ShadingTree::checkIfEmbed(const Vector3f& vec, const VectorOptions& options
         return false;
     default:
     case EmbedType::Default:
-        if (mForceSpecialization || mContext.Options.ForceSpecialization)
+        if (mSpecialization == RuntimeOptions::SpecializationMode::Force || mContext.Options.Specialization == RuntimeOptions::SpecializationMode::Force)
             return true;
+        else if (mSpecialization == RuntimeOptions::SpecializationMode::Disable || mContext.Options.Specialization == RuntimeOptions::SpecializationMode::Disable)
+            return false;
         else if (options.SpecializeZero && vec.isZero(FltEps))
             return true;
         else if (options.SpecializeOne && vec.isOnes(FltEps))

@@ -12,6 +12,7 @@ scenes/dragon
 
 # Visual Studio stuff
 .vs/
+.vscode/
 
 # Compiled Object files
 *.slo
@@ -59,6 +60,8 @@ _ignis_cache*/
 # Other outputs
 out/
 data/
+ignis_cache*/
+_ignis_cache*/
 
 # Plugin output
 ignis_blender.zip

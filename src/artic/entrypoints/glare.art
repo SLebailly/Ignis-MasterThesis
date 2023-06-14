@@ -1,0 +1,243 @@
+struct GlareSettings {
+    max:f32,
+    avg:f32,
+    mul:f32,
+    scale:f32,
+    vertical_illuminance:f32 // Set < 0 to compute it automatically
+}
+
+struct GlareOutput {
+    dgp: f32,
+    vertical_illuminance:f32, // If automatically computed
+    avg_lum:    f32,
+    avg_omega:  f32,
+    num_pixels: i32,
+}
+
+fn @ig_glare_pipeline(device: Device, camera: Camera, in_pixels: &[f32], out_pixels: &mut [u32], width: i32, height: i32, settings: &GlareSettings, output: &mut GlareOutput) {
+
+    let buffer_in  = device.make_buffer(in_pixels,  width * height * 3);
+    let buffer_out = device.make_buffer(out_pixels as &[f32], width * height);
+
+    //let cam_eye = registry::get_global_parameter_vec3("__camera_eye", vec3_expand(0));
+    let cam_up = registry::get_global_parameter_vec3("__camera_up", vec3_expand(0));
+    let cam_dir = registry::get_global_parameter_vec3("__camera_dir", vec3_expand(0));
+    let cam_right = vec3_cross(cam_dir, cam_up);
+
+    fn @store_pixel(index: i32, color: Color) {
+        buffer_out.store_i32(index, bitcast[i32](make_byte_color(color)));
+    }
+
+    fn @calc_posindex(pixel: PixelCoord) -> f32 {
+        let pseudo_rng = create_random_generator(42);
+        let ray = camera.generate_ray(pseudo_rng, pixel);
+
+        let vangle = math_builtins::acos(vec3_dot(cam_up, ray.dir)) - flt_pi / 2.0;
+        let hangle = flt_pi / 2.0 - math_builtins::acos(vec3_dot(cam_right, ray.dir));
+        let mut sigma = math_builtins::acos(vec3_dot(cam_dir, ray.dir));
+
+        let t = math_builtins::cos(sigma);
+        let hv = vec3_normalize(vec3_sub(vec3_mulf(ray.dir, 1.0 / t), ray.dir));
+        let mut tau = math_builtins::acos(vec3_dot(cam_up, hv));
+
+        let deg = 180.0 / flt_pi;
+        let mut fact = 0.8 as f32;
+
+        let mut phi = vangle;
+        
+        let mut theta = hangle;
+
+        if (phi == 0) {
+		phi = 0.00001;
+        }
+        if (sigma <= 0) {
+            sigma = -sigma;
+        }
+        if (theta == 0) {
+            theta = 0.0001;
+        }
+        tau = tau * deg;
+        sigma = sigma * deg;
+
+        let mut posindex = 0.0 as f32;
+        // position index calculation with Guth model
+        posindex = math_builtins::exp((35.2 - 0.31889 * tau - 1.22 * math_builtins::exp(-2 * tau / 9)) / 1000 * sigma + (21 + 0.26667 * tau - 0.002963 * tau * tau) / 100000 * sigma * sigma);
+        // position index calculation with KIM model
+        //posindex = math_builtins::exp ((sigma-(-0.000009*tau*tau*tau+0.0014*tau*tau+0.0866*tau+21.633))/(-0.000009*tau*tau*tau+0.0013*tau*tau+0.0853*tau+8.772));
+        
+        // use Iwata model below line of sight
+	    if (phi < 0.0) {
+            let d = 1.0 / math_builtins::tan(phi);
+            let s = math_builtins::tan(theta) / math_builtins::tan(phi);
+            let mut r = math_builtins::sqrt(1.0 / d * 1.0 / d + s * s / d / d);
+            if (r > 0.6) {
+                fact = 1.2;
+            }
+            if (r > 3) {
+                fact = 1.2;
+                r = 3.0;
+            }
+
+            posindex = 1.0 + fact * r;
+	    }
+		if (posindex > 16) {
+		    posindex = 16;
+        }
+
+        posindex
+    }
+
+    // Loosely adapted from pict_get_omega, pict_get_sangle and splane_normal
+    fn @calc_omega(pixel: PixelCoord) -> f32 {
+        fn @splane(p_a: Vec3, p_b: Vec3) -> Vec3 {
+            let e1 = p_a;
+            let e2 = vec3_sub(p_b, p_a);
+            let n  = vec3_cross(e1, e2);
+            if vec3_len2(n) > 0 { vec3_normalize(n) } else { make_vec3(0,0,0) }
+        }
+
+        let pseudo_rng = create_random_generator(42);
+        let r1 = camera.generate_ray(pseudo_rng, pixel).dir;
+        let r2 = camera.generate_ray(pseudo_rng, make_pixelcoord_from_xy(pixel.x  , pixel.y+1, pixel.w, pixel.h, 0, 0)).dir;
+        let r3 = camera.generate_ray(pseudo_rng, make_pixelcoord_from_xy(pixel.x+1, pixel.y+1, pixel.w, pixel.h, 0, 0)).dir;
+        let r4 = camera.generate_ray(pseudo_rng, make_pixelcoord_from_xy(pixel.x+1, pixel.y  , pixel.w, pixel.h, 0, 0)).dir;
+
+        let n1 = splane(r1, r2);
+        let n2 = splane(r2, r3);
+        let n3 = splane(r3, r4);
+        let n4 = splane(r4, r1);
+
+        let a1 = flt_pi - math_builtins::fabs(math_builtins::acos(vec3_dot(n1, n2)));
+        let a2 = flt_pi - math_builtins::fabs(math_builtins::acos(vec3_dot(n2, n3)));
+        let a3 = flt_pi - math_builtins::fabs(math_builtins::acos(vec3_dot(n3, n4)));
+        let a4 = flt_pi - math_builtins::fabs(math_builtins::acos(vec3_dot(n4, n1)));
+
+        let ang = a1 + a2 + a3 + a4;
+        ang - 2 * flt_pi
+    }
+
+    let scale = settings.scale;
+    let check_get = @|i:i32| { let a = buffer_in.load_f32(i); select(math_builtins::isfinite(a), a, 0:f32) };
+    let get_pixel = @|i:i32| make_color(check_get(i * 3 + 0), check_get(i * 3 + 1), check_get(i * 3 + 2), 1);
+    let luminance = @|col:Color| color_builtins::white_efficiency * srgb_to_xyY(color_mulf(col, scale)).b; // Only luminance. In contrary to other parts this is explicit in Lux (assuming sRGB).
+
+    let lum_max    = color_builtins::white_efficiency * settings.max;
+    let lum_source = color_builtins::white_efficiency *(settings.avg * settings.mul);
+
+    let c1 = 5.87e-5 : f32;
+    let c2 = 0.0981  : f32;
+    let c3 = 0.16    : f32;
+    let a1 = 2.0     : f32;
+	let a2 = 1.0     : f32;
+	let a3 = 1.87    : f32;
+	let a4 = 2.0     : f32;
+	let a5 = 1.0     : f32;
+
+    let E_v = if settings.vertical_illuminance < 0 {        
+        // Compute automatically
+        device.parallel_reduce_f32(width * height,
+            @|idx| -> f32 {
+                let pixel = make_pixelcoord_from_linear(idx, width, height, 0, 0);
+                let current_color = get_pixel(idx);
+                let act_lum = luminance(current_color);
+
+                let pseudo_rng = create_random_generator(42);
+                let ray = camera.generate_ray(pseudo_rng, pixel);
+
+                let cos_f = math_builtins::fabs(vec3_dot(cam_dir, ray.dir));
+                let omega = calc_omega(pixel);
+                act_lum * cos_f * omega
+            },
+            @|a,b| a + b)
+    } else {
+        settings.vertical_illuminance
+    };
+
+    let glare_pixels = device.parallel_reduce_i32(width * height, @|i:i32| {let v = luminance(get_pixel(i)); if (v > lum_source){ 1 } else { 0 }}, @|a,b| a + b);
+    let glare_omega  = device.parallel_reduce_f32(width * height,
+        @|idx| -> f32 {
+            let pixel   = make_pixelcoord_from_linear(idx, width, height, 0, 0);
+            let act_lum = luminance(get_pixel(idx));
+            if (act_lum > lum_source) {
+                calc_omega(pixel)
+            } else { 
+                0:f32
+            }
+        },
+        @|a,b| a + b);
+    let glare_lum = device.parallel_reduce_f32(width * height,
+        @|idx| -> f32 {
+            let pixel   = make_pixelcoord_from_linear(idx, width, height, 0, 0);
+            let act_lum = luminance(get_pixel(idx));
+            if (act_lum > lum_source) {
+                let omega = calc_omega(pixel);
+                act_lum * omega
+            } else { 
+                0:f32
+            }
+        },
+        @|a,b| a + b) / glare_omega;
+
+    let glare_x = device.parallel_reduce_f32(width * height,
+            @|idx| -> f32 {
+                let pixel   = make_pixelcoord_from_linear(idx, width, height, 0, 0);
+                let act_lum = luminance(get_pixel(idx));
+                if (act_lum > lum_source) {
+                    let omega = calc_omega(pixel);
+                    pixel.x as f32 * omega
+                } else { 
+                    0:f32
+                }
+            },
+            @|a,b| a + b) / glare_omega;
+
+    let glare_y = device.parallel_reduce_f32(width * height,
+            @|idx| -> f32 {
+                let pixel   = make_pixelcoord_from_linear(idx, width, height, 0, 0);
+                let act_lum = luminance(get_pixel(idx));
+                if (act_lum > lum_source) {
+                    let omega = calc_omega(pixel);
+                    pixel.y as f32 * omega
+                } else { 
+                    0:f32
+                }
+            },
+            @|a,b| a + b) / glare_omega;
+
+    // primary glare source scan
+    for ind in device.parallel_range(0, width * height) {
+        let current_color = get_pixel(ind);
+        let act_lum = luminance(current_color);
+
+        if (act_lum > lum_source) {
+            // compute heatmap color
+            let max_diff = math_builtins::fmax(flt_eps, lum_max - lum_source);
+            let lum_diff = act_lum - lum_source;
+            let lerp_factor = lum_diff / max_diff;
+            let col = colormap::inferno(clampf(lerp_factor * lerp_factor, 0, 1));
+            store_pixel(ind, col);
+        }
+    }
+
+    let glare_posi = calc_posindex(make_pixelcoord_from_xy(glare_x as i32, glare_y as i32, width, height, 0, 0)); // For now just pick the middle
+
+    let dgp_acc    = math_builtins::pow(glare_lum, a1) / math_builtins::pow(glare_posi, a4) * math_builtins::pow(glare_omega, a2) / math_builtins::pow(E_v, a3);
+    let source_dgp = math_builtins::log10(1 + dgp_acc);
+
+    if glare_omega > 0 {
+        output.dgp = c1 * math_builtins::pow(E_v, a5) + c2 * source_dgp + c3;
+    } else {
+        // No glare sources
+        output.dgp = c1 * math_builtins::pow(E_v, a5) + c3;
+    }
+
+    // TODO: Add low-light correction
+    // TODO: Add age correction
+
+    output.vertical_illuminance = E_v;
+    output.avg_lum    = glare_lum;
+    output.avg_omega  = glare_omega;
+    output.num_pixels = glare_pixels;
+
+    device.sync();
+}

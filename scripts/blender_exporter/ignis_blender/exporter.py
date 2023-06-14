@@ -62,13 +62,18 @@ def export_entity(result, depsgraph, inst, filepath, shape_name, mat_i, settings
     shadow_visibility = True
     if settings.export_materials:
         if(len(inst.object.material_slots) > mat_i):
-            result["_materials"].add(
-                inst.object.material_slots[mat_i].material)
-            mat_name = inst.object.material_slots[mat_i].material.name
-            emission = get_material_emission(NodeContext(
-                result, filepath, depsgraph, settings), inst.object.material_slots[mat_i].material)
-            if bpy.context.engine == "EEVEE":
-                shadow_visibility = inst.object.material_slots[mat_i].material.shadow_method != "NONE"
+            inst_mat = inst.object.material_slots[mat_i].material
+            if inst_mat is not None:
+                result["_materials"].add(inst_mat)
+                mat_name = inst_mat.name
+                emission = get_material_emission(NodeContext(
+                    result, filepath, depsgraph, settings), inst_mat)
+                if bpy.context.engine == "EEVEE":
+                    shadow_visibility = inst_mat.shadow_method != "NONE"
+            else:
+                print(f"Obsolete material slot {mat_i} for shape {shape_name} with instance {inst.object.data.name}")
+                mat_name = BSDF_BLACK_NAME
+                emission = None
         else:
             print(f"Entity {inst.object.name} has no material")
             mat_name = BSDF_BLACK_NAME
@@ -117,19 +122,21 @@ def export_all(filepath, result, depsgraph, settings):
     # Export entities & shapes
     for inst in depsgraph.object_instances:
         object_eval = inst.object
+        if object_eval is None:
+            continue
         if settings.use_selection and not object_eval.original.select_get():
             continue
         if not settings.use_selection and not inst.show_self:
             continue
 
         objType = object_eval.type
-        if objType in {'MESH', 'CURVE', 'SURFACE', 'FONT', 'META'}:
-            name = get_shape_name_base(object_eval)
+        if objType in {'MESH', 'CURVE', 'SURFACE', 'META', 'FONT', 'CURVES'}:
+            name = get_shape_name_base(object_eval, inst)
             if name in exported_shapes:
                 shapes = exported_shapes[name]
             else:
                 shapes = export_shape(
-                    result, object_eval, depsgraph, filepath, settings)
+                    result, name, object_eval, depsgraph, filepath, settings)
                 exported_shapes[name] = shapes
 
             if len(shapes) == 0:

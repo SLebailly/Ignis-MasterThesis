@@ -145,7 +145,7 @@ bool LoaderEntity::load(LoaderContext& ctx)
 
             // Make sure the entity is added to the emissive list if it is associated with an area light
             if (ctx.Lights->isAreaLight(pair.first))
-                mEmissiveEntities.insert({ pair.first, Entity{ mEntityCount, transform, pair.first, shapeID, ctx.Materials.at(materialID).BSDF } });
+                mEmissiveEntities.insert({ pair.first, Entity{ mEntityCount, transform, pair.first, shapeID, (uint32)materialID, ctx.Materials.at(materialID).BSDF } });
 
             const Matrix34f toLocal       = invTransform.matrix().block<3, 4>(0, 0);
             const Matrix34f toGlobal      = transform.matrix().block<3, 4>(0, 0);
@@ -158,19 +158,19 @@ bool LoaderEntity::load(LoaderContext& ctx)
             entitySerializer.write(toGlobal, true);       // +12 = 24, To Global
             entitySerializer.write(toGlobalNormal, true); // +9  = 33, To Global [Normal]
             entitySerializer.write((uint32)shapeID);      // +1  = 34
-            entitySerializer.write((uint32)0);            // +1  = 35, Padding
+            entitySerializer.write((uint32)materialID);   // +1  = 35
             entitySerializer.write((uint32)0);            // +1  = 36, Padding
 
             // Extract information for BVH building
             EntityObject obj;
-            obj.BBox     = entityBox;
-            obj.Local    = invTransform.matrix();
-            obj.EntityID = (int32)mEntityCount;
-            obj.ShapeID  = shapeID;
-            obj.User1ID  = shape.User1ID;
-            obj.User2ID  = shape.User2ID;
-            obj.User3ID  = shape.User3ID;
-            obj.Flags    = entity_flags; // Only added to bvh
+            obj.BBox       = entityBox;
+            obj.Local      = invTransform.matrix();
+            obj.EntityID   = (int32)mEntityCount;
+            obj.ShapeID    = shapeID;
+            obj.MaterialID = (int32_t)materialID;
+            obj.User1ID    = shape.User1ID;
+            obj.User2ID    = shape.User2ID;
+            obj.Flags      = entity_flags; // Only added to bvh
 
             in_objs[shape.Provider].emplace_back(obj);
             mEntityCount++;

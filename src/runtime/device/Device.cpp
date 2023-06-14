@@ -129,7 +129,7 @@ struct CPUData {
 thread_local CPUData* tlThreadData = nullptr;
 
 #ifdef IG_HAS_DENOISER
-void ignis_denoise(const float*, const float*, const float*, const float*, float*, size_t, size_t, size_t);
+void ignis_denoise(Device* device);
 #endif
 
 constexpr size_t GPUStreamBufferCount = 2;
@@ -179,6 +179,7 @@ public:
     };
     std::unordered_map<int32_t, DeviceData> devices;
 
+    Device* device_ptr;
     std::mutex thread_mutex;
     std::vector<std::unique_ptr<CPUData>> thread_data;
 
@@ -206,8 +207,9 @@ public:
 
     const bool is_gpu;
 
-    inline explicit Interface(const Device::SetupSettings& setup)
-        : entity_count(0)
+    inline explicit Interface(Device* device, const Device::SetupSettings& setup)
+        : device_ptr(device)
+        , entity_count(0)
         , film_width(0)
         , film_height(0)
         , setup(setup)
@@ -255,6 +257,27 @@ public:
         return scene.resource_map->at(id);
     }
 
+    /// @brief Ensure the given buffer is present with the same size as the host. Does not copy from host to device!
+    /// @tparam T
+    /// @param dev
+    /// @param dev_buffer
+    /// @param host_buffer
+    /// @return
+    template <typename T>
+    inline anydsl::Array<T>& ensurePresentOnDevice(int32_t dev, anydsl::Array<T>& dev_buffer, const anydsl::Array<T>& host_buffer)
+    {
+        if (dev_buffer.size() != host_buffer.size()) {
+            void* ptr = anydsl_alloc(dev, sizeof(T) * host_buffer.size());
+            if (ptr == nullptr) {
+                IG_LOG(L_FATAL) << "Out of memory" << std::endl;
+                std::abort();
+            }
+            dev_buffer = std::move(anydsl::Array<T>(dev, reinterpret_cast<T*>(ptr), host_buffer.size()));
+        }
+
+        return dev_buffer;
+    }
+
     inline void ensureFramebuffer()
     {
         const size_t expectedSize = film_width * film_height * 3;
@@ -271,11 +294,6 @@ public:
 
         host_pixels.Data = anydsl::Array<float>(expectedSize);
         std::fill(host_pixels.Data.begin(), host_pixels.Data.end(), 0.0f);
-
-#ifdef IG_HAS_DENOISER
-        if (aovs.count("Denoised") != 0)
-            aovs["Denoised"].HostOnly = true; // Always mapped, ignore data from device
-#endif
 
         for (auto& p : aovs) {
             p.second.Data = anydsl::Array<float>(expectedSize);
@@ -346,6 +364,7 @@ public:
         driver_settings.iter   = (int)settings.iteration;
         driver_settings.width  = (int)settings.width;
         driver_settings.height = (int)settings.height;
+        driver_settings.seed   = (int)settings.user_seed;
 
         if (settings.width != film_width || settings.height != film_height)
             resizeFramebuffer(settings.width, settings.height);
@@ -652,14 +671,6 @@ public:
         return proxy;
     }
 
-    inline SceneInfo loadSceneInfo(int32_t dev)
-    {
-        IG_UNUSED(dev);
-
-        return SceneInfo{ (int)entity_count,
-                          (int)scene.database->MaterialCount };
-    }
-
     inline const DynTableProxy& loadDyntable(int32_t dev, const char* name)
     {
         std::lock_guard<std::mutex> _guard(thread_mutex);
@@ -807,10 +818,8 @@ public:
         size = (int32_t)roundUp(size, 32);
 
         auto& buffers = devices[dev].buffers;
-        auto it       = buffers.find(name);
-        if (it != buffers.end() && it->second.Data.size() >= (int64_t)size) {
+        if (auto it = buffers.find(name); it != buffers.end() && it->second.Data.size() >= (int64_t)size)
             return it->second;
-        }
 
         _SECTION(SectionType::BufferRequests);
 
@@ -825,13 +834,24 @@ public:
         return buffers[name] = DeviceBuffer{ anydsl::Array<uint8_t>(dev, reinterpret_cast<uint8_t*>(ptr), size), 1 };
     }
 
+    inline void releaseBuffer(int32_t dev, const std::string& name)
+    {
+        std::lock_guard<std::mutex> _guard(thread_mutex);
+
+        auto& buffers = devices[dev].buffers;
+
+        if (auto it = buffers.find(name); it != buffers.end()) {
+            _SECTION(SectionType::BufferReleases);
+            buffers.erase(it);
+        }
+    }
+
     inline void dumpBuffer(int32_t dev, const std::string& name, const std::string& filename)
     {
         std::lock_guard<std::mutex> _guard(thread_mutex);
 
         auto& buffers = devices[dev].buffers;
-        auto it       = buffers.find(name);
-        if (it != buffers.end()) {
+        if (auto it = buffers.find(name); it != buffers.end()) {
             const size_t size = (size_t)it->second.Data.size();
 
             // Copy data to host
@@ -924,13 +944,20 @@ public:
         }
     }
 
+    /// @brief Will release almost all device specific data
+    inline void releaseAll()
+    {
+        std::lock_guard<std::mutex> _guard(thread_mutex);
+        std::unordered_map<int32_t, DeviceData>().swap(devices);
+    }
+
     // -------------------------------------------------------- Shader
     inline void runDeviceShader()
     {
-        if (setup.debug_trace)
+        if (setup.DebugTrace)
             IG_LOG(L_DEBUG) << "TRACE> Device Shader" << std::endl;
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.beginShaderLaunch(ShaderType::Device, 1, {});
 
         using Callback = decltype(ig_callback_shader);
@@ -941,16 +968,16 @@ public:
 
         checkDebugOutput();
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.endShaderLaunch(ShaderType::Device, {});
     }
 
     inline void runTonemapShader(float* in_pixels, uint32_t* device_out_pixels, ::TonemapSettings& settings)
     {
-        if (setup.debug_trace)
+        if (setup.DebugTrace)
             IG_LOG(L_DEBUG) << "TRACE> Tonemap Shader" << std::endl;
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.beginShaderLaunch(ShaderType::Tonemap, 1, {});
 
         using Callback = decltype(ig_tonemap_shader);
@@ -961,16 +988,40 @@ public:
 
         checkDebugOutput();
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.endShaderLaunch(ShaderType::Tonemap, {});
+    }
+
+    inline ::GlareOutput runGlareShader(float* in_pixels, uint32_t* device_out_pixels, ::GlareSettings& settings)
+    {
+#ifdef IG_DEBUG_LOG_TRACE
+        IG_LOG(L_DEBUG) << "TRACE> Glare Shader" << std::endl;
+#endif
+
+        if (setup.AcquireStats)
+            getThreadData()->stats.beginShaderLaunch(ShaderType::Glare, 1, {});
+
+        using Callback = decltype(ig_glare_shader);
+        auto callback  = reinterpret_cast<Callback*>(shader_set.GlareShader.Exec);
+        IG_ASSERT(callback != nullptr, "Expected Glare shader to be valid");
+        setCurrentShader(0, 1, ShaderKey(shader_set.ID, ShaderType::Glare, 0), shader_set.GlareShader);
+        ::GlareOutput output;
+        callback(&driver_settings, in_pixels, device_out_pixels, (int)film_width, (int)film_height, &settings, &output);
+
+        checkDebugOutput();
+
+        if (setup.AcquireStats)
+            getThreadData()->stats.endShaderLaunch(ShaderType::Glare, {});
+
+        return output;
     }
 
     inline ::ImageInfoOutput runImageinfoShader(float* in_pixels, ::ImageInfoSettings& settings)
     {
-        if (setup.debug_trace)
+        if (setup.DebugTrace)
             IG_LOG(L_DEBUG) << "TRACE> Imageinfo Shader" << std::endl;
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.beginShaderLaunch(ShaderType::ImageInfo, 1, {});
 
         using Callback = decltype(ig_imageinfo_shader);
@@ -983,7 +1034,7 @@ public:
 
         checkDebugOutput();
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.endShaderLaunch(ShaderType::ImageInfo, {});
 
         return output;
@@ -991,10 +1042,10 @@ public:
 
     inline void runPrimaryTraversalShader(int32_t dev, int size)
     {
-        if (setup.debug_trace)
+        if (setup.DebugTrace)
             IG_LOG(L_DEBUG) << "TRACE> Primary Traversal Shader [S=" << size << "]" << std::endl;
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.beginShaderLaunch(ShaderType::PrimaryTraversal, size, {});
 
         using Callback = decltype(ig_traversal_shader);
@@ -1005,16 +1056,16 @@ public:
 
         checkDebugOutput();
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.endShaderLaunch(ShaderType::PrimaryTraversal, {});
     }
 
     inline void runSecondaryTraversalShader(int32_t dev, int size)
     {
-        if (setup.debug_trace)
+        if (setup.DebugTrace)
             IG_LOG(L_DEBUG) << "TRACE> Secondary Traversal Shader [S=" << size << "]" << std::endl;
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.beginShaderLaunch(ShaderType::SecondaryTraversal, size, {});
 
         using Callback = decltype(ig_traversal_shader);
@@ -1025,16 +1076,16 @@ public:
 
         checkDebugOutput();
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.endShaderLaunch(ShaderType::SecondaryTraversal, {});
     }
 
     inline int runRayGenerationShader(int32_t dev, int next_id, int size, int xmin, int ymin, int xmax, int ymax)
     {
-        if (setup.debug_trace)
+        if (setup.DebugTrace)
             IG_LOG(L_DEBUG) << "TRACE> Ray Generation Shader [S=" << size << ", I=" << next_id << "]" << std::endl;
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.beginShaderLaunch(ShaderType::RayGeneration, (xmax - xmin) * (ymax - ymin), {});
 
         using Callback = decltype(ig_ray_generation_shader);
@@ -1045,17 +1096,17 @@ public:
 
         checkDebugOutput();
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.endShaderLaunch(ShaderType::RayGeneration, {});
         return ret;
     }
 
     inline void runMissShader(int32_t dev, int first, int last)
     {
-        if (setup.debug_trace)
+        if (setup.DebugTrace)
             IG_LOG(L_DEBUG) << "TRACE> Miss Shader [S=" << first << ", E=" << last << "]" << std::endl;
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.beginShaderLaunch(ShaderType::Miss, last - first, {});
 
         using Callback = decltype(ig_miss_shader);
@@ -1066,16 +1117,16 @@ public:
 
         checkDebugOutput();
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.endShaderLaunch(ShaderType::Miss, {});
     }
 
     inline void runHitShader(int32_t dev, int material_id, int first, int last)
     {
-        if (setup.debug_trace)
+        if (setup.DebugTrace)
             IG_LOG(L_DEBUG) << "TRACE> Hit Shader [M=" << material_id << ", S=" << first << ", E=" << last << "]" << std::endl;
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.beginShaderLaunch(ShaderType::Hit, last - first, material_id);
 
         using Callback = decltype(ig_hit_shader);
@@ -1088,7 +1139,7 @@ public:
 
         checkDebugOutput();
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.endShaderLaunch(ShaderType::Hit, material_id);
     }
 
@@ -1102,10 +1153,10 @@ public:
         IG_ASSERT(useAdvancedShadowHandling(), "Expected advanced shadow shader only be called if it is enabled!");
 
         if (is_hit) {
-            if (setup.debug_trace)
+            if (setup.DebugTrace)
                 IG_LOG(L_DEBUG) << "TRACE> Advanced Hit Shader [I=" << material_id << ", S=" << first << ", E=" << last << "]" << std::endl;
 
-            if (setup.acquire_stats)
+            if (setup.AcquireStats)
                 getThreadData()->stats.beginShaderLaunch(ShaderType::AdvancedShadowHit, last - first, material_id);
 
             using Callback = decltype(ig_advanced_shadow_shader);
@@ -1118,13 +1169,13 @@ public:
 
             checkDebugOutput();
 
-            if (setup.acquire_stats)
+            if (setup.AcquireStats)
                 getThreadData()->stats.endShaderLaunch(ShaderType::AdvancedShadowHit, material_id);
         } else {
-            if (setup.debug_trace)
+            if (setup.DebugTrace)
                 IG_LOG(L_DEBUG) << "TRACE> Advanced Miss Shader [I=" << material_id << ", S=" << first << ", E=" << last << "]" << std::endl;
 
-            if (setup.acquire_stats)
+            if (setup.AcquireStats)
                 getThreadData()->stats.beginShaderLaunch(ShaderType::AdvancedShadowMiss, last - first, material_id);
 
             using Callback = decltype(ig_advanced_shadow_shader);
@@ -1137,7 +1188,7 @@ public:
 
             checkDebugOutput();
 
-            if (setup.acquire_stats)
+            if (setup.AcquireStats)
                 getThreadData()->stats.endShaderLaunch(ShaderType::AdvancedShadowMiss, material_id);
         }
     }
@@ -1151,10 +1202,10 @@ public:
         auto callback      = reinterpret_cast<Callback*>(output.Exec);
 
         if (callback != nullptr) {
-            if (setup.debug_trace)
+            if (setup.DebugTrace)
                 IG_LOG(L_DEBUG) << "TRACE> Callback Shader [T=" << type << "]" << std::endl;
 
-            if (setup.acquire_stats)
+            if (setup.AcquireStats)
                 getThreadData()->stats.beginShaderLaunch(ShaderType::Callback, 1, type);
 
             setCurrentShader(dev, 1, ShaderKey(shader_set.ID, ShaderType::Callback, (uint32)type), output);
@@ -1162,7 +1213,7 @@ public:
 
             checkDebugOutput();
 
-            if (setup.acquire_stats)
+            if (setup.AcquireStats)
                 getThreadData()->stats.endShaderLaunch(ShaderType::Callback, type);
         }
     }
@@ -1171,10 +1222,10 @@ public:
     {
         IG_ASSERT(shader.Exec != nullptr, "Expected bake shader to be valid");
 
-        if (setup.debug_trace)
+        if (setup.DebugTrace)
             IG_LOG(L_DEBUG) << "TRACE> Bake Shader" << std::endl;
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.beginShaderLaunch(ShaderType::Bake, 1, {});
 
         using Callback = decltype(ig_bake_shader);
@@ -1185,7 +1236,7 @@ public:
 
         checkDebugOutput();
 
-        if (setup.acquire_stats)
+        if (setup.AcquireStats)
             getThreadData()->stats.endShaderLaunch(ShaderType::Bake, {});
     }
 
@@ -1240,11 +1291,12 @@ public:
             anydsl::copy(host.Data, device.aovs[name]);
     }
 
-    inline Device::AOVAccessor getAOVImage(const std::string& aov_name)
+    inline Device::AOVAccessor getAOVImageOnlyCPU(const std::string& aov_name)
     {
-        const int32_t dev = getDevID();
+        IG_ASSERT(!is_gpu, "Should only be called if not GPU");
+
         if (aov_name.empty() || aov_name == "Color")
-            return Device::AOVAccessor{ getFilmImage(dev), host_pixels.IterationCount };
+            return Device::AOVAccessor{ getFilmImage(0), host_pixels.IterationCount };
 
         const auto it = aovs.find(aov_name);
         if (it == aovs.end()) {
@@ -1252,13 +1304,7 @@ public:
             return Device::AOVAccessor{ nullptr, 0 };
         }
 
-        if (dev != 0) {
-            auto& device = devices[dev];
-            mapAOVToDevice(aov_name, it->second);
-            return Device::AOVAccessor{ device.aovs[aov_name].data(), it->second.IterationCount };
-        } else {
-            return Device::AOVAccessor{ it->second.Data.data(), it->second.IterationCount };
-        }
+        return Device::AOVAccessor{ it->second.Data.data(), it->second.IterationCount };
     }
 
     inline uint32_t* getTonemapImageGPU()
@@ -1312,7 +1358,32 @@ public:
                 return Device::AOVAccessor{ it->second.Data.data(), it->second.IterationCount };
             }
         } else {
-            return getAOVImage(aov_name);
+            return getAOVImageOnlyCPU(aov_name);
+        }
+    }
+
+    inline Device::AOVAccessor getAOVImageForDevice(const std::string& aov_name)
+    {
+        if (!host_pixels.Data.data()) {
+            IG_LOG(L_ERROR) << "Framebuffer not yet initialized. Run a single iteration first" << std::endl;
+            return Device::AOVAccessor{ nullptr, 0 };
+        }
+
+        if (is_gpu) {
+            const int32_t dev = getDevID();
+            if (aov_name.empty() || aov_name == "Color") {
+                return Device::AOVAccessor{ devices[dev].film_pixels.data(), host_pixels.IterationCount };
+            } else {
+                const auto it = aovs.find(aov_name);
+                if (it == aovs.end()) {
+                    IG_LOG(L_ERROR) << "Unknown aov '" << aov_name << "' access" << std::endl;
+                    return Device::AOVAccessor{ nullptr, 0 };
+                }
+
+                return Device::AOVAccessor{ ensurePresentOnDevice(dev, devices[dev].aovs[aov_name], aovs[aov_name].Data).data(), it->second.IterationCount };
+            }
+        } else {
+            return getAOVImageOnlyCPU(aov_name);
         }
     }
 
@@ -1374,28 +1445,15 @@ public:
 #ifdef IG_HAS_DENOISER
     inline void denoise()
     {
-        if (aovs.count("Denoised") == 0)
+        if (aovs.count("Denoised") == 0 && host_pixels.IterationCount > 0)
             return;
 
-        const auto color  = getAOVImageForHost({});
-        const auto normal = getAOVImageForHost("Normals");
-        const auto albedo = getAOVImageForHost("Albedo");
-        const auto output = getAOVImageForHost("Denoised");
-
-        IG_ASSERT(color.Data, "Expected valid color data for denoiser");
-        IG_ASSERT(normal.Data, "Expected valid normal data for denoiser");
-        IG_ASSERT(albedo.Data, "Expected valid albedo data for denoiser");
-        IG_ASSERT(output.Data, "Expected valid output data for denoiser");
-
-        ignis_denoise(color.Data, normal.Data, albedo.Data, nullptr, output.Data, film_width, film_height, color.IterationCount);
+        ignis_denoise(device_ptr);
 
         // Make sure the iteration count resembles the input
         auto& outputAOV          = aovs["Denoised"];
-        outputAOV.IterationCount = color.IterationCount;
+        outputAOV.IterationCount = host_pixels.IterationCount;
         outputAOV.IterDiff       = 0;
-
-        // Map to device
-        mapAOVToDevice("Denoised", outputAOV, false);
     }
 #endif
 
@@ -1426,8 +1484,8 @@ public:
     int getParameterInt(int32_t dev, const char* name, int def, bool global)
     {
         const ParameterSet* registry = global ? current_parameters : getCurrentLocalRegistry(dev);
-        IG_ASSERT(registry != nullptr, "No parameters available!");
-        if (registry->IntParameters.count(name) > 0)
+        // IG_ASSERT(registry != nullptr, "No parameters available!"); // Might be unavailable in baking process
+        if (registry && registry->IntParameters.count(name) > 0)
             return registry->IntParameters.at(name);
         else
             return def;
@@ -1436,8 +1494,8 @@ public:
     float getParameterFloat(int32_t dev, const char* name, float def, bool global)
     {
         const ParameterSet* registry = global ? current_parameters : getCurrentLocalRegistry(dev);
-        IG_ASSERT(registry != nullptr, "No parameters available!");
-        if (registry->FloatParameters.count(name) > 0)
+        // IG_ASSERT(registry != nullptr, "No parameters available!");
+        if (registry && registry->FloatParameters.count(name) > 0)
             return registry->FloatParameters.at(name);
         else
             return def;
@@ -1446,8 +1504,8 @@ public:
     void getParameterVector(int32_t dev, const char* name, float defX, float defY, float defZ, float& outX, float& outY, float& outZ, bool global)
     {
         const ParameterSet* registry = global ? current_parameters : getCurrentLocalRegistry(dev);
-        IG_ASSERT(registry != nullptr, "No parameters available!");
-        if (registry->VectorParameters.count(name) > 0) {
+        // IG_ASSERT(registry != nullptr, "No parameters available!");
+        if (registry && registry->VectorParameters.count(name) > 0) {
             Vector3f param = registry->VectorParameters.at(name);
             outX           = param.x();
             outY           = param.y();
@@ -1462,8 +1520,8 @@ public:
     void getParameterColor(int32_t dev, const char* name, float defR, float defG, float defB, float defA, float& outR, float& outG, float& outB, float& outA, bool global)
     {
         const ParameterSet* registry = global ? current_parameters : getCurrentLocalRegistry(dev);
-        IG_ASSERT(registry != nullptr, "No parameters available!");
-        if (registry->ColorParameters.count(name) > 0) {
+        // IG_ASSERT(registry != nullptr, "No parameters available!");
+        if (registry && registry->ColorParameters.count(name) > 0) {
             Vector4f param = registry->ColorParameters.at(name);
             outR           = param.x();
             outG           = param.y();
@@ -1481,24 +1539,46 @@ public:
 const Image Interface::MissingImage = Image::createSolidImage(Vector4f(1, 0, 1, 1));
 static std::unique_ptr<Interface> sInterface;
 
+// --------------------- Math stuff
+[[maybe_unused]] thread_local unsigned int stPrevMathMode = 0;
+static inline void enableMathMode()
+{
+    // Force flush to zero mode for denormals
+#if defined(__x86_64__) || defined(__amd64__) || defined(_M_X64)
+    stPrevMathMode = _mm_getcsr();
+    _mm_setcsr(stPrevMathMode | (_MM_FLUSH_ZERO_ON | _MM_DENORMALS_ZERO_ON));
+#endif
+}
+
+static inline void disableMathMode()
+{
+    // Reset mode
+#if defined(__x86_64__) || defined(__amd64__) || defined(_M_X64)
+    _mm_setcsr(stPrevMathMode);
+#endif
+}
+
 // --------------------- Device
 Device::Device(const Device::SetupSettings& settings)
 {
     IG_ASSERT(sInterface == nullptr, "Only a single instance allowed!");
-    sInterface = std::make_unique<Interface>(settings);
+    sInterface = std::make_unique<Interface>(this, settings);
 
     IG_LOG(L_INFO) << "Using device " << anydsl_device_name(sInterface->getDevID()) << std::endl;
-
-    // Force flush to zero mode for denormals
-#if defined(__x86_64__) || defined(__amd64__) || defined(_M_X64)
-    _mm_setcsr(_mm_getcsr() | (_MM_FLUSH_ZERO_ON | _MM_DENORMALS_ZERO_ON));
-#endif
 }
 
 Device::~Device()
 {
     sInterface.reset();
 }
+
+Target Device::target() const { return sInterface->setup.target; }
+
+size_t Device::framebufferWidth() const { return sInterface->film_width; }
+
+size_t Device::framebufferHeight() const { return sInterface->film_height; }
+
+bool Device::isInteractive() const { return sInterface->setup.IsInteractive; }
 
 void Device::assignScene(const SceneSettings& settings)
 {
@@ -1507,6 +1587,8 @@ void Device::assignScene(const SceneSettings& settings)
 
 void Device::render(const TechniqueVariantShaderSet& shaderSet, const Device::RenderSettings& settings, const ParameterSet* parameterSet)
 {
+    enableMathMode();
+
     // Register host thread
     sInterface->registerThread();
 
@@ -1525,6 +1607,8 @@ void Device::render(const TechniqueVariantShaderSet& shaderSet, const Device::Re
 #endif
 
     sInterface->unregisterThread();
+
+    disableMathMode();
 }
 
 void Device::resize(size_t width, size_t height)
@@ -1532,9 +1616,19 @@ void Device::resize(size_t width, size_t height)
     sInterface->resizeFramebuffer(width, height);
 }
 
-Device::AOVAccessor Device::getFramebuffer(const std::string& name)
+void Device::releaseAll()
+{
+    sInterface->releaseAll();
+}
+
+Device::AOVAccessor Device::getFramebufferForHost(const std::string& name)
 {
     return sInterface->getAOVImageForHost(name);
+}
+
+Device::AOVAccessor Device::getFramebufferForDevice(const std::string& name)
+{
+    return sInterface->getAOVImageForDevice(name);
 }
 
 void Device::clearAllFramebuffer()
@@ -1552,13 +1646,24 @@ const Statistics* Device::getStatistics()
     return sInterface->getFullStats();
 }
 
-void Device::tonemap(uint32_t* out_pixels, const TonemapSettings& driver_settings)
+static inline void enterDevice()
 {
-    // Register host thread
+    enableMathMode();
     sInterface->registerThread();
     sInterface->ensureFramebuffer();
+}
 
-    const auto acc       = sInterface->getAOVImage(driver_settings.AOV);
+static inline void leaveDevice()
+{
+    sInterface->unregisterThread();
+    disableMathMode();
+}
+
+void Device::tonemap(uint32_t* out_pixels, const TonemapSettings& driver_settings)
+{
+    enterDevice();
+
+    const auto acc       = sInterface->getAOVImageForDevice(driver_settings.AOV);
     float* in_pixels     = acc.Data;
     const float inv_iter = acc.IterationCount > 0 ? 1.0f / acc.IterationCount : 0.0f;
 
@@ -1578,16 +1683,50 @@ void Device::tonemap(uint32_t* out_pixels, const TonemapSettings& driver_setting
         anydsl_copy(sInterface->getDevID(), device_out_pixels, 0, 0 /* Host */, out_pixels, 0, sizeof(uint32_t) * size);
     }
 
-    sInterface->unregisterThread();
+    leaveDevice();
+}
+
+GlareOutput Device::evaluateGlare(uint32_t* out_pixels, const GlareSettings& driver_settings)
+{
+    enterDevice();
+
+    const auto acc       = sInterface->getAOVImageForDevice(driver_settings.AOV);
+    float* in_pixels     = acc.Data;
+    const float inv_iter = acc.IterationCount > 0 ? 1.0f / acc.IterationCount : 0.0f;
+
+    uint32_t* device_out_pixels = sInterface->is_gpu ? sInterface->getTonemapImageGPU() : out_pixels;
+
+    ::GlareSettings settings;
+    settings.scale                = driver_settings.Scale * inv_iter;
+    settings.max                  = driver_settings.LuminanceMax;
+    settings.avg                  = driver_settings.LuminanceAverage;
+    settings.mul                  = driver_settings.LuminanceMultiplier;
+    settings.vertical_illuminance = driver_settings.VerticalIlluminance;
+
+    ::GlareOutput output = sInterface->runGlareShader(in_pixels, device_out_pixels, settings);
+
+    GlareOutput driver_output;
+    driver_output.DGP                 = output.dgp;
+    driver_output.VerticalIlluminance = output.vertical_illuminance;
+    driver_output.AvgLum              = output.avg_lum;
+    driver_output.AvgOmega            = output.avg_omega;
+    driver_output.NumPixels           = output.num_pixels;
+
+    if (sInterface->is_gpu) {
+        size_t size = sInterface->film_width * sInterface->film_height;
+        anydsl_copy(sInterface->getDevID(), device_out_pixels, 0, 0 /* Host */, out_pixels, 0, sizeof(uint32_t) * size);
+    }
+
+    leaveDevice();
+
+    return driver_output;
 }
 
 ImageInfoOutput Device::imageinfo(const ImageInfoSettings& driver_settings)
 {
-    // Register host thread
-    sInterface->registerThread();
-    sInterface->ensureFramebuffer();
+    enterDevice();
 
-    const auto acc       = sInterface->getAOVImage(driver_settings.AOV);
+    const auto acc       = sInterface->getAOVImageForDevice(driver_settings.AOV);
     float* in_pixels     = acc.Data;
     const float inv_iter = acc.IterationCount > 0 ? 1.0f / acc.IterationCount : 0.0f;
 
@@ -1614,15 +1753,14 @@ ImageInfoOutput Device::imageinfo(const ImageInfoSettings& driver_settings)
     driver_output.NaNCount = output.nan_counter;
     driver_output.NegCount = output.neg_counter;
 
-    sInterface->unregisterThread();
+    leaveDevice();
 
     return driver_output;
 }
 
 void Device::bake(const ShaderOutput<void*>& shader, const std::vector<std::string>* resource_map, float* output)
 {
-    // Register host thread
-    sInterface->registerThread();
+    enterDevice();
 
     // A bake shader does not access framebuffer and global registry
     const auto copy                = sInterface->scene.resource_map;
@@ -1632,7 +1770,7 @@ void Device::bake(const ShaderOutput<void*>& shader, const std::vector<std::stri
 
     sInterface->scene.resource_map = copy;
 
-    sInterface->unregisterThread();
+    leaveDevice();
 }
 
 template <typename T>
@@ -1663,7 +1801,7 @@ IG_EXPORT void ignis_get_film_data(int dev, float** pixels, int* width, int* hei
 IG_EXPORT void ignis_get_aov_image(int dev, const char* name, float** aov_pixels)
 {
     IG_UNUSED(dev);
-    *aov_pixels = IG::sInterface->getAOVImage(name).Data;
+    *aov_pixels = IG::sInterface->getAOVImageForDevice(name).Data;
 }
 
 IG_EXPORT void ignis_mark_aov_as_used(const char* name, int iter)
@@ -1705,11 +1843,6 @@ IG_EXPORT void ignis_load_bvh8_ent(int dev, const char* prim_type, Node8** nodes
     auto& bvh = sInterface->loadEntityBVH<IG::Bvh8Ent, Node8>(dev, prim_type);
     *nodes    = const_cast<Node8*>(bvh.Nodes.ptr());
     *objs     = const_cast<EntityLeaf1*>(bvh.Objs.ptr());
-}
-
-IG_EXPORT void ignis_load_scene_info(int dev, SceneInfo* info)
-{
-    *info = sInterface->loadSceneInfo(dev);
 }
 
 static inline DynTableData assignDynTable(const IG::DynTableProxy& tbl)
@@ -1790,17 +1923,17 @@ IG_EXPORT void ignis_dbg_dump_buffer(int32_t dev, const char* name, const char* 
     sInterface->dumpBuffer(dev, name, filename);
 }
 
-IG_EXPORT void ignis_get_temporary_storage(int dev, TemporaryStorageHost* temp)
+IG_EXPORT void ignis_get_temporary_storage_host(int dev, TemporaryStorageHost* temp)
 {
     const auto& data          = sInterface->getTemporaryStorageHost(dev);
     temp->ray_begins          = const_cast<int32_t*>(data.ray_begins.data());
     temp->ray_ends            = const_cast<int32_t*>(data.ray_ends.data());
-    temp->entity_per_material = const_cast<int32_t*>(sInterface->scene.entity_per_material->data()); // Always on the host
+    temp->entity_per_material = const_cast<int32_t*>(sInterface->scene.entity_per_material->data());
 }
 
-IG_EXPORT void ignis_gpu_get_tmp_buffer(int dev, int** buf)
+IG_EXPORT void ignis_get_temporary_storage_device(int dev, TemporaryStorageDevice* temp)
 {
-    *buf = sInterface->getGPUTemporaryBuffer(dev).data();
+    temp->counter = sInterface->getGPUTemporaryBuffer(dev).data();
 }
 
 IG_EXPORT void ignis_get_primary_stream(int dev, int id, PrimaryStream* primary, int size)
@@ -1839,12 +1972,14 @@ IG_EXPORT void ignis_gpu_swap_secondary_streams(int dev)
 
 IG_EXPORT void ignis_register_thread()
 {
+    IG::enableMathMode();
     sInterface->registerThread();
 }
 
 IG_EXPORT void ignis_unregister_thread()
 {
     sInterface->unregisterThread();
+    IG::disableMathMode();
 }
 
 IG_EXPORT void ignis_handle_traverse_primary(int dev, int size)
@@ -1909,25 +2044,23 @@ IG_EXPORT void ignis_get_parameter_color(int dev, const char* name, float defR, 
 // Stats
 IG_EXPORT void ignis_stats_begin_section(int id)
 {
-    if (!sInterface->setup.acquire_stats)
+    if (!sInterface->setup.AcquireStats)
         return;
 
-    // TODO
-    IG_UNUSED(id);
+    sInterface->getThreadData()->stats.beginSection((IG::SectionType)id);
 }
 
 IG_EXPORT void ignis_stats_end_section(int id)
 {
-    if (!sInterface->setup.acquire_stats)
+    if (!sInterface->setup.AcquireStats)
         return;
 
-    // TODO
-    IG_UNUSED(id);
+    sInterface->getThreadData()->stats.endSection((IG::SectionType)id);
 }
 
 IG_EXPORT void ignis_stats_add(int id, int value)
 {
-    if (!sInterface->setup.acquire_stats)
+    if (!sInterface->setup.AcquireStats)
         return;
 
     sInterface->getThreadData()->stats.increase((IG::Quantity)id, static_cast<uint64_t>(value));

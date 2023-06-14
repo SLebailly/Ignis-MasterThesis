@@ -10,8 +10,8 @@
 #include "implot.h"
 
 #if SDL_VERSION_ATLEAST(2, 0, 17)
-#include "backends/imgui_impl_sdl.h"
-#include "backends/imgui_impl_sdlrenderer.h"
+#include "backends/imgui_impl_sdl2.h"
+#include "backends/imgui_impl_sdlrenderer2.h"
 #else
 #define USE_OLD_SDL
 // The following implementation is deprecated and only available for old SDL versions
@@ -88,6 +88,14 @@ public:
     bool ToneMappingGamma                   = true;
     IG::ToneMappingMethod ToneMappingMethod = ToneMappingMethod::ACES;
 
+    // Visualization
+    bool VisualizeGlare             = true;
+    float VisualizeGlare_Multiplier = 5.0f;
+
+    bool VisualizeGlare_AutoEV = true;
+    float VerticalIlluminance  = 5.0f;
+    GlareOutput Glare;
+
     size_t CurrentAOV = 0;
 
     bool Running       = true;
@@ -98,6 +106,7 @@ public:
 
     float CurrentTravelSpeed = 1.0f;
     float CurrentZoom        = 1.0f; // Only important if orthogonal
+    float DefaultCameraScale = 1.0f;
 
     inline bool isAnyWindowShown() const { return ShowControl || ShowProperties || ShowInspector || ShowHelp; }
 
@@ -157,7 +166,7 @@ public:
 
     [[nodiscard]] inline AOVAccessor currentPixels() const
     {
-        return Runtime->getFramebuffer(currentAOVName());
+        return Runtime->getFramebufferForHost(currentAOVName());
     }
 
     void changeAOV(int delta_aov)
@@ -597,7 +606,7 @@ public:
 
         LastCameraPose = CameraPose(cam);
         if (Running && ZoomIsScale)
-            Runtime->setParameter("__camera_scale", CurrentZoom);
+            Runtime->setParameter("__camera_scale", DefaultCameraScale * CurrentZoom);
 
         return reset ? UI::InputResult::Reset : UI::InputResult::Continue;
     }
@@ -637,6 +646,9 @@ public:
                                                1.0f,
                                                ToneMapping_Automatic ? 1 / LastLum.Est : std::pow(2.0f, ToneMapping_Exposure),
                                                ToneMapping_Automatic ? 0 : ToneMapping_Offset });
+
+        if (Runtime->options().Glare.Enabled && VisualizeGlare)
+            Glare = Runtime->evaluateGlare(buf, GlareSettings{ aov_name.c_str(), 1.0f, LastLum.SoftMax, LastLum.Avg, VisualizeGlare_Multiplier, VisualizeGlare_AutoEV ? -1.0f : VerticalIlluminance });
 
         SDL_UpdateTexture(Texture, nullptr, buf, static_cast<int>(Width * sizeof(uint32_t)));
     }
@@ -762,7 +774,7 @@ public:
 
                 ImGui::Text("Iter %zu", Runtime->currentIterationCount());
                 ImGui::Text("SPP  %zu", Runtime->currentSampleCount());
-                if (Parent->mSPPMode == SPPMode::Continuos)
+                if (Parent->mSPPMode == SPPMode::Continuous)
                     ImGui::Text("Frame %zu", Runtime->currentFrameCount());
                 ImGui::Text("Cursor  (%f, %f, %f)", rgb.r, rgb.g, rgb.b);
                 ImGui::Text("Lum Max %8.3f | 95%% %8.3f", LastLum.Max, LastLum.SoftMax);
@@ -873,10 +885,31 @@ public:
                 ImGui::Checkbox("Gamma", &ToneMappingGamma);
             }
 
+            if (Runtime->options().Glare.Enabled) {
+                if (ImGui::CollapsingHeader("Visualization", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::Checkbox("Visualize Glare", &VisualizeGlare);
+                    ImGui::Text("Avg. Luminance: %1.4f Lux", 179 * LastLum.Avg);
+                    if(Glare.NumPixels > 0) {
+                        ImGui::Text("Avg. GS Luminance: %1.4f Lux", Glare.AvgLum);
+                        ImGui::Text("Avg. GS Omega: %1.4f", Glare.AvgOmega);
+                        ImGui::Text("GS Pixel No: %i", Glare.NumPixels);
+                    } else {
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "No glare source detected!");
+                    }
+                    ImGui::SliderFloat("Multiplier", &VisualizeGlare_Multiplier, 0.0, 20.0);
+                    ImGui::Checkbox("Automatic EV", &VisualizeGlare_AutoEV);
+                    if (!VisualizeGlare_AutoEV)
+                        ImGui::SliderFloat("EV", &VerticalIlluminance, 0.0, 500.0);
+                    else
+                        ImGui::Text("EV: %1.3f", Glare.VerticalIlluminance);
+                    ImGui::Text("DGP: %1.3f", Glare.DGP);
+                }
+            }
+
             if (ImGui::CollapsingHeader("Poses")) {
                 if (ImGui::Button("Reload")) {
                     PoseManager.load(POSE_FILE);
-                    IG_LOG(L_INFO) << "Poses loaed from '" << POSE_FILE << "'" << std::endl;
+                    IG_LOG(L_INFO) << "Poses loaded from '" << POSE_FILE << "'" << std::endl;
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Save")) {
@@ -896,6 +929,13 @@ public:
             ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "Press F1 for help...");
         }
         ImGui::End();
+
+        // Disable annoying initial focus
+        static bool once = false;
+        if (!once) {
+            ImGui::SetWindowFocus(nullptr);
+            once = true;
+        }
     }
 
     UI::UpdateResult handlePropertyWindow()
@@ -953,6 +993,9 @@ UI::UI(SPPMode sppmode, Runtime* runtime, bool showDebug)
     mInternal->ShowDebugMode = showDebug;
     mInternal->ZoomIsScale   = runtime->camera() == "orthogonal";
 
+    if (auto it = runtime->parameters().FloatParameters.find("__camera_scale"); it != runtime->parameters().FloatParameters.end())
+        mInternal->DefaultCameraScale = it->second;
+
     mInternal->Window = SDL_CreateWindow(
         "Ignis",
         SDL_WINDOWPOS_UNDEFINED,
@@ -987,7 +1030,7 @@ UI::UI(SPPMode sppmode, Runtime* runtime, bool showDebug)
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
     ImGui_ImplSDL2_InitForSDLRenderer(mInternal->Window, mInternal->Renderer);
-    ImGui_ImplSDLRenderer_Init(mInternal->Renderer);
+    ImGui_ImplSDLRenderer2_Init(mInternal->Renderer);
 #else
     ImGuiSDL::Initialize(mInternal->Renderer, (int)mInternal->Width, (int)mInternal->Height);
 #endif
@@ -997,7 +1040,7 @@ UI::UI(SPPMode sppmode, Runtime* runtime, bool showDebug)
     mInternal->ShowProperties = runtime->hasSceneParameters();
 
     if (mInternal->Width < 350 || mInternal->Height < 500) {
-        IG_LOG(L_WARNING) << "Window too small to show UI. Hiding it by default. Press F2 and F4 to show it" << std::endl;
+        IG_LOG(L_WARNING) << "Window too small to show UI. Hiding it by default. Press F2 or F4 to show it" << std::endl;
         mInternal->ShowControl    = false;
         mInternal->ShowProperties = false;
     }
@@ -1006,7 +1049,7 @@ UI::UI(SPPMode sppmode, Runtime* runtime, bool showDebug)
 UI::~UI()
 {
 #ifndef USE_OLD_SDL
-    ImGui_ImplSDLRenderer_Shutdown();
+    ImGui_ImplSDLRenderer2_Shutdown();
     ImGui_ImplSDL2_Shutdown();
 #else
     ImGuiSDL::Deinitialize();
@@ -1041,8 +1084,8 @@ void UI::setTitle(const char* str)
     case SPPMode::Capped:
         sstream << " [Capped]";
         break;
-    case SPPMode::Continuos:
-        sstream << " [Continuos]";
+    case SPPMode::Continuous:
+        sstream << " [Continuous]";
         break;
     }
     SDL_SetWindowTitle(mInternal->Window, sstream.str().c_str());
@@ -1139,7 +1182,7 @@ UI::UpdateResult UI::update()
     SDL_RenderCopy(mInternal->Renderer, mInternal->Texture, nullptr, nullptr);
 
 #ifndef USE_OLD_SDL
-    ImGui_ImplSDLRenderer_NewFrame();
+    ImGui_ImplSDLRenderer2_NewFrame();
     ImGui_ImplSDL2_NewFrame();
 #endif
     ImGui::NewFrame();
@@ -1153,7 +1196,7 @@ UI::UpdateResult UI::update()
 
     ImGui::Render();
 #ifndef USE_OLD_SDL
-    ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
+    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
 #else
     ImGuiSDL::Render(ImGui::GetDrawData());
 #endif

@@ -2,6 +2,8 @@ import bpy
 import os
 import json
 
+from collections import namedtuple
+
 import numpy as np
 
 from . import exporter, addon_preferences, api
@@ -10,7 +12,7 @@ from . import exporter, addon_preferences, api
 class IgnisRender(bpy.types.RenderEngine):
     bl_idname = 'IGNIS_RENDER'
     bl_label = "Ignis"
-    #bl_use_preview = True
+    # bl_use_preview = True
     bl_use_exclude_layers = True
     bl_use_eevee_viewport = True
     bl_use_shading_nodes_custom = False
@@ -57,7 +59,10 @@ class IgnisRender(bpy.types.RenderEngine):
 
         self.update_stats("", "Ignis: Exporting data")
         exported_scene = exporter.export_scene(
-            sceneFile, depsgraph, False, True, True, True, True, True, False)
+            sceneFile, depsgraph,
+            settings=namedtuple("Settings",
+                                ["export_materials", "use_selection", "export_lights", "enable_background", "enable_camera", "enable_technique", "triangulate_shapes", "copy_images"])(False, True, True, True, True, True, True, False)
+        )
 
         if exported_scene is None:
             return
@@ -95,9 +100,9 @@ class IgnisRender(bpy.types.RenderEngine):
             def update_image():
                 # runtime.tonemap(layer.passes["Combined"].rect)
                 scale = 1 / runtime.IterationCount if runtime.IterationCount > 0 else 1
-                buffer = np.flip(np.asarray(runtime.getFramebuffer()), axis=0).reshape(
-                    x*y, 3) * scale
-                buffer = np.hstack([buffer, np.ones(shape=(x*y, 1))])
+                buffer = np.flip(np.asarray(runtime.getFramebufferForHost()), axis=0).reshape(
+                    x * y, 3) * scale
+                buffer = np.hstack([buffer, np.ones(shape=(x * y, 1))])
 
                 layer.passes["Combined"].rect = buffer
                 self.update_result(result)
@@ -117,10 +122,8 @@ class IgnisRender(bpy.types.RenderEngine):
         self.update_stats("", "")
 
 
-
 def register():
     bpy.utils.register_class(IgnisRender)
-
 
 
 def unregister():

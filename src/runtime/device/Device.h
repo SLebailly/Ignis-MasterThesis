@@ -17,8 +17,9 @@ class Device {
 public:
     struct SetupSettings {
         Target target;
-        bool acquire_stats = false;
-        bool debug_trace   = false;
+        bool AcquireStats  = false;
+        bool DebugTrace    = false;
+        bool IsInteractive = false;
     };
 
     struct SceneSettings {
@@ -35,6 +36,7 @@ public:
         size_t height    = 0;
         size_t iteration = 0;
         size_t frame     = 0;
+        size_t user_seed = 0;
         TechniqueVariantInfo info;
         bool denoise = false;
     };
@@ -51,14 +53,23 @@ public:
     void render(const TechniqueVariantShaderSet& shader_set, const RenderSettings& settings, const ParameterSet* parameter_set);
     void resize(size_t width, size_t height);
 
-    AOVAccessor getFramebuffer(const std::string& name);
+    void releaseAll();
+
+    [[nodiscard]] Target target() const;
+    [[nodiscard]] size_t framebufferWidth() const;
+    [[nodiscard]] size_t framebufferHeight() const;
+    [[nodiscard]] bool isInteractive() const;
+
+    [[nodiscard]] AOVAccessor getFramebufferForHost(const std::string& name);
+    [[nodiscard]] AOVAccessor getFramebufferForDevice(const std::string& name);
     void clearFramebuffer(const std::string& name);
     void clearAllFramebuffer();
 
-    const Statistics* getStatistics();
+    [[nodiscard]] const Statistics* getStatistics();
 
     void tonemap(uint32_t*, const TonemapSettings&);
-    ImageInfoOutput imageinfo(const ImageInfoSettings&);
+    [[nodiscard]] GlareOutput evaluateGlare(uint32_t*, const GlareSettings&);
+    [[nodiscard]] ImageInfoOutput imageinfo(const ImageInfoSettings&);
     void bake(const ShaderOutput<void*>& shader, const std::vector<std::string>* resource_map, float* output);
 };
 } // namespace IG

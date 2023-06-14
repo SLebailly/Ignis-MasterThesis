@@ -51,7 +51,7 @@ def evaluate_target(ignis, scene_file, out_dir, spp, target):
             runtime.step()
 
         ignis.saveExr(out_file, np.divide(
-            runtime.getFramebuffer(), runtime.IterationCount))
+            runtime.getFramebufferForHost(), runtime.IterationCount))
 
 
 def evaluate(ignis, scene_file, args):
@@ -129,6 +129,8 @@ def make_figure(scenes, args):
         image_cpu_name = get_output_path(
             scene, args.OutputDir, args.spp, "cpu")
         image_ref_name = get_reference_path(scene, args.reference_dir)
+
+        print(f"Using {os.path.basename(image_ref_name)} for {scene}")
 
         if image_gpu_name is None or image_cpu_name is None or image_ref_name is None:
             print(f"Could not find all results for {scene}")

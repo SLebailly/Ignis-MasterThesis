@@ -22,19 +22,22 @@ IG_BEGIN_IGNORE_WARNINGS
 #include "tiny_gltf.h"
 IG_END_IGNORE_WARNINGS
 
-[[maybe_unused]] constexpr std::string_view KHR_lights_punctual             = "KHR_lights_punctual";
-[[maybe_unused]] constexpr std::string_view KHR_materials_clearcoat         = "KHR_materials_clearcoat";
-[[maybe_unused]] constexpr std::string_view KHR_materials_emissive_strength = "KHR_materials_emissive_strength";
-[[maybe_unused]] constexpr std::string_view KHR_materials_ior               = "KHR_materials_ior";
-[[maybe_unused]] constexpr std::string_view KHR_materials_sheen             = "KHR_materials_sheen";
-[[maybe_unused]] constexpr std::string_view KHR_materials_translucency      = "KHR_materials_translucency";
-[[maybe_unused]] constexpr std::string_view KHR_materials_transmission      = "KHR_materials_transmission";
-[[maybe_unused]] constexpr std::string_view KHR_materials_unlit             = "KHR_materials_unlit";
-[[maybe_unused]] constexpr std::string_view KHR_materials_volume            = "KHR_materials_volume";
-[[maybe_unused]] constexpr std::string_view KHR_texture_transform           = "KHR_texture_transform";
+[[maybe_unused]] constexpr std::string_view KHR_lights_punctual                = "KHR_lights_punctual";
+[[maybe_unused]] constexpr std::string_view KHR_materials_clearcoat            = "KHR_materials_clearcoat";
+[[maybe_unused]] constexpr std::string_view KHR_materials_emissive_strength    = "KHR_materials_emissive_strength";
+[[maybe_unused]] constexpr std::string_view KHR_materials_ior                  = "KHR_materials_ior";
+[[maybe_unused]] constexpr std::string_view KHR_materials_sheen                = "KHR_materials_sheen";
+[[maybe_unused]] constexpr std::string_view KHR_materials_translucency         = "KHR_materials_translucency";
+[[maybe_unused]] constexpr std::string_view KHR_materials_diffuse_transmission = "KHR_materials_diffuse_transmission";
+[[maybe_unused]] constexpr std::string_view KHR_materials_transmission         = "KHR_materials_transmission";
+[[maybe_unused]] constexpr std::string_view KHR_materials_unlit                = "KHR_materials_unlit";
+[[maybe_unused]] constexpr std::string_view KHR_materials_volume               = "KHR_materials_volume";
+[[maybe_unused]] constexpr std::string_view KHR_texture_transform              = "KHR_texture_transform";
+// [[maybe_unused]] constexpr std::string_view KHR_materials_anisotropy                = "KHR_materials_anisotropy";                // TODO: This is easy to add if the spec would be more clear and useful for RT
 // [[maybe_unused]] constexpr std::string_view MSFT_packing_occlusionRoughnessMetallic = "MSFT_packing_occlusionRoughnessMetallic"; // TODO: This is simple to add
 // [[maybe_unused]] constexpr std::string_view MSFT_packing_normalRoughnessMetallic    = "MSFT_packing_normalRoughnessMetallic";    // TODO: This is simple to add
 // [[maybe_unused]] constexpr std::string_view ADOBE_materials_thin_transparency       = "ADOBE_materials_thin_transparency";       // TODO: We basically do this already
+// [[maybe_unused]] constexpr std::string_view KHR_mesh_quantization                   = "KHR_mesh_quantization";                   // TODO: Easy to do if dequantized while loading (not used in rendering)
 static const std::vector<std::string_view> gltf_supported_extensions = {
     KHR_lights_punctual, KHR_materials_clearcoat,
     KHR_materials_emissive_strength, KHR_materials_ior,
@@ -75,8 +78,8 @@ inline std::string handleURI(const std::string& uri)
     return new_uri;
 }
 
-static std::filesystem::path exportImage(const tinygltf::Image& img, const tinygltf::Model& model, int id,
-                                         const std::filesystem::path& cache_dir, const std::filesystem::path& in_dir)
+static Path exportImage(const tinygltf::Image& img, const tinygltf::Model& model, int id,
+                        const Path& cache_dir, const Path& in_dir)
 {
     if (img.bufferView >= 0) {
         const tinygltf::BufferView& view = model.bufferViews[img.bufferView];
@@ -84,7 +87,7 @@ static std::filesystem::path exportImage(const tinygltf::Image& img, const tinyg
 
         std::string extension = "." + tinygltf::MimeToExt(img.mimeType);
 
-        std::filesystem::path path = cache_dir / ("_img_" + std::to_string(id) + extension);
+        Path path = cache_dir / ("_img_" + std::to_string(id) + extension);
         std::ofstream out(path.generic_u8string(), std::ios::binary);
         out.write(reinterpret_cast<const char*>(buffer.data.data() + view.byteOffset), view.byteLength);
 
@@ -92,13 +95,13 @@ static std::filesystem::path exportImage(const tinygltf::Image& img, const tinyg
     } else if (!img.image.empty()) {
         std::string extension = "." + tinygltf::MimeToExt(img.mimeType);
 
-        std::filesystem::path path = cache_dir / ("_img_" + std::to_string(id) + extension);
+        Path path = cache_dir / ("_img_" + std::to_string(id) + extension);
         std::ofstream out(path.generic_u8string(), std::ios::binary);
         out.write(reinterpret_cast<const char*>(img.image.data()), img.image.size());
 
         return path;
     } else {
-        auto uri = std::filesystem::path(handleURI(img.uri));
+        auto uri = Path(handleURI(img.uri));
         if (uri.is_absolute())
             return uri;
         else
@@ -106,7 +109,7 @@ static std::filesystem::path exportImage(const tinygltf::Image& img, const tinyg
     }
 }
 
-static void exportMeshPrimitive(const std::filesystem::path& path, const tinygltf::Model& model, const tinygltf::Primitive& primitive)
+static void exportMeshPrimitive(const Path& path, const tinygltf::Model& model, const tinygltf::Primitive& primitive)
 {
     if (primitive.attributes.count("POSITION") == 0) {
         IG_LOG(L_ERROR) << "glTF: Can not export mesh primitive " << path << " as it does not contain a valid POSITION attribute" << std::endl;
@@ -408,7 +411,7 @@ inline Transformf getTextureTransform(const tinygltf::TextureInfo& info, bool& h
     }
 }
 
-std::string handleTexture(const tinygltf::TextureInfo& info, Scene& scene, const tinygltf::Model& model, const std::filesystem::path& directory)
+std::string handleTexture(const tinygltf::TextureInfo& info, Scene& scene, const tinygltf::Model& model, const Path& directory)
 {
     IG_ASSERT(info.index >= 0, "Expected valid texture info");
 
@@ -431,7 +434,7 @@ std::string handleTexture(const tinygltf::TextureInfo& info, Scene& scene, const
     }
 }
 
-std::string handleTexture(const tinygltf::Value& parent, const std::string& name, Scene& scene, const tinygltf::Model& model, const std::filesystem::path& directory)
+std::string handleTexture(const tinygltf::Value& parent, const std::string& name, Scene& scene, const tinygltf::Model& model, const Path& directory)
 {
     int id = getTextureIndex(parent, name);
     if (id < 0)
@@ -456,7 +459,7 @@ std::string handleTexture(const tinygltf::Value& parent, const std::string& name
     }
 }
 
-static void addNodeMesh(Scene& scene, const tinygltf::Material& defaultMaterial, const std::filesystem::path& baseDir, const tinygltf::Model& model, const tinygltf::Node& node, const Transformf& transform)
+static void addNodeMesh(Scene& scene, const tinygltf::Material& defaultMaterial, const Path& baseDir, const tinygltf::Model& model, const tinygltf::Node& node, const Transformf& transform)
 {
     size_t primCount           = 0;
     const tinygltf::Mesh& mesh = model.meshes[node.mesh];
@@ -534,7 +537,7 @@ static void addNodeMesh(Scene& scene, const tinygltf::Material& defaultMaterial,
     }
 }
 
-static void addNodeCamera(Scene& scene, const std::filesystem::path& baseDir, const tinygltf::Model& model, const tinygltf::Node& node, const Transformf& transform)
+static void addNodeCamera(Scene& scene, const Path& baseDir, const tinygltf::Model& model, const tinygltf::Node& node, const Transformf& transform)
 {
     if (scene.camera()) {
         IG_LOG(L_WARNING) << "glTF: No support for multiple cameras. Using first one" << std::endl;
@@ -574,7 +577,7 @@ static void addNodeCamera(Scene& scene, const std::filesystem::path& baseDir, co
     }
 }
 
-static void addNodePunctualLight(Scene& scene, const std::filesystem::path& baseDir, const tinygltf::Model& model, const tinygltf::Node& node, const Transformf& transform)
+static void addNodePunctualLight(Scene& scene, const Path& baseDir, const tinygltf::Model& model, const tinygltf::Node& node, const Transformf& transform)
 {
     const auto& ext = node.extensions.at(KHR_lights_punctual.data());
     if (!ext.Has("light") || !ext.Get("light").IsInt())
@@ -620,7 +623,7 @@ static void addNodePunctualLight(Scene& scene, const std::filesystem::path& base
     }
 }
 
-static void addNode(Scene& scene, const tinygltf::Material& defaultMaterial, const std::filesystem::path& baseDir, const tinygltf::Model& model, const tinygltf::Node& node, const Transformf& parent)
+static void addNode(Scene& scene, const tinygltf::Material& defaultMaterial, const Path& baseDir, const tinygltf::Model& model, const tinygltf::Node& node, const Transformf& parent)
 {
     Transformf transform = parent;
     if (node.matrix.size() == 16)
@@ -648,11 +651,11 @@ static void addNode(Scene& scene, const tinygltf::Material& defaultMaterial, con
         addNode(scene, defaultMaterial, baseDir, model, model.nodes[child], transform);
 }
 
-static void loadTextures(Scene& scene, const tinygltf::Model& model, const std::filesystem::path& directory, const std::filesystem::path& cache_dir)
+static void loadTextures(Scene& scene, const tinygltf::Model& model, const Path& directory, const Path& cache_dir)
 {
-    std::unordered_map<int, std::filesystem::path> loaded_images;
+    std::unordered_map<int, Path> loaded_images;
     for (const auto& tex : model.textures) {
-        std::filesystem::path img_path;
+        Path img_path;
         if (loaded_images.count(tex.source) > 0) {
             img_path = loaded_images[tex.source];
         } else {
@@ -710,7 +713,7 @@ static void loadTextures(Scene& scene, const tinygltf::Model& model, const std::
     }
 }
 
-static void loadMaterials(Scene& scene, const tinygltf::Model& model, const std::filesystem::path& directory)
+static void loadMaterials(Scene& scene, const tinygltf::Model& model, const Path& directory)
 {
     size_t matCounter = 0;
     for (const auto& mat : model.materials) {
@@ -786,10 +789,22 @@ static void loadMaterials(Scene& scene, const tinygltf::Model& model, const std:
             }
 
             bsdf->setProperty("thin", SceneProperty::fromBool(is_thin));
-        }
+        } else if (mat.extensions.count(KHR_materials_diffuse_transmission.data()) > 0) {
+            // Not ratified yet, but who cares
+            const auto& ext       = mat.extensions.at(KHR_materials_diffuse_transmission.data());
+            const std::string tex = handleTexture(ext, "diffuseTransmissionTexture", scene, model, directory);
 
-        // Not ratified yet, but who cares
-        if (mat.extensions.count(KHR_materials_translucency.data()) > 0) {
+            float factor = 0;
+            if (ext.Has("diffuseTransmissionFactor") && ext.Get("diffuseTransmissionFactor").IsNumber())
+                factor = static_cast<float>(ext.Get("diffuseTransmissionFactor").GetNumberAsDouble());
+
+            // No support for diffuseTransmissionColorFactor & diffuseTransmissionColorTexture
+            if (!tex.empty())
+                bsdf->setProperty("diffuse_transmission", SceneProperty::fromString(tex + ".a*" + std::to_string(factor)));
+            else
+                bsdf->setProperty("diffuse_transmission", SceneProperty::fromNumber(factor));
+        } else if (mat.extensions.count(KHR_materials_translucency.data()) > 0) {
+            // Old, deprecated name?
             const auto& ext       = mat.extensions.at(KHR_materials_translucency.data());
             const std::string tex = handleTexture(ext, "translucencyTexture", scene, model, directory);
 
@@ -898,10 +913,10 @@ static void loadMaterials(Scene& scene, const tinygltf::Model& model, const std:
     }
 }
 
-std::shared_ptr<Scene> glTFSceneParser::loadFromFile(const std::filesystem::path& path)
+std::shared_ptr<Scene> glTFSceneParser::loadFromFile(const Path& path)
 {
-    std::filesystem::path directory = path.parent_path();
-    std::filesystem::path cache_dir = directory / (std::string("_ignis_cache_") + path.stem().generic_u8string());
+    Path directory = path.parent_path();
+    Path cache_dir = directory / (std::string("ignis_cache_") + path.stem().generic_u8string());
 
     std::filesystem::create_directories(cache_dir);
     std::filesystem::create_directories(cache_dir / "images");
@@ -949,8 +964,8 @@ std::shared_ptr<Scene> glTFSceneParser::loadFromFile(const std::filesystem::path
     for (const auto& mesh : model.meshes) {
         size_t primCount = 0;
         for (const auto& prim : mesh.primitives) {
-            const std::string name               = mesh.name + "_" + std::to_string(meshCount) + "_" + std::to_string(primCount);
-            const std::filesystem::path ply_path = cache_dir / "meshes" / (name + ".ply");
+            const std::string name = mesh.name + "_" + std::to_string(meshCount) + "_" + std::to_string(primCount);
+            const Path ply_path    = cache_dir / "meshes" / (name + ".ply");
 
             exportMeshPrimitive(ply_path, model, prim);
             auto obj = std::make_shared<SceneObject>(SceneObject::OT_SHAPE, "ply", directory);

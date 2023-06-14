@@ -113,8 +113,9 @@ Runtime::Runtime(const RuntimeOptions& opts)
 
     Device::SetupSettings settings;
     settings.target        = mOptions.Target;
-    settings.acquire_stats = mOptions.AcquireStats;
-    settings.debug_trace   = mOptions.DebugTrace;
+    settings.AcquireStats  = mOptions.AcquireStats;
+    settings.DebugTrace    = mOptions.DebugTrace;
+    settings.IsInteractive = mOptions.IsInteractive;
 
     IG_LOG(L_DEBUG) << "Init device" << std::endl;
     mDevice = std::make_unique<Device>(settings);
@@ -139,7 +140,7 @@ void Runtime::checkCacheDirectory()
         IG_LOG(L_DEBUG) << "Cache directory " << dir << " occupies " << FormatMemory(size) << " of disk space" << std::endl;
 }
 
-bool Runtime::loadFromFile(const std::filesystem::path& path)
+bool Runtime::loadFromFile(const Path& path)
 {
     // Parse scene file
     IG_LOG(L_DEBUG) << "Parsing scene file" << std::endl;
@@ -154,14 +155,14 @@ bool Runtime::loadFromFile(const std::filesystem::path& path)
         if (mOptions.AddExtraEnvLight)
             scene->addConstantEnvLight();
 
-        return load(path, scene);
+        return load(path, scene.get());
     } catch (const std::runtime_error& err) {
         IG_LOG(L_ERROR) << "Loading error: " << err.what() << std::endl;
         return false;
     }
 }
 
-bool Runtime::loadFromString(const std::string& str, const std::filesystem::path& dir)
+bool Runtime::loadFromString(const std::string& str, const Path& dir)
 {
     // Parse scene string
     try {
@@ -176,19 +177,21 @@ bool Runtime::loadFromString(const std::string& str, const std::filesystem::path
         if (mOptions.AddExtraEnvLight)
             scene->addConstantEnvLight();
 
-        return load({}, scene);
+        return load({}, scene.get());
     } catch (const std::runtime_error& err) {
         IG_LOG(L_ERROR) << "Loading error: " << err.what() << std::endl;
         return false;
     }
 }
 
-bool Runtime::loadFromScene(const std::shared_ptr<Scene>& scene)
+bool Runtime::loadFromScene(const Scene* scene)
 {
-    try {
-        if (mOptions.AddExtraEnvLight)
-            scene->addConstantEnvLight();
+    if (scene == nullptr) {
+        IG_LOG(L_ERROR) << "Loading error: Given scene pointer is null" << std::endl;
+        return false;
+    }
 
+    try {
         return load({}, scene);
     } catch (const std::runtime_error& err) {
         IG_LOG(L_ERROR) << "Loading error: " << err.what() << std::endl;
@@ -196,28 +199,33 @@ bool Runtime::loadFromScene(const std::shared_ptr<Scene>& scene)
     }
 }
 
-bool Runtime::load(const std::filesystem::path& path, const std::shared_ptr<Scene>& scene)
+bool Runtime::load(const Path& path, const Scene* scene)
 {
     LoaderOptions lopts;
-    lopts.FilePath            = path;
-    lopts.Target              = mOptions.Target;
-    lopts.IsTracer            = mOptions.IsTracer;
-    lopts.Scene               = scene;
-    lopts.ForceSpecialization = mOptions.ForceSpecialization;
-    lopts.EnableTonemapping   = mOptions.EnableTonemapping;
-    lopts.Denoiser            = mOptions.Denoiser;
-    lopts.Denoiser.Enabled    = !mOptions.IsTracer && mOptions.Denoiser.Enabled && hasDenoiser();
-    lopts.Compiler            = &mCompiler;
-    lopts.Device              = mDevice.get();
+    lopts.FilePath          = path;
+    lopts.EnableCache       = mOptions.EnableCache;
+    lopts.CachePath         = mOptions.CacheDir.empty() ? (path.parent_path() / ("ignis_cache_" + path.stem().generic_u8string())) : mOptions.CacheDir;
+    lopts.Target            = mOptions.Target;
+    lopts.IsTracer          = mOptions.IsTracer;
+    lopts.Scene             = scene;
+    lopts.Specialization    = mOptions.Specialization;
+    lopts.EnableTonemapping = mOptions.EnableTonemapping;
+    lopts.Denoiser          = mOptions.Denoiser;
+    lopts.Denoiser.Enabled  = !mOptions.IsTracer && mOptions.Denoiser.Enabled && hasDenoiser();
+    lopts.Glare             = mOptions.Glare;
+    lopts.Compiler          = &mCompiler;
+    lopts.Device            = mDevice.get();
 
     mHasSceneParameters = !scene->parameters().empty();
 
     // Print a warning if denoiser was requested but none is available
-    if (mOptions.Denoiser.Enabled && !lopts.Denoiser.Enabled && !mOptions.IsTracer && hasDenoiser())
+    if (mOptions.Denoiser.Enabled && !lopts.Denoiser.Enabled && !mOptions.IsTracer && !hasDenoiser())
         IG_LOG(L_WARNING) << "Trying to use denoiser but no denoiser is available" << std::endl;
 
     if (lopts.Denoiser.Enabled)
         IG_LOG(L_INFO) << "Using denoiser" << std::endl;
+    if (lopts.Glare.Enabled)
+        IG_LOG(L_INFO) << "Glare overlay enabled" << std::endl;
 
     // Extract technique
     setup_technique(lopts, mOptions);
@@ -254,15 +262,14 @@ bool Runtime::load(const std::filesystem::path& path, const std::shared_ptr<Scen
     mTechniqueVariants        = std::move(ctx->TechniqueVariants);
     mResourceMap              = ctx->generateResourceMap();
 
-    if (ctx->Technique->hasDenoiserEnabled())
+    if (mOptions.Denoiser.Enabled && ctx->Technique->hasDenoiserEnabled())
         mTechniqueInfo.EnabledAOVs.emplace_back("Denoised");
 
     // Setup array of number of entities per material
     mEntityPerMaterial.clear();
     mEntityPerMaterial.reserve(ctx->Materials.size());
-    for (const auto& mat : ctx->Materials) {
+    for (const auto& mat : ctx->Materials)
         mEntityPerMaterial.emplace_back((int)mat.Count);
-    }
 
     // Merge global registry
     mGlobalRegistry.mergeFrom(ctx->GlobalRegistry);
@@ -272,7 +279,14 @@ bool Runtime::load(const std::filesystem::path& path, const std::shared_ptr<Scen
 
     // Preload camera orientation
     setCameraOrientationParameter(mInitialCameraOrientation);
-    return setupScene();
+    bool res = setupScene();
+
+    if (!res)
+        return false;
+
+    if (mOptions.WarnUnused)
+        scene->warnUnusedProperties();
+    return true;
 }
 
 void Runtime::step(bool ignoreDenoiser)
@@ -286,6 +300,8 @@ void Runtime::step(bool ignoreDenoiser)
         IG_LOG(L_ERROR) << "No scene loaded!" << std::endl;
         return;
     }
+
+    handleTime();
 
     if (mTechniqueInfo.VariantSelector) {
         const auto active = mTechniqueInfo.VariantSelector(mCurrentIteration);
@@ -322,8 +338,8 @@ void Runtime::stepVariant(bool ignoreDenoiser, size_t variant, bool lastVariant)
     settings.info      = info;
     settings.iteration = mCurrentIteration;
     settings.frame     = mCurrentFrame;
+    settings.user_seed = mOptions.Seed;
 
-    setParameter("__spi", (int)settings.spi);
     mDevice->render(mTechniqueVariantShaderSets.at(variant), settings, &mGlobalRegistry);
 
     if (!info.LockFramebuffer)
@@ -342,6 +358,8 @@ void Runtime::trace(const std::vector<Ray>& rays)
         return;
     }
 
+    handleTime();
+
     if (mTechniqueInfo.VariantSelector) {
         const auto& active = mTechniqueInfo.VariantSelector(mCurrentIteration);
         for (const auto& ind : active)
@@ -359,7 +377,7 @@ void Runtime::trace(const std::vector<Ray>& rays, std::vector<float>& data)
     trace(rays);
 
     // Get result
-    const float* data_ptr = getFramebuffer({}).Data;
+    const float* data_ptr = getFramebufferForHost({}).Data;
     data.resize(rays.size() * 3);
     std::memcpy(data.data(), data_ptr, sizeof(float) * data.size());
 }
@@ -380,8 +398,8 @@ void Runtime::traceVariant(const std::vector<Ray>& rays, size_t variant)
     settings.info      = info;
     settings.iteration = mCurrentIteration;
     settings.frame     = mCurrentFrame;
+    settings.user_seed = mOptions.Seed;
 
-    setParameter("__spi", (int)settings.spi);
     mDevice->render(mTechniqueVariantShaderSets.at(variant), settings, &mGlobalRegistry);
 
     if (!info.LockFramebuffer)
@@ -396,9 +414,14 @@ void Runtime::resizeFramebuffer(size_t width, size_t height)
     reset();
 }
 
-AOVAccessor Runtime::getFramebuffer(const std::string& name) const
+AOVAccessor Runtime::getFramebufferForHost(const std::string& name) const
 {
-    return mDevice->getFramebuffer(name);
+    return mDevice->getFramebufferForHost(name);
+}
+
+AOVAccessor Runtime::getFramebufferForDevice(const std::string& name) const
+{
+    return mDevice->getFramebufferForDevice(name);
 }
 
 void Runtime::clearFramebuffer()
@@ -419,7 +442,7 @@ void Runtime::reset()
     // No mCurrentFrameCount
 }
 
-const Statistics* Runtime::getStatistics() const
+const Statistics* Runtime::statistics() const
 {
     return mOptions.AcquireStats ? mDevice->getStatistics() : nullptr;
 }
@@ -511,6 +534,7 @@ bool Runtime::setupScene()
         }
     }
 
+    mDevice->releaseAll(); // Release all temporary stuff allocated while loading
     clearFramebuffer();
     return true;
 }
@@ -540,6 +564,8 @@ bool Runtime::compileShaders()
                 compile(i, "tonemap", "ig_tonemap_shader", variant.TonemapShader, shaders.TonemapShader);
                 compile(i, "imageinfo", "ig_imageinfo_shader", variant.ImageinfoShader, shaders.ImageinfoShader);
             }
+            if (mOptions.Glare.Enabled)
+                compile(i, "glare", "ig_glare_shader", variant.GlareShader, shaders.GlareShader);
             compile(i, "primary traversal", "ig_traversal_shader", variant.PrimaryTraversalShader, shaders.PrimaryTraversalShader);
             compile(i, "secondary traversal", "ig_traversal_shader", variant.SecondaryTraversalShader, shaders.SecondaryTraversalShader);
             compile(i, "ray generation", "ig_ray_generation_shader", variant.RayGenerationShader, shaders.RayGenerationShader);
@@ -606,7 +632,23 @@ void Runtime::tonemap(uint32* out_pixels, const TonemapSettings& settings)
         return;
     }
 
-    mDevice->tonemap(out_pixels, settings);
+    IG_ASSERT(mDevice, "Expected device to be available");
+    if (mDevice)
+        mDevice->tonemap(out_pixels, settings);
+}
+
+GlareOutput Runtime::evaluateGlare(uint32* out_pixels, const GlareSettings& settings)
+{
+    if (mTechniqueVariants.empty()) {
+        IG_LOG(L_ERROR) << "No scene loaded!" << std::endl;
+        return GlareOutput{};
+    }
+
+    IG_ASSERT(mDevice, "Expected device to be available");
+    if (mDevice)
+        return mDevice->evaluateGlare(out_pixels, settings);
+    else
+        return GlareOutput{};
 }
 
 ImageInfoOutput Runtime::imageinfo(const ImageInfoSettings& settings)
@@ -616,7 +658,11 @@ ImageInfoOutput Runtime::imageinfo(const ImageInfoSettings& settings)
         return ImageInfoOutput{};
     }
 
-    return mDevice->imageinfo(settings);
+    IG_ASSERT(mDevice, "Expected device to be available");
+    if (mDevice)
+        return mDevice->imageinfo(settings);
+    else
+        return ImageInfoOutput{};
 }
 
 void Runtime::setParameter(const std::string& name, int value)
@@ -668,5 +714,19 @@ bool Runtime::hasDenoiser() const
 #else
     return false;
 #endif
+}
+
+void Runtime::handleTime()
+{
+    if (mCurrentIteration != 0)
+        return;
+
+    if (mCurrentFrame == 0) {
+        mStartTime = std::chrono::high_resolution_clock::now();
+        setParameter("__time", 0.0f);
+    } else {
+        const auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - mStartTime);
+        setParameter("__time", (float)dur.count() / 1000.0f);
+    }
 }
 } // namespace IG

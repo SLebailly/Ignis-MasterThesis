@@ -22,7 +22,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 project(Ignis
-	VERSION 0.3
+	VERSION 0.3.2
 	DESCRIPTION "Experimental ray tracer")
 
 # For whatever reason Ignis might be used as a subproject...
@@ -32,15 +32,17 @@ else()
 	set(IG_SUBPROJECT ON)
 endif()
 
+list(APPEND CMAKE_MESSAGE_CONTEXT ${PROJECT_NAME})
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 # Set corresponding output directory
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 set(CMAKE_DEBUG_POSTFIX  "_d")
 
-set(Ignis_VENDOR "Ignis project 2020-2022")
+set(Ignis_VENDOR "Ignis project 2020-2023")
 set(Ignis_DESCRIPTION "Device agnostic raytracing framework with shared codebase for offline and realtime rendering and for CPU and GPU")
 set(Ignis_URL "https://github.com/PearCoding/Ignis")
 include(Git)
@@ -97,7 +99,6 @@ set(IG_ARTIC_FLAGS CACHE STRING "Additional artic compilation options")
 mark_as_advanced(IG_ARTIC_CLANG_FLAGS IG_ARTIC_FLAGS)
 
 # Setup CPM
-include(cmake/LTO.cmake)
 include(cmake/SetupCPM.cmake)
 
 # Locate stuff for windows
@@ -130,7 +131,6 @@ if(IG_WITH_NANOVDB)
 endif()
 
 include(cmake/GetDependencies.cmake)
-include(cmake/Install.cmake)
 include(cmake/Bash.cmake)
 include(cmake/ExtraUtils.cmake)
 
@@ -165,8 +165,14 @@ if(IG_HAS_UI)
 endif()
 
 if(IG_WITH_PYTHON_API)
-	find_package (Python3 COMPONENTS Development Interpreter)
-	if(Python3_FOUND)
+	if (WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.26 AND Python_INTERPRETER_ID STREQUAL "Python")
+		# Windows stable ABI builds for CPython require Development.SABIModule provided by CMake>=3.26
+		find_package(Python 3.8 COMPONENTS Interpreter Development.Module Development.SABIModule)
+	else()
+		# The following suffices in all other cases
+		find_package(Python 3.8 COMPONENTS Interpreter Development)
+	endif()
+	if(Python_FOUND)
 		set(IG_HAS_PYTHON_API ON)
 		message(STATUS "Building with Python API")
 	else()
@@ -195,3 +201,9 @@ add_subdirectory(src)
 if(IG_WITH_DOCUMENTATION)
 	add_subdirectory(docs)
 endif()
+
+add_subdirectory(scenes)
+add_subdirectory(scripts)
+
+# Handle install
+include(cmake/Install.cmake)

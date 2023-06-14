@@ -18,20 +18,13 @@ std::string HitShader::setup(size_t mat_id, LoaderContext& ctx)
     std::stringstream stream;
     
     stream << "#[export] fn ig_hit_shader(settings: &Settings, mat_id: i32, first: i32, last: i32) -> () {" << std::endl
-           << "  maybe_unused(settings);" << std::endl
-           << "  " << ShaderUtils::constructDevice(ctx.Options.Target) << std::endl
+           << "  " << ShaderUtils::constructDevice(ctx) << std::endl
            << "  let payload_info = " << ShaderUtils::inlinePayloadInfo(ctx) << ";" << std::endl
            << "  let scene_bbox = " << ShaderUtils::inlineSceneBBox(ctx) << "; maybe_unused(scene_bbox);" << std::endl
            << std::endl;
 
     stream << ShaderUtils::generateDatabase(ctx) << std::endl;
-
-    stream << "  let scene  = Scene {" << std::endl
-           << "    info     = " << ShaderUtils::inlineSceneInfo(ctx, false) << "," << std::endl
-           << "    shapes   = shapes," << std::endl
-           << "    entities = entities," << std::endl
-           << "  };" << std::endl
-           << std::endl;
+    stream << ShaderUtils::inlineScene(ctx, false);
 
     ShadingTree tree(ctx);
     const bool requireLights = ctx.CurrentTechniqueVariantInfo().UsesLights;
@@ -48,14 +41,12 @@ std::string HitShader::setup(size_t mat_id, LoaderContext& ctx)
     if (ctx.CurrentTechniqueVariantInfo().RequiresExplicitCamera)
         stream << ctx.Camera->generate(ctx) << std::endl;
 
-    stream << "  let spi = " << ShaderUtils::inlineSPI(ctx) << ";" << std::endl;
-
     // Will define technique
     stream << ctx.Technique->generate(ctx) << std::endl
            << std::endl;
 
     stream << "  let use_framebuffer = " << (!ctx.CurrentTechniqueVariantInfo().LockFramebuffer ? "true" : "false") << ";" << std::endl
-           << "  device.handle_hit_shader(shader, scene, technique, payload_info, first, last, spi, use_framebuffer);" << std::endl
+           << "  device.handle_hit_shader(shader, scene, technique, payload_info, first, last, use_framebuffer);" << std::endl
            << "}" << std::endl;
 
     return stream.str();
