@@ -82,7 +82,7 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
     std::string volume_name     = "volume_" + medium_name; // the volume (data) of the volumetric media
     std::string generator_name  = "medium_" + media_id;    // the function used to generate the MediumSamples
 
-    const bool interpolate = mMedium->property("interpolate").getBool(false);
+    const bool interpolate      = mMedium->property("interpolate").getBool(false);
 
     input.Tree.addNumber("g", *mMedium, 0.0f);
     const std::string pms_func = generateReferencePMS(input);
@@ -202,7 +202,7 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
         input.Stream << input.Tree.pullHeader()
             << "  let " << buffer_name    << " = device.load_buffer_by_id(" << res_id << ");" << std::endl
             << "  let " << shader_name    << " = make_simple_volume_shader(" << scalar << ");" << std::endl
-            << "  let " << volume_name    << " = make_voxel_grid(" << buffer_name << ", " << shader_name << ", " << LoaderUtils::inlineColor(majorant) << ");" << std::endl;
+            << "  let " << volume_name    << " = make_uniform_grid(" << buffer_name << ", " << shader_name << ", " << LoaderUtils::inlineColor(majorant) << ");" << std::endl;
             //<< "  let " << volume_name    << " = make_vacuum_voxel_grid(1:f32);" << std::endl;
     } else {
         IG_LOG(L_ERROR) << "File extension " << extension << " for heterogeneous medium not supported" << std::endl;

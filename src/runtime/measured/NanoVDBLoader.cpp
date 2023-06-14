@@ -24,6 +24,9 @@ bool NanoVDBLoader::prepare(const std::filesystem::path& in_nvdb, const std::str
     uint8_t* data = handle.data(); // Returns a non-const pointer to the data
     uint64_t size = handle.size(); // Returns the size in bytes of the raw memory buffer
 
+    auto dims   = handle.grid<float>()->indexBBox().dim();
+    IG_LOG(L_DEBUG) << "Loading grid with dimensions (" << dims[0] << ", " << dims[1] << ", " << dims[2] << ")" << std::endl;
+
     const char* grid_type = toStr(handle.gridType());
     const char* grid_type_float = "float";
     const char* grid_type_end   = "End";
@@ -44,32 +47,13 @@ bool NanoVDBLoader::prepare(const std::filesystem::path& in_nvdb, const std::str
         IG_LOG(L_ERROR) << "Only fog volumes are currently supported in Ignis ( found " << toStr(handle.gridMetaData()->gridClass()) << ")" << std::endl;
         return false;
     }
-
-
-    
-    auto* grid = handle.grid<float>();
-    auto dims   = grid->indexBBox().dim();
-    auto width  = static_cast<uint32>(dims[0]);
-    auto height = static_cast<uint32>(dims[1]);
-    auto depth  = static_cast<uint32>(dims[2]);
-
-    //ASSERT
-    uint32_t control_x = width / 2;
-    uint32_t control_y = height / 2;
-    uint32_t control_z = depth / 2;
-    IG_LOG(L_DEBUG) << "Writing Volume with dimensions: " << width << ", " << height << ", " << depth << std::endl;
-    IG_LOG(L_DEBUG) << "Control coordinate (" << control_x << ", " << control_y << ", " << control_z << ") with value: " << grid->tree().getValue(nanovdb::Coord(control_x, control_y, control_z)) << std::endl;
-    IG_LOG(L_DEBUG) << "Control coordinate (" << control_x + 10 << ", " << control_y + 10 << ", " << control_z + 10 << ") with value: " << grid->tree().getValue(nanovdb::Coord(control_x + 10 , control_y + 10 , control_z + 10 )) << std::endl;
-    IG_LOG(L_DEBUG) << "Control coordinate (" << control_x - 10 << ", " << control_y - 10 << ", " << control_z - 10 << ") with value: " << grid->tree().getValue(nanovdb::Coord(control_x - 10, control_y - 10, control_z - 10)) << std::endl;
-
-    
+        
     std::ofstream stream(out_data.u8string(), std::ios::binary | std::ios::trunc);
     stream.write((char*)&data[0], size);
     stream.close();
     return true;
 }
 
-//TODO: add PrincipledVolumeShader support
 bool NanoVDBLoader::prepare_uniform_grid(const std::filesystem::path& in_nvdb, const std::filesystem::path& out_data, const std::string gridNameDensity, const std::string gridNameTemperature)
 {
     const bool hasTemp = gridNameTemperature != "none";
@@ -99,15 +83,19 @@ bool NanoVDBLoader::prepare_uniform_grid(const std::filesystem::path& in_nvdb, c
         return false;
     }
 
-    if (!handleDensity.gridMetaData()->isFogVolume()) {
+    if (handleDensity.gridMetaData()->isUnknown()) {
+        IG_LOG(L_WARNING) << "Only fog volumes are currently supported in Ignis, but VDB file has unknown gridclass. It will be interpreted as a Fog volume but may not produce the desired results." << std::endl;
+    } else if (!handleDensity.gridMetaData()->isFogVolume()) {
         // only fog volumes are currently supported in Ignis
-        IG_LOG(L_ERROR) << "Only fog volumes are currently supported in Ignis" << std::endl;
+        IG_LOG(L_ERROR) << "Only fog volumes are currently supported in Ignis ( found " << toStr(handleDensity.gridMetaData()->gridClass()) << ")" << std::endl;
         return false;
     }
 
-    if (hasTemp && !handleTemperature.gridMetaData()->isFogVolume()) {
+    if (hasTemp && handleTemperature.gridMetaData()->isUnknown()) {
+        IG_LOG(L_WARNING) << "Only fog volumes are currently supported in Ignis, but VDB file has unknown gridclass. It will be interpreted as a Fog volume but may not produce the desired results." << std::endl;
+    } else if (hasTemp && !handleTemperature.gridMetaData()->isFogVolume()) {
         // only fog volumes are currently supported in Ignis
-        IG_LOG(L_ERROR) << "Only fog volumes are currently supported in Ignis" << std::endl;
+        IG_LOG(L_ERROR) << "Only fog volumes are currently supported in Ignis ( found " << toStr(handleTemperature.gridMetaData()->gridClass()) << ")" << std::endl;
         return false;
     }
     
@@ -115,7 +103,10 @@ bool NanoVDBLoader::prepare_uniform_grid(const std::filesystem::path& in_nvdb, c
     auto* gridDensity = handleDensity.grid<float>();
     auto* gridTemperature = hasTemp ? handleTemperature.grid<float>() : nullptr;
 
-    auto dims   = gridDensity->indexBBox().dim();
+    auto bbox   = gridDensity->indexBBox();
+    auto dims   = bbox.dim();
+    auto min    = bbox.min();
+    auto max    = bbox.max();
     auto width  = static_cast<uint32>(dims[0]);
     auto height = static_cast<uint32>(dims[1]);
     auto depth  = static_cast<uint32>(dims[2]);
@@ -127,14 +118,19 @@ bool NanoVDBLoader::prepare_uniform_grid(const std::filesystem::path& in_nvdb, c
     stream.write(reinterpret_cast<char*>(&width),  sizeof(width));
     stream.write(reinterpret_cast<char*>(&height), sizeof(height));
     stream.write(reinterpret_cast<char*>(&depth),  sizeof(depth));
+
+    IG_ASSERT(max[0] + 1 - min[0] == dims[0], "Expected correct dimensions");
+    IG_ASSERT(max[1] + 1 - min[1] == dims[1], "Expected correct dimensions");
+    IG_ASSERT(max[2] + 1 - min[2] == dims[2], "Expected correct dimensions");
+
     if (hasTemp)
         stream.write(reinterpret_cast<char*>(&one), sizeof(one));
     else
         stream.write(reinterpret_cast<char*>(&zero), sizeof(zero));
 
-    for (uint32_t z = 0; z < depth; z++) {
-        for (uint32_t y = 0; y < height; y++) {
-            for (uint32_t x = 0; x < width; x++) {
+    for (int32_t z = min[2]; z <= max[2]; z++) {
+        for (int32_t y = min[1]; y <= max[1]; y++) {
+            for (int32_t x = min[0]; x <= max[0]; x++) {
                 auto valueD = static_cast<float>(gridDensity->tree().getValue(nanovdb::Coord(x, y, z)));
                 stream.write(reinterpret_cast<char*>(&valueD), sizeof(float));
                 if (hasTemp) {
