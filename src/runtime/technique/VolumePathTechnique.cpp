@@ -56,7 +56,7 @@ void VolumePathTechnique::generateBody(const SerializationInput& input) const
     ShadingTree tree(input.Context);
     input.Stream << input.Context.Lights->generateLightSelector(mLightSelector, tree)
                  << "  let framebuffer = device.load_aov_image(\"\", " << ShaderUtils::inlineSPI(input.Context) << ");"
-                 << "  let technique = make_volume_path_renderer(tech_max_depth, light_selector, media, framebuffer, tech_clamp, " 
+                 << "  let technique = make_volume_path_renderer(tech_max_depth, tech_min_depth, light_selector, media, framebuffer, tech_clamp, " 
                  << (mEnableNEE ? "true" : "false") << ");" << std::endl;
 }
 
