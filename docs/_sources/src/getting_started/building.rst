@@ -2,13 +2,14 @@ Building
 ========
 
 The active development is done on a linux operating system (Ubuntu in particular).
-The raytracer is platform independent to a large extend and works on Linux, Windows and Mac OS operating systems.
+The raytracer is platform independent to a large extend and works on Linux, Windows and Mac OS operating systems. 
+A reasonable powerful machine is recommended to have any fun with raytracing.
 
 Linux & Mac OS
 --------------
 
-A quick and dirty tutorial to show how to setup AnyDSL and Ignis on a typical Linux OS.
-The following will need ``ccmake``, but works also with ``cmake-gui`` or with plain ``cmake`` as well.
+A quick and dirty tutorial to show how to setup AnyDSL and Ignis on a typical Linux OS or an Apple machine.
+The following will need ``cmake`` and a working C++ development environment.
 
 1.  Clone AnyDSL from https://github.com/AnyDSL/anydsl
 
@@ -20,13 +21,10 @@ The following will need ``ccmake``, but works also with ``cmake-gui`` or with pl
 2.  Clone Ignis from https://github.com/PearCoding/Ignis
 
     1.  Make sure all the dependencies listed in `README.md <https://github.com/PearCoding/Ignis/blob/master/README.md>`_ are installed.
-    2.  Run ``mkdir build && cd build && cmake ..``
-    3.  Run ``ccmake .`` inside the ``build/`` directory.
-    4.  Change ``AnyDSL_runtime_DIR`` to ``ANYDSL_ROOT/runtime/build/share/anydsl/cmake``, with ``ANYDSL_ROOT`` being the path to the root of the AnyDSL framework.
-    5.  Select the drivers you want to compile. All interesting options regarding Ignis start with ``IG_``
-    6.  Run ``cmake --build .`` inside the ``build/`` directory and get your second coffee.
+    2.  Run ``mkdir build && cd build && cmake -DAnyDSL_runtime_DIR="ANYDSL_ROOT/runtime/build/share/anydsl/cmake" ..``, with ``ANYDSL_ROOT`` being the path to the root of the AnyDSL framework.
+    3.  Run ``cmake --build .`` inside the ``build/`` directory and get your second coffee.
 
-3.  Run ``./bin/igview ../scenes/diamond_scene.json`` inside the ``build/`` directory to see if your setup works. This particular render requires the perspective camera and path tracer technique.
+3.  Run ``./bin/igview ../scenes/diamond_scene.json`` inside the ``build/`` directory to see if your setup works. You should be able to see three diamonds lit by an area light.
 
 .. NOTE:: MacOS CPU vectorization and GPU support is still very experimental and limited. 
 
@@ -53,7 +51,7 @@ To change from the single build configuration using ```Ninja`` to a multiconfig-
 Windows (Manual)
 ----------------
 
-.. NOTE:: It is recommended to use the new automatic windows setup instead of the following one!
+.. NOTE:: It is recommended to use the new automatic windows setup instead of the following one! It may also be outdated.
 
 This mini tutorial is expecting some basic knowledge about CMake and the Windows build system based on Visual Studio. I highly recommend using the CMake Ninja generator in favour of the Visual Studio ones, as Visual Studio as an IDE itself has support for both.
 
@@ -139,13 +137,12 @@ This mini tutorial is expecting some basic knowledge about CMake and the Windows
     8.  To run the frontends you might have to add multiple shared libraries (``*.dlls``) to the ``PATH`` environment variable or copy it next to the executables.
         Currently the shared libraries ``runtime.dll``, ``runtime_jit_artic.dll``, ``nvvm64.dll`` or ``nvvm64_40_0.dll``, ``tbb.dll``, ``SDL2.dll``, ``zlib.dll`` are known to be required.
         The list is not exhaustive however, as the final list of dependencies depends on the system, current state of development and other external factors.
-        If a module (e.g., ``ig_driver_avx2.dll``) can not been found, but exists on the filesystem, a reason for the error might be a missing shared library.
-        Use one of the many dll dependency viewers available on Windows to find the exact missing dll and copy it next to the build executable or add it to the ``PATH`` environment variable.
+        Use one of the many dll dependency viewers available on Windows to find missing dlls and copy it next to the build executable or add it to the ``PATH`` environment variable.
 
 Known Issues
 ------------
 
--   If you get a ``CommandLine Error: Option 'help-list' registred more than once!``, most likely the AnyDSL LLVM library and system LLVM library with exposed symbols are loaded at the same time.
+-   If you get a ``CommandLine Error: Option 'help-list' registered more than once!``, most likely the AnyDSL LLVM library and system LLVM library with exposed symbols are loaded at the same time.
     A known cause is that ``igview`` and SDL are using a graphic driver which is loading the system LLVM library in the background.
     On Linux, using accelerated rendering load the X11 drivers, which in return load the system LLVM, which in return clash with the custom LLVM.
     Setting the environment variable ``SDL_RENDER_DRIVER=software`` and ``SDL_FRAMEBUFFER_ACCELERATION=0`` should be a good workaround. This will not prevent you of using the GPU for raytracing however, only the UI will be software rendered.
@@ -161,4 +158,4 @@ Known Issues
         Call Stack (most recent call first):
         build/_deps/llvm-src/llvm/tools/llvm-ar/CMakeLists.txt:20 (add_llvm_tool_symlink)
 
-    can be fixed by explicitly undefining the cmake variable ``CMAKE_CONFIGURATION_TYPES`` via ``-UCMAKE_CONFIGURATION_TYPES`` in the command line or in the ``scripts/setup/windows/config.json`` when using the automatic script.
+    can be fixed by explicitly unsetting the cmake variable ``CMAKE_CONFIGURATION_TYPES`` via ``-UCMAKE_CONFIGURATION_TYPES`` in the command line or in the ``scripts/setup/windows/config.json`` when using the automatic script.
