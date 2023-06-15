@@ -16,7 +16,6 @@ fn @onMediumBounce(
     medium:        Medium,         // the medium in which the event occured
     out_dir:       Vec3            // the inverse direction of the ray (for sampling the phase function) 
 ) -> Option[Ray] {
-
     // extracing the coefficients from the medium sample
     let mu_t   = medium_sample.properties.coeff_extinction;
     let mu_a   = medium_sample.properties.coeff_absorption;

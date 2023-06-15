@@ -35,3 +35,17 @@ fn @init_vpt_raypayload(payload: RayPayload) = write_vptraypayload(payload, VPTR
     medium   = -1,
     voldepth = 0
 });
+
+fn @get_particle_event_probabilities(props: VolumeProperties) -> (f32, f32, f32) {
+    let mu_ind = vec3_max_index(color_to_vec3(props.coeff_extinction));
+    let mu_t_p = color_at(props.coeff_extinction, mu_ind);
+    let mu_a_p = color_at(props.coeff_absorption, mu_ind);
+    let mu_s_p = color_at(props.coeff_scattering, mu_ind);
+
+    // max. extinction coeff is assumed to not be 0 here (as probability of collision with particle is 0 if ext. is 0)
+    let p_a = if mu_a_p <= flt_eps { 0:f32 } else { mu_a_p / mu_t_p };
+    let p_s = if mu_s_p <= flt_eps { 0:f32 } else { mu_s_p / mu_t_p };
+    let p_f = 1 - p_a - p_s;
+
+    (p_a, p_s, p_f)
+}
