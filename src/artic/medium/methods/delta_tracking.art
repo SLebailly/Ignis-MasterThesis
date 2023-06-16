@@ -82,6 +82,16 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
 
     }
 
+    fn @get_majorant(l_start: Vec3, l_ndir: Vec3, l_max_dist: f32) -> Color{
+        let dda        = make_majorant_dda_marcher(l_start, l_ndir, volume, false, majorant_dimension, l_max_dist);
+        let mut mu_t   = color_builtins::black;
+        while dda.has_next() {
+            let (segment, _) = dda.next_segment();
+            mu_t = vec3_to_color(vec3_max(color_to_vec3(segment.local_properties.coeff_extinction), color_to_vec3(mu_t)));
+        }
+        mu_t
+    }
+
     /**
      * Evaluates the transmittance between two points in the medium using Ratio Tracking
      */
@@ -91,13 +101,18 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
         let n_dir      = vec3_divf(dir, max_dist);
 
         let l_start    = pms.to_normalized_point(p_start);
-        let cl_start   = vec3_clamp(pms.to_normalized_point(l_start), loc_min, loc_max);
         let l_end      = pms.to_normalized_point(p_end);
-        let l_n_dir    = vec3_normalize(vec3_sub(l_end, l_start));
 
-        let mu_t   = volume.get_majorant_extinction(cl_start, l_n_dir);
-        let mu_t_p = vec3_max_value(color_to_vec3(mu_t));
+        if (l_start.x < -VOLUME_BOUNDS_FLT_MIN || l_start.y < -VOLUME_BOUNDS_FLT_MIN || l_start.z < -VOLUME_BOUNDS_FLT_MIN || l_start.x > 1:f32 + VOLUME_BOUNDS_FLT_MIN || l_start.y > 1:f32 + VOLUME_BOUNDS_FLT_MIN || l_start.z > 1:f32 + VOLUME_BOUNDS_FLT_MIN) {
+            return(color_builtins::white)
+        }
 
+        let l_dir      = vec3_sub(l_end, l_start);
+        let l_max_dist = vec3_len(l_dir);
+        let l_n_dir    = vec3_divf(l_dir, l_max_dist);
+
+        let mu_t     = get_majorant(l_start, l_n_dir, l_max_dist);
+        let mu_t_p   = color_max_component(mu_t);
         let mut t    = 0:f32;
         let mut tr   = color_builtins::white;
         let accessor = volume.access_data();
@@ -125,14 +140,19 @@ fn @make_delta_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume
         pdf = |p_start, p_end, pos| {
             let l_start  = pms.to_normalized_point(p_start);
             let l_end    = pms.to_normalized_point(p_end);
+
+            if (l_start.x < -VOLUME_BOUNDS_FLT_MIN || l_start.y < -VOLUME_BOUNDS_FLT_MIN || l_start.z < -VOLUME_BOUNDS_FLT_MIN || l_start.x > 1:f32 + VOLUME_BOUNDS_FLT_MIN || l_start.y > 1:f32 + VOLUME_BOUNDS_FLT_MIN || l_start.z > 1:f32 + VOLUME_BOUNDS_FLT_MIN) {
+                return(0:f32)
+            }
+
             let max_dist = vec3_len(vec3_sub(p_end, p_start));
             let dist     = vec3_len(vec3_sub(pos, p_start));
 
-            let cl_start = vec3_clamp(l_start, loc_min, loc_max);
-            let cl_end   = vec3_clamp(l_end,   loc_min, loc_max);
-            let cl_ndir  = vec3_normalize(vec3_sub(cl_end, cl_start));
+            let l_dir      = vec3_sub(l_end, l_start);
+            let l_max_dist = vec3_len(l_dir);
+            let l_n_dir    = vec3_divf(l_dir, l_max_dist);
 
-            let mu_t   = volume.get_majorant_extinction(cl_start, cl_ndir);
+            let mu_t   = get_majorant(l_start, l_n_dir, l_max_dist);
             let mu_t_p = vec3_max_value(color_to_vec3(mu_t));
             let tr     = optical_thickness_to_transmittance_f32(mu_t_p * math_builtins::fmin(dist, max_dist));
 

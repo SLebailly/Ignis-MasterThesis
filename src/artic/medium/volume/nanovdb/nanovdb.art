@@ -97,24 +97,28 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
 
         fn @cache_path_get_value_density(i: i32, j: i32, k: i32) -> (f32, AccessPath) {
             if let Option[AccessPath]::Some(previous_path) = last_density_path {
-                let (value, path) = bottom_up_get_value(tree_density, to_nvdb_index(clamp_index(i, j, k)), previous_path);
+                let (access, path) = bottom_up_access(tree_density, to_nvdb_index(clamp_index(i, j, k)), 1, previous_path);
                 last_density_path = Option[AccessPath]::Some(path);
+                let value = access.get_value();
                 return(value, path)
             } else {
-                let (value, path) = top_down_get_value(tree_density, to_nvdb_index(clamp_index(i, j, k)));
+                let (access, path) = top_down_access(tree_density, to_nvdb_index(clamp_index(i, j, k)), 1);
                 last_density_path = Option[AccessPath]::Some(path);
+                let value = access.get_value();
                 return(value, path)
             }
         }
 
         fn @cache_path_get_value_temperature(i: i32, j: i32, k: i32, tree: NanoVDBTree[f32, f32]) -> (f32, AccessPath) {
             if let Option[AccessPath]::Some(previous_path) = last_temperature_path {
-                let (value, path) = bottom_up_get_value(tree, to_nvdb_index(clamp_index(i, j, k)), previous_path);
+                let (access, path) = bottom_up_access(tree, to_nvdb_index(clamp_index(i, j, k)), 1, previous_path);
                 last_temperature_path = Option[AccessPath]::Some(path);
+                let value = access.get_value();
                 return(value, path)
             } else {
-                let (value, path) = top_down_get_value(tree, to_nvdb_index(clamp_index(i, j, k)));
+                let (access, path) = top_down_access(tree, to_nvdb_index(clamp_index(i, j, k)), 1);
                 last_temperature_path = Option[AccessPath]::Some(path);
+                let value = access.get_value();
                 return(value, path)
             }
         }
@@ -146,15 +150,24 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
             },
             sparse_maj_at_indx = @|i, j, k, maj_dim| {
                 //TODO: potentially cache the access path for later reuse
-                let (accessor_d, _path_d) = top_down_access(tree_density, to_nvdb_index(clamp_index(i, j, k)), maj_dim);
-                let maj_d                 = accessor_d.get_maximum();
-                
-                let (maj_t_option, min_dim) = if let Option[NanoVDBTree[f32, f32]]::Some(tree_temperature) = tree_temperature_option {
-                    let (accessor_t, _path_t) = top_down_access(tree_temperature, to_nvdb_index(clamp_index(i, j, k)), maj_dim);
-                    let maj_t                 = accessor_t.get_maximum();
-                    (Option[f32]::Some(maj_t), min(accessor_d.dimension, accessor_t.dimension))
+                let (access_d, density_path) = if let Option[AccessPath]::Some(previous_path_d) = last_density_path {
+                    bottom_up_access(tree_density, to_nvdb_index(clamp_index(i, j, k)), maj_dim, previous_path_d)
                 } else {
-                    (Option[f32]::None, accessor_d.dimension)
+                    top_down_access(tree_density, to_nvdb_index(clamp_index(i, j, k)), maj_dim)
+                };
+                last_density_path = Option[AccessPath]::Some(density_path);
+
+                let maj_d = access_d.get_maximum();                
+                let (maj_t_option, min_dim) = if let Option[NanoVDBTree[f32, f32]]::Some(tree_temperature) = tree_temperature_option {
+                    let (access_t, temperature_path) = if let Option[AccessPath]::Some(previous_path_t) = last_density_path {
+                        bottom_up_access(tree_temperature, to_nvdb_index(clamp_index(i, j, k)), maj_dim, previous_path_t)
+                    } else {
+                        top_down_access(tree_temperature, to_nvdb_index(clamp_index(i, j, k)), maj_dim)
+                    };
+                    last_temperature_path = Option[AccessPath]::Some(temperature_path);
+                    (Option[f32]::Some(access_t.get_maximum()), min(access_d.dimension, access_t.dimension))
+                } else {
+                    (Option[f32]::None, access_d.dimension)
                 };
         
                 let maj_props = volume_shader.volume_properties(make_nvdb_volume_values(maj_d, maj_t_option));
