@@ -69,7 +69,7 @@ fn @make_hdda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: bo
 
     VolumeMarcher {
         has_next     = @|| {
-            m_indx_x + dim > 0 && m_indx_x - dim < volume.width - 1 && m_indx_y + dim > 0 && m_indx_y - dim < volume.height - 1 && m_indx_z + dim > 0 && m_indx_z - dim < volume.depth - 1 // check that the current super-voxel still has at least SOME voxels within it in the grid.
+            m_indx_x + m_dim > 0 && m_indx_x - m_dim < volume.width - 1 && m_indx_y + m_dim > 0 && m_indx_y - m_dim < volume.height - 1 && m_indx_z + m_dim > 0 && m_indx_z - m_dim < volume.depth - 1 // check that the current super-voxel still has at least SOME voxels within it in the grid.
         },
         next_segment = @|| {
             let (local_props_for_current_dim, local_dim) = accessor.properties_at_indx(m_indx_x, m_indx_y, m_indx_z);
