@@ -40,7 +40,7 @@ fn @make_uniform_grid(buffer: DeviceBuffer, shader: VolumeShader[SimpleVolumeVox
         }
     };
 
-    make_volume(width, height, depth, access_data, @|_origin: Vec3, _ndir: Vec3| majorant, general_to_sparse_index) //TODO: Add actual majorant (maybe constant for the whole grid) here
+    make_volume(width, height, depth, access_data, general_to_sparse_index) //TODO: Add actual majorant (maybe constant for the whole grid) here
 
 }
 
@@ -64,7 +64,7 @@ fn @make_debug_voxel_grid(buffer: DeviceBuffer, _shader: VolumeShader[SimpleVolu
         }
     };
 
-    make_volume(width, height, depth, access_data, @|_origin: Vec3, _ndir: Vec3| make_gray_color(1:f32), general_to_sparse_index)
+    make_volume(width, height, depth, access_data, general_to_sparse_index)
 }
 
 fn @make_vacuum_voxel_grid(majorant: f32) -> Volume {
@@ -82,5 +82,5 @@ fn @make_vacuum_voxel_grid(majorant: f32) -> Volume {
         }
     };
 
-    make_volume(width, height, depth, access_data, @|_origin: Vec3, _ndir: Vec3| make_gray_color(majorant), general_to_sparse_index)
+    make_volume(width, height, depth, access_data, general_to_sparse_index)
 }

@@ -29,6 +29,6 @@ fn @make_density_grid(buffer: DeviceBuffer, shader: VolumeShader[NanoVDBVolumeVa
         }
     };
 
-    make_volume(width, height, depth, access_data, @|_origin: Vec3, _ndir: Vec3| majorant, general_to_sparse_index) //TODO: Add actual majorant (maybe constant for the whole grid) here
+    make_volume(width, height, depth, access_data, general_to_sparse_index) //TODO: Add actual majorant (maybe constant for the whole grid) here
 
 }

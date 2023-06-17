@@ -134,18 +134,13 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
         
         VolumeAccessor {
             properties_at_indx = @|i, j, k| {
-                if (i < 0 || j < 0 || k < 0 || i >= width || j >= height || k >= depth) {
-                    (make_vacuum_volume_properties(), 1)
+                let (value_d, path_d) = cache_path_get_value_density(i, j, k);
+                let temp_and_path_option = cache_path_get_value_temperature_option(i, j, k);
+                if let Option[(f32, AccessPath)]::Some((value_t, path_t)) = temp_and_path_option {
+                    let min_dim = min(path_d.sparse_dim, path_t.sparse_dim);
+                    (volume_shader.volume_properties(make_nvdb_volume_values(value_d, Option[f32]::Some(value_t))), min_dim)
                 } else {
-                    let (value_d, path_d) = cache_path_get_value_density(i, j, k);
-                    let temp_and_path_option = cache_path_get_value_temperature_option(i, j, k);
-                    if let Option[(f32, AccessPath)]::Some((value_t, path_t)) = temp_and_path_option {
-                        let min_dim = min(path_d.sparse_dim, path_t.sparse_dim);
-                        (volume_shader.volume_properties(make_nvdb_volume_values(value_d, Option[f32]::Some(value_t))), min_dim)
-                    } else {
-                        (volume_shader.volume_properties(make_nvdb_volume_values(value_d, Option[f32]::None)), path_d.sparse_dim)
-                    }
-                    
+                    (volume_shader.volume_properties(make_nvdb_volume_values(value_d, Option[f32]::None)), path_d.sparse_dim)
                 }
             },
             sparse_maj_at_indx = @|i, j, k, maj_dim| {
@@ -177,14 +172,5 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
         }
     }
 
-    fn @get_majorant_extinction(_origin: Vec3, _ndir: Vec3) -> Color {
-        //TODO: add DDA on higher dimension to return majorant
-        let max_d = get_max_value(tree_density);
-        let max_t_option = get_max_value_option(tree_temperature_option);
-
-        let max_props = volume_shader.volume_properties(make_nvdb_volume_values(max_d, max_t_option));
-        max_props.coeff_extinction
-    }
-
-    make_volume(width, height, depth, make_nvdb_accessor, get_majorant_extinction, nvdb_to_sparse_index)
+    make_volume(width, height, depth, make_nvdb_accessor, nvdb_to_sparse_index)
 }
