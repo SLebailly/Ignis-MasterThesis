@@ -110,7 +110,6 @@ fn @top_down_access[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32, 
         get_minimum  = root_node_accessor.get_background,
         get_maximum  = root_node_accessor.get_background,
         get_value    = root_node_accessor.get_background,
-        //get_bounds   = Option[fn () -> BBox]::Some(upper_tile_accessor.get_bounds),
         is_sparse    = true,
         dimension    = 999999
     };
@@ -146,7 +145,6 @@ fn @td_leaf_access[ValueT, StatsT](
             get_minimum  = @|| leaf_node_accessor.get_value(voxel_index),
             get_maximum  = @|| leaf_node_accessor.get_value(voxel_index),
             get_value    = @|| leaf_node_accessor.get_value(voxel_index),
-            //get_bounds   = Option[fn () -> BBox]::Some(upper_tile_accessor.get_bounds),
             is_sparse    = true,
             dimension    = DIM_VOXEL
         };
@@ -156,7 +154,6 @@ fn @td_leaf_access[ValueT, StatsT](
             get_minimum  = root_node_accessor.get_background,
             get_maximum  = root_node_accessor.get_background,
             get_value    = root_node_accessor.get_background,
-            //get_bounds   = Option[fn () -> BBox]::Some(upper_tile_accessor.get_bounds),
             is_sparse    = true,
             dimension    = DIM_VOXEL
         };
@@ -196,7 +193,6 @@ fn @td_lower_access[ValueT, StatsT](
                 get_minimum  = lower_tile_accessor.get_value,
                 get_maximum  = lower_tile_accessor.get_value,
                 get_value    = lower_tile_accessor.get_value,
-                //get_bounds   = Option[fn () -> BBox]::Some(upper_tile_accessor.get_bounds),
                 is_sparse    = leaf_node_sparse,
                 dimension    = DIM_LEAF
             };
@@ -206,7 +202,6 @@ fn @td_lower_access[ValueT, StatsT](
                 get_minimum  = root_node_accessor.get_background,
                 get_maximum  = root_node_accessor.get_background,
                 get_value    = root_node_accessor.get_background,
-                //get_bounds   = Option[fn () -> BBox]::Some(upper_tile_accessor.get_bounds),
                 is_sparse    = leaf_node_sparse,
                 dimension    = DIM_LEAF
             };
@@ -233,7 +228,6 @@ fn @td_upper_access[ValueT, StatsT](
             get_minimum  = upper_node_accessor.get_minimum,
             get_maximum  = upper_node_accessor.get_maximum,
             get_value    = root_node_accessor.get_background,
-            //get_bounds   = Option[fn () -> BBox]::Some(upper_tile_accessor.get_bounds),
             is_sparse    = false,
             dimension    = DIM_UPPER
         };
@@ -252,7 +246,6 @@ fn @td_upper_access[ValueT, StatsT](
                 get_minimum  = upper_tile_accessor.get_value,
                 get_maximum  = upper_tile_accessor.get_value,
                 get_value    = upper_tile_accessor.get_value,
-                //get_bounds   = Option[fn () -> BBox]::Some(upper_tile_accessor.get_bounds),
                 is_sparse    = lower_node_sparse,
                 dimension    = DIM_LOWER
             };
@@ -262,7 +255,6 @@ fn @td_upper_access[ValueT, StatsT](
                 get_minimum  = root_node_accessor.get_background,
                 get_maximum  = root_node_accessor.get_background,
                 get_value    = root_node_accessor.get_background,
-                //get_bounds   = Option[fn () -> BBox]::Some(upper_tile_accessor.get_bounds),
                 is_sparse    = lower_node_sparse,
                 dimension    = DIM_LOWER
             };
