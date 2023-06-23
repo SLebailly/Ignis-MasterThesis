@@ -1,5 +1,5 @@
 /**
- * Implementation of a Ray-Marching Transmittance and Next-Flight Estimator
+ * Implementation of a Ray-Marching Transmittance and Free-Flight Estimator
  * marches along the ray in fixed distance and integrates transmittance
  */
 fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, interpolate: bool, max_scattering: i32, step_distance: f32) -> Medium {

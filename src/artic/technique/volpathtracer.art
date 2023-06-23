@@ -204,9 +204,10 @@ fn @make_volume_path_renderer(max_path_len: i32, _min_path_len: i32, light_selec
             return(attenuated_background_radiance())
         }
 
-        let mut medium_sample_opt  = medium.sample(rnd, ctx.ray.org, ctx.surf.point);
-        let mut null_scatter_count = 0;
-        while (null_scatter_count < 100) {
+        // Recursive definition of the medium scattering (only to compensate for null-scattering)
+        // Note: The missing @ is intentional to prevent over-optimizing stuff... In a perfect world this should not be necessary...
+        fn sample_rec(pos: Vec3) -> Option[Ray] {
+            let medium_sample_opt = medium.sample(rnd, pos, ctx.surf.point);
             if let Option[MediumSample]::Some(medium_sample) = medium_sample_opt {
                 // Next Flight returned a distance inside the medium
                 let (p_a, p_s, p_f) = get_particle_event_probabilities(medium_sample.properties);
@@ -254,8 +255,7 @@ fn @make_volume_path_renderer(max_path_len: i32, _min_path_len: i32, light_selec
                         inv_pdf = inv_pdf,
                         contrib = contrib
                     };
-                    medium_sample_opt = medium.sample(rnd, medium_sample.pos, ctx.surf.point);
-                    null_scatter_count++;
+                    $sample_rec(medium_sample.pos)
                 }
             } else {
                 // Next Flight returned a distance outside the medium -> hit the surface
@@ -291,8 +291,8 @@ fn @make_volume_path_renderer(max_path_len: i32, _min_path_len: i32, light_selec
                 }
             }
         }
-
-        attenuated_background_radiance()
+       
+        sample_rec(ctx.ray.org)
     }
 
     Technique {
