@@ -5,8 +5,8 @@
 		"nee": false
 	},
 	"camera": {
-		"type": "perspective", 
-		"fov": 110, 
+		"type": "perspective",
+		"fov": 110,
 		"near_clip": 0.1,
 		"far_clip": 100,
 		"transform": [ -1,0,0,0, 0,1,0,0, 0,0,-1,10, 0,0,0,1 ]
@@ -19,10 +19,10 @@
 		{"type":"diffuse", "name": "mat-GrayWall", "reflectance":[0.8,0.8,0.8]}
 	],
 	"shapes": [
-        {"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [5.77, 5.72, 4.38], "translate": [0, 0,0], "rotate": [0, 0, 0]} }
+        {"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [5.77, 5.72, 4.38], "translate": [0, 0,0]} }
 	],
 	"entities": [
-		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium" }
+		{"name":"Object","shape":"Object", "bsdf":"mat-Object", "inner_medium": "Medium", "transform": {"rotate": [0, 0, 0]} }
 	],
 	"textures": [
 		{
@@ -44,8 +44,8 @@
 			"grid_type": "sparse",
 
 			// Method parameters
-			"method": "delta_tracking",
-			"marcher": "DDA",
+			"method": "regular",
+			"marcher": "HDDA",
 			"majorant_dimension": 8,
 			"step_distance": 0.0001,
 

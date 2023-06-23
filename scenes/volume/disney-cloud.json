@@ -5,11 +5,14 @@
 		"nee": false
 	},
 	"camera": {
-		"type": "perspective", 
-		"fov": 90, 
+		"type": "perspective",
+		"fov": 90,
 		"near_clip": 0.1,
 		"far_clip": 100,
-		"transform": [ -1, 0, 0, 0,  0, 1, 0, 0,  0, 0,-1, 8,  0, 0, 0, 1 ]
+		"transform": {
+			"translate": [0.01, -3.8, 8.248],
+			"rotate": [50, 180, 0]
+		}
 	},
 	"film": {
 		"size": [1920, 1080]
@@ -18,20 +21,21 @@
 		{"type":"passthrough", "name": "mat-Passthrough"}
 	],
 	"shapes": [
-        {"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [4.98, 3.38, 6.13], "translate": [0,0.1,0], "rotate": [0, 0, 0]} }
+        {"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [4.98, 3.38, 6.13]} }
 	],
 	"entities": [ 
-		{"name":"Object","shape":"Object", "bsdf":"mat-Passthrough", "inner_medium": "Medium" }
+		{"name":"Object","shape":"Object", "bsdf":"mat-Passthrough", "inner_medium": "Medium", "transform": {"rotate": [40, 270, 0], "translate": [0,4,0]} }
 	],
 	"textures": [
 		{
 			"type": "image",
 			"name": "env",
-			"filename": "../textures/environment/qwantani_puresky_8k.exr"
+			"filename": "../textures/environment/syferfontein_6d_clear_puresky_8k.exr"
 		}
 	],
 	"lights": [
-        {"type":"env", "name":"Environment", "radiance":"env"}
+		{"type":"sky", "name":"Sky", "direction": [1,1,1]},
+		{"type":"sun", "name":"Sun", "sun_direction":[1,1,1] }
 	],
     "media": [
 		{
