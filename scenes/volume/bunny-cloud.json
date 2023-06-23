@@ -39,17 +39,26 @@
 			"type": "heterogeneous",
 			"name": "Medium",
 			"filename": "nvdb/bunny_cloud.nvdb",
-			"g": 0.001,
-			"method": "regular",
-			"grid_type": "uniform",
-			"max_scattering": 3,
 
-			"shader": "monochromatic",
+			// Data representation parameter
+			"grid_type": "sparse",
+
+			// Method parameters
+			"method": "delta_tracking",
+			"marcher": "DDA",
+			"majorant_dimension": 8,
+			"step_distance": 0.0001,
+
+			// medium parameters (will change output)
+			"max_scattering": 3,
 			"scalar_density":   100,
+
+			// Volume definition - do not change
+			"shader": "monochromatic",
 			"scalar_scattering": 1,
 			"scalar_absorption": 0.5,
+			"g": 0.001
 
-			"majorant_dimension": 8
 		}
 	]
 }

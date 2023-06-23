@@ -26,7 +26,7 @@
 		{"type":"external", "name":"Right", "filename":"../meshes/Right.ply"},
 		{"type":"external", "name":"Back", "filename":"../meshes/Back.ply"},
 		{"type":"external", "name":"Top", "filename":"../meshes/Top.ply"},
-		{"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": {"scale": [0.4508, 1.0192, 0.4284], "translate": [0,-0.05,0]} }
+		{"type":"external", "name":"Object", "filename":"../meshes/Cube2.obj", "face_normals": true, "transform": { "scale": 0.3 } }
 	],
 	"entities": [
 		{"name":"Bottom","shape":"Bottom", "bsdf":"mat-Reflecting"},
@@ -40,30 +40,14 @@
 		{
 			"type": "heterogeneous",
 			"name": "Medium",
-			"filename": "nvdb/fire.nvdb",
-
-			// Data representation parameter
+			"filename": "media/debug_grid.bin",
 			"grid_type": "sparse",
-
-			// Method parameters
-			"method": "delta_tracking",
+			"g": 0,
+			"method": "regular",
 			"marcher": "HDDA",
-			"majorant_dimension": 128,
-			"step_distance": 0.0001,
-
-			// medium parameters (will change output)
-			"scalar_density": 1400,
 			"max_scattering":     1,
+			"step_distance": 0.0001
 
-			// Volume definition - do not change
-			"grid_temperature": "temperature",
-			"shader": "pbrt_volume",
-			"color_absorption": [1, 1, 1],
-			"color_scattering": [1, 1, 1],
-			"cutoff_temperature": 1,
-			"scalar_emission": 5,
-			"scalar_temperature": 300,
-			"g": 0.8
 		}
 	]
 }
