@@ -1,9 +1,9 @@
 /**
  * Allows for scaling the values of our uniform voxel grid
  */
-fn @make_simple_volume_shader(scalar: f32) -> VolumeShader[SimpleVolumeVoxelValue] {
+fn @make_simple_volume_shader(color_scattering: Color, color_absorption: Color, color_emission: Color) -> VolumeShader[SimpleVolumeVoxelValue] {
     
     VolumeShader[SimpleVolumeVoxelValue] {
-        volume_properties = @|values: SimpleVolumeVoxelValue| make_volume_properties(color_mulf(values.sigma_s, scalar), color_mulf(values.sigma_a, scalar), color_mulf(values.emission, scalar))
+        volume_properties = @|values: SimpleVolumeVoxelValue| make_volume_properties(color_mul(values.sigma_s, color_scattering), color_mul(values.sigma_a, color_absorption), color_mul(values.emission, color_emission))
     }
 }

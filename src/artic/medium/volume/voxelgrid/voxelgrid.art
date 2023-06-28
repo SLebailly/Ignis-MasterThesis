@@ -50,7 +50,7 @@ fn @make_debug_voxel_grid(buffer: DeviceBuffer, _shader: VolumeShader[SimpleVolu
     let height = buffer.load_i32_host(1);
     let depth  = buffer.load_i32_host(2);
 
-    let shader = make_simple_volume_shader(1:f32);
+    let shader = make_simple_volume_shader(color_builtins::white, color_builtins::white, color_builtins::white);
 
     fn @access_data() = VolumeAccessor {
         properties_at_indx = @|x, y, z| {
