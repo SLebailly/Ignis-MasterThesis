@@ -1,21 +1,15 @@
-/**
- * Implementation of Free-path sampling and Transmittance Estimation through Regular tracking
- * Sample the point of the next light-medium collision along the line of flight:
- *  1- compute random sampled value of transmittance between 0 and 1
- *  2- sweep along ray and compute the accumulated optical thickness until it first exceeds the sampled value
- *  3- coordinates where the accumulated optical thickness exceeds random variable is the sampled point.
- * 
- * TODO: remove NaN occurances
- */
+// Implementation of Free-path sampling and Transmittance Estimation through Regular tracking
+// Sample the point of the next light-medium collision along the line of flight:
+//   1- compute random sampled value of transmittance between 0 and 1
+//   2- sweep along ray and compute the accumulated optical thickness until it first exceeds the sampled value
+//   3- coordinates where the accumulated optical thickness exceeds random variable is the sampled point.
 fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: Volume, phase: PhaseFunction, interpolate: bool, max_scattering: i32, volume_marcher_constructor: fn (Vec3, Vec3, Volume, bool) -> VolumeMarcher) -> Medium {
 
     // the values that will be used for clamping the local coordinates
     let loc_min = vec3_expand(VOLUME_BOUNDS_FLT_MIN);
     let loc_max = vec3_expand(1 - VOLUME_BOUNDS_FLT_MIN);
 
-    /**
-     * Next-Flight estimation using regular tracking
-     */
+    // Next-Flight estimation using regular tracking
     fn @next_flight(rnd: RandomGenerator, p_start: Vec3, p_end: Vec3) -> Option[MediumSample] {
         
         // sample value of transmittance (uniformly)
@@ -96,9 +90,7 @@ fn @make_regular_tracking_medium(_ctx: ShadingContext, pms: PointMapperSet, volu
         reject_medium_sample()
     }
 
-    /**
-     * Evaluates the transmittance between two points in the medium
-     */
+    // Evaluates the transmittance between two points in the medium
     fn @eval_tr(p_start: Vec3, p_end: Vec3) -> Color {
         let l_start  = pms.to_normalized_point(p_start);
         let l_end    = pms.to_normalized_point(p_end);

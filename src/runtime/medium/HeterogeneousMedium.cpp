@@ -119,10 +119,10 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
             std::string shader_params       = "pbrtv_params_" + medium_name;
             const float scalar_density      = mMedium->property("scalar_density" ).getNumber(1.0f);
             const float scalar_emission     = mMedium->property("scalar_emission").getNumber(0.0f);
+            const float scalar_temperature  = mMedium->property("scalar_temperature").getNumber(0.0f);
             const Vector3f color_scattering = mMedium->property("color_scattering").getVector3(Vector3f(0.5f, 0.5f, 0.5f));
             const Vector3f color_absorption = mMedium->property("color_absorption").getVector3(Vector3f(0.8f, 0.8f, 0.8f));
             const Vector3f color_emission   = mMedium->property("color_emission"  ).getVector3(Vector3f(1.0f, 1.0f, 1.0f));
-            const float scalar_temperature  = mMedium->property("scalar_temperature").getNumber(0.0f);
             const float cutoff_temperature  = mMedium->property("cutoff_temperature").getNumber(0.0f);
             const float offset_temperature  = mMedium->property("offset_temperature").getNumber(cutoff_temperature);
 
@@ -197,11 +197,22 @@ void HeterogeneousMedium::serialize(const SerializationInput& input) const
         std::string shader_name  = "vs_" + medium_name;
         size_t res_id = input.Tree.context().registerExternalResource(filename);
         const Vector3f majorant = mMedium->property("majorant").getVector3(Vector3f(10.0f, 10.0f, 10.0f));
-        const float scalar = mMedium->property("scalar_density").getNumber(1.0f);
+        
+        const float scalar_density      = mMedium->property("scalar_density").getNumber(1.0f);
+        const float scalar_absorption   = mMedium->property("scalar_absorption").getNumber(1.0f);
+        const float scalar_scattering   = mMedium->property("scalar_scattering").getNumber(1.0f);
+        const float scalar_emission     = mMedium->property("scalar_emission").getNumber(1.0f);
+        const Vector3f color_scattering = mMedium->property("color_scattering").getVector3(Vector3f(1.0f, 1.0f, 1.0f));
+        const Vector3f color_absorption = mMedium->property("color_absorption").getVector3(Vector3f(1.0f, 1.0f, 1.0f));
+        const Vector3f color_emission   = mMedium->property("color_emission"  ).getVector3(Vector3f(1.0f, 1.0f, 1.0f));
+
+        const Vector3f scalar_color_scattering = Vector3f(color_scattering[0] * scalar_density * scalar_scattering, color_scattering[1] * scalar_density * scalar_scattering, color_scattering[2] * scalar_density * scalar_scattering);
+        const Vector3f scalar_color_absorption = Vector3f(color_absorption[0] * scalar_density * scalar_absorption, color_absorption[1] * scalar_density * scalar_absorption, color_absorption[2] * scalar_density * scalar_absorption);
+        const Vector3f scalar_color_emission   = Vector3f(color_emission[0]   * scalar_density * scalar_emission,   color_emission[1]   * scalar_density * scalar_emission,   color_emission[2]   * scalar_density * scalar_emission);
 
         input.Stream << input.Tree.pullHeader()
             << "  let " << buffer_name    << " = device.load_buffer_by_id(" << res_id << ");" << std::endl
-            << "  let " << shader_name    << " = make_simple_volume_shader(" << scalar << ");" << std::endl
+            << "  let " << shader_name    << " = make_simple_volume_shader(" << LoaderUtils::inlineColor(scalar_color_scattering) << ", " << LoaderUtils::inlineColor(scalar_color_absorption) << ", " << LoaderUtils::inlineColor(scalar_color_emission) << ");" << std::endl
             << "  let " << volume_name    << " = make_uniform_grid(" << buffer_name << ", " << shader_name << ", " << LoaderUtils::inlineColor(majorant) << ");" << std::endl;
             //<< "  let " << volume_name    << " = make_vacuum_voxel_grid(1:f32);" << std::endl;
     } else {
