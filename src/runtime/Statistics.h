@@ -58,6 +58,11 @@ enum class Quantity {
     CameraRayCount = 0,
     ShadowRayCount,
     BounceRayCount,
+    TraversalSteps,
+    TraversalDimensionUpdates,
+    VolumeScatter,
+    VolumeAbsorption,
+    VolumeNullCollision,
 
     _COUNT
 };

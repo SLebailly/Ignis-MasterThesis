@@ -95,6 +95,7 @@ fn @make_dda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: boo
             m_t_max   = new_t_max;
             m_t_total = new_t_total;
         
+            stats::add_quantity(stats::Quantity::TraversalSteps, 1);
             // return
             (segment, new_t_total)
         }
@@ -200,6 +201,7 @@ fn @make_majorant_dda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpo
             m_t_total  = m_t_max_min;
             m_t_max_min = vec3_min_value(m_t_max);
         
+            stats::add_quantity(stats::Quantity::TraversalSteps, 1);
             // return
             (segment, m_t_total)
         }

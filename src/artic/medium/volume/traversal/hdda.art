@@ -74,6 +74,7 @@ fn @make_hdda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: bo
         next_segment = @|| {
             let (local_props_for_current_dim, local_dim) = accessor.properties_at_indx(m_indx_x, m_indx_y, m_indx_z);
             let local_props = if (local_dim != m_dim) {
+                stats::add_quantity(stats::Quantity::TraversalDimensionUpdates, 1);
                 m_update_dimension()
             } else {
                 local_props_for_current_dim
@@ -128,6 +129,7 @@ fn @make_hdda_marcher(origin: Vec3, ndir: Vec3, volume: Volume, _interpolate: bo
             m_t_max   = new_t_max;
             m_t_total = new_t_total;
         
+            stats::add_quantity(stats::Quantity::TraversalSteps, 1);
             // return
             (segment, new_t_total)
         }
