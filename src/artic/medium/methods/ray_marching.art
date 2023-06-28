@@ -8,22 +8,19 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
     let loc_min = vec3_expand(VOLUME_BOUNDS_FLT_MIN);
     let loc_max = vec3_expand(1 - VOLUME_BOUNDS_FLT_MIN);
 
-    /**
-     * Evaluates the distance (and corresponding optical thickness) travelled along the ray before reaching the sampled transmittance value in the medium
-     */
+    /// * Evaluates the distance (and corresponding optical thickness) travelled along the ray before reaching the sampled transmittance value in the medium
     fn @next_flight(p_start: Vec3, dir_norm: Vec3, sampled_value_tr: f32) -> (f32, Color, VolumeProperties) {
 
-        fn @next_flight_local(local_start: Vec3, local_dir_norm: Vec3, sampled_value_opt: f32) -> (f32, Color, VolumeProperties) {
+        fn @next_flight_local(local_start: Vec3, local_dir_norm: Vec3, sampled_value_opt: f32, local_step_distance: f32) -> (f32, Color, VolumeProperties) {
             
             let mut acc_opt = make_gray_color(0:f32);
 
-            let volume_marcher  = make_fixed_distance_marcher(local_start, local_dir_norm, volume, step_distance, interpolate); //TODO: ensure that origin is within the volume (max 0.9999)
+            let volume_marcher  = make_fixed_distance_marcher(local_start, local_dir_norm, volume, local_step_distance, interpolate); //TODO: ensure that origin is within the volume (max 0.9999)
             while (volume_marcher.has_next()) { // ensure that we are still within the volume
                 
                 // get the values at the current position
                 let (current_segment, current_dist) = volume_marcher.next_segment();
 
-                // total absorption coefficient in the voxel
                 // corresponding optical thickness (sigma_t * distance in the voxel)
                 let opt_thickness_in_vxl = current_segment.local_properties.optical_thickness(current_segment.distance);
 
@@ -67,7 +64,7 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
 
         // the difference between the normalized vector (length 1) and the vector after transformation to local coordinates is the difference in scale between the distance in local and global coordinates
         let scale_diff          = math_builtins::sqrt(loc_dir_len2);
-        let (loc_dist, loc_opt, loc_properties) = if (loc_dir_len2 > flt_eps) { next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_opt * scale_diff) } else { (0:f32, make_gray_color(0:f32), make_vacuum_volume_properties()) };
+        let (loc_dist, loc_opt, loc_properties) = if (loc_dir_len2 > flt_eps) { next_flight_local(loc_start, vec3_normalize(loc_dir), sampled_opt * scale_diff, step_distance * scale_diff) } else { (0:f32, make_gray_color(0:f32), make_vacuum_volume_properties()) };
 
         //transform the local distance and corresponding optical thickness into global distance/optical thickness
         let dist                = if loc_dist >= flt_max { flt_max } else { loc_dist / scale_diff };
@@ -76,19 +73,52 @@ fn @make_ray_marching_medium(_ctx: ShadingContext, pms: PointMapperSet, volume: 
         (dist, opt, loc_properties)
     }
 
-    /**
-     * Evaluates the transmittance between two points in the medium
-     */
+    // Evaluates the transmittance between two points in the medium
     fn @eval_tr(p_start: Vec3, p_end: Vec3) -> Color {
-        let loc_start  = vec3_clamp(pms.to_normalized_point(p_start), loc_min, loc_max);
-        let loc_end    = vec3_clamp(pms.to_normalized_point(p_end),   loc_min, loc_max);
-        let dir_u      = vec3_sub(p_end, p_start);
-        let loc_dir    = vec3_sub(loc_end, loc_start);
-        let scale_diff = math_builtins::sqrt(vec3_len2(dir_u) / math_builtins::fmax(flt_eps, vec3_len2(loc_dir)));
+        let l_start    = pms.to_normalized_point(p_start);
+        let l_end    = pms.to_normalized_point(p_end);
 
-        let local_opt  = eval_optical_thickness(volume, loc_start, loc_end, false);
+        if !volume.is_in_volume(l_start) || !volume.is_in_volume(l_end) {
+            return(color_builtins::white)
+        }
 
-        optical_thickness_to_transmittance(color_mulf(local_opt, scale_diff))
+        let dir        = vec3_sub(p_end, p_start);
+        let dist       = vec3_len(dir);
+        let l_dir      = vec3_sub(l_end, l_start);
+        let l_dist     = vec3_len(l_dir);
+        let l_dir_norm = vec3_divf(l_dir, l_dist);
+        let scale_diff = dist / l_dist;
+
+        let mut acc_opt = make_gray_color(0:f32);
+
+        let volume_marcher  = make_fixed_distance_marcher(l_start, l_dir_norm, volume, step_distance / scale_diff, interpolate); //TODO: ensure that origin is within the volume (max 0.9999)
+        while (volume_marcher.has_next()) { // ensure that we are still within the volume
+            
+            // get the values at the current position
+            let (current_segment, l_current_dist) = volume_marcher.next_segment();
+            
+            // global distance travelled in the scene
+            let current_dist = l_current_dist * scale_diff;
+            if current_dist < dist {
+                // corresponding optical thickness (sigma_t * distance in the voxel)
+                let opt_thickness_in_vxl = current_segment.local_properties.optical_thickness(current_segment.distance * scale_diff);
+                // add the optical thickness to the total
+                acc_opt = color_add(acc_opt, opt_thickness_in_vxl);
+            } else {
+                // ray-marcher went to far -> back-tracking
+                let previous_dist = current_dist - (current_segment.distance * scale_diff);
+                let remaining_dist = dist - previous_dist;
+
+                // corresponding optical thickness (sigma_t * distance in the voxel)
+                let opt_thickness_in_vxl = current_segment.local_properties.optical_thickness(remaining_dist);
+                // add the optical thickness to the total
+                acc_opt = color_add(acc_opt, opt_thickness_in_vxl);
+                
+                // terminate march
+                return(optical_thickness_to_transmittance(acc_opt))
+            } 
+        }
+        optical_thickness_to_transmittance(acc_opt)
     }
 
 
