@@ -290,6 +290,8 @@ std::string Statistics::dump(size_t totalMS, size_t iter, bool verbose) const
     table.addRow({ "  |-TotalRays", dumpQuantity(mQuantities[(size_t)Quantity::CameraRayCount] + mQuantities[(size_t)Quantity::BounceRayCount] + mQuantities[(size_t)Quantity::ShadowRayCount]) });
     table.addRow({ "  |-VolumeTraversal - StepCount", dumpQuantity(mQuantities[(size_t)Quantity::TraversalSteps]) });
     table.addRow({ "  |-VolumeTraversal - DimensionUpdates", dumpQuantity(mQuantities[(size_t)Quantity::TraversalDimensionUpdates]) });
+    table.addRow({ "  |-VolumeTraversal - VolumeValueSample", dumpQuantity(mQuantities[(size_t)Quantity::VolumeValueSample]) });
+    table.addRow({ "  |-VolumeTraversal - TreeTraversal", dumpQuantity(mQuantities[(size_t)Quantity::VolumeTreeTraversal]) });
     table.addRow({ "  |-VolumeEvents - Scatter", dumpQuantity(mQuantities[(size_t)Quantity::VolumeScatter]) });
     table.addRow({ "  |-VolumeEvents - Absorption", dumpQuantity(mQuantities[(size_t)Quantity::VolumeAbsorption]) });
     table.addRow({ "  |-VolumeEvents - NullCollisions", dumpQuantity(mQuantities[(size_t)Quantity::VolumeNullCollision]) });

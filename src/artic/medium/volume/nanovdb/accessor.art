@@ -75,7 +75,7 @@ fn @top_down_access[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32, 
 
     // If no root tile was found with the key, return background color
     if let Option[RootTileAccessor[ValueT]]::Some(root_tile_accessor) = root_node_accessor.access_tile_by_key(root_tile_key, root_tiles_amount) { // = 800 (320 Hex)
-
+        stats::add_quantity(stats::Quantity::VolumeTreeTraversal, 1);
         if min_dim > DIM_UPPER {
             let accessor = GenericNodeAccessor[ValueT] {
                 get_minimum  = root_node_accessor.get_minimum,
@@ -104,7 +104,7 @@ fn @top_down_access[ValueT, StatsT](tree: NanoVDBTree[ValueT, StatsT], (i: i32, 
         };
         return(accessor, make_sparse_upper_path())
     };
-    
+    stats::add_quantity(stats::Quantity::VolumeTreeTraversal, 1);
     // Root was sparse
     let accessor = GenericNodeAccessor[ValueT] {
         get_minimum  = root_node_accessor.get_background,
@@ -124,7 +124,7 @@ fn @td_leaf_access[ValueT, StatsT](
     min_dim: i32,
     (upper_node_pair: KeyAddressPair[u64], lower_node_pair: KeyAddressPair[i32], leaf_node_pair: KeyAddressPair[i32])
 ) -> (GenericNodeAccessor[ValueT], AccessPath) {
-
+    stats::add_quantity(stats::Quantity::VolumeTreeTraversal, 1);
     if min_dim > DIM_VOXEL {
         let accessor = GenericNodeAccessor[ValueT] {
             get_minimum  = leaf_node_accessor.get_minimum,
@@ -140,6 +140,7 @@ fn @td_leaf_access[ValueT, StatsT](
     let path        = make_voxel_path(upper_node_pair, lower_node_pair, leaf_node_pair);
     // If the vxl has a value, return the voxel value else return the background value
     if leaf_node_accessor.tile_has_value(voxel_index) {
+        stats::add_quantity(stats::Quantity::VolumeTreeTraversal, 1);
         // return the value of the vxl
         let accessor = GenericNodeAccessor[ValueT] {
             get_minimum  = @|| leaf_node_accessor.get_value(voxel_index),
@@ -170,6 +171,7 @@ fn @td_lower_access[ValueT, StatsT](
     (upper_node_pair: KeyAddressPair[u64], lower_node_pair: KeyAddressPair[i32])
 ) -> (GenericNodeAccessor[ValueT], AccessPath) {
 
+    stats::add_quantity(stats::Quantity::VolumeTreeTraversal, 1);
     if min_dim > DIM_LEAF {
         let accessor = GenericNodeAccessor[ValueT] {
             get_minimum  = lower_node_accessor.get_minimum,
@@ -223,6 +225,7 @@ fn @td_upper_access[ValueT, StatsT](
     upper_node_pair: KeyAddressPair[u64]
 ) -> (GenericNodeAccessor[ValueT], AccessPath) {
 
+    stats::add_quantity(stats::Quantity::VolumeTreeTraversal, 1);
     if min_dim > DIM_LOWER {
         let accessor = GenericNodeAccessor[ValueT] {
             get_minimum  = upper_node_accessor.get_minimum,

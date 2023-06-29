@@ -134,6 +134,7 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
         
         VolumeAccessor {
             properties_at_indx = @|i, j, k| {
+                stats::add_quantity(stats::Quantity::VolumeValueSample, 1);
                 let (value_d, path_d) = cache_path_get_value_density(i, j, k);
                 let temp_and_path_option = cache_path_get_value_temperature_option(i, j, k);
                 if let Option[(f32, AccessPath)]::Some((value_t, path_t)) = temp_and_path_option {
@@ -144,7 +145,8 @@ fn @make_nvdb_volume_f32(buffer_density: DeviceBuffer, buffer_temperature_option
                 }
             },
             sparse_maj_at_indx = @|i, j, k, maj_dim| {
-                //TODO: potentially cache the access path for later reuse
+                stats::add_quantity(stats::Quantity::VolumeValueSample, 1);
+                
                 let (access_d, density_path) = if let Option[AccessPath]::Some(previous_path_d) = last_density_path {
                     bottom_up_access(tree_density, to_nvdb_index(clamp_index(i, j, k)), maj_dim, previous_path_d)
                 } else {

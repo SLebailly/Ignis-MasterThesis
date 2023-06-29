@@ -15,7 +15,9 @@ enum Quantity {
     TraversalDimensionUpdates,
     VolumeScatter,
     VolumeAbsorption,
-    VolumeNullCollision
+    VolumeNullCollision,
+    VolumeTreeTraversal,
+    VolumeValueSample
 }
 
 enum Section {
@@ -73,6 +75,8 @@ fn @add_quantity(q: Quantity, value: i32) -> () {
         Quantity::VolumeScatter       => super::ignis_stats_add(5, value),
         Quantity::VolumeAbsorption    => super::ignis_stats_add(6, value),
         Quantity::VolumeNullCollision => super::ignis_stats_add(7, value),
+        Quantity::VolumeTreeTraversal => super::ignis_stats_add(8, value),
+        Quantity::VolumeValueSample   => super::ignis_stats_add(9, value),
     }
 }
 

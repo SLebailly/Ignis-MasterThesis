@@ -63,6 +63,8 @@ enum class Quantity {
     VolumeScatter,
     VolumeAbsorption,
     VolumeNullCollision,
+    VolumeTreeTraversal,
+    VolumeValueSample,
 
     _COUNT
 };

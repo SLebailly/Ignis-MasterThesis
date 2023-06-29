@@ -217,6 +217,7 @@ fn @make_volume_path_renderer(max_path_len: i32, _min_path_len: i32, light_selec
                     let emission    = color_mul(medium_sample.properties.coeff_absorption, medium_sample.properties.emitted_radiance); 
                     let new_contrib = color_divf(color_mul(medium_sample.color, emission), p_a); /* weighted with Pdf of absorption/emission event!*/
                 
+                    stats::add_quantity(stats::Quantity::VolumeAbsorption, 1);
                     framebuffer.splat(ctx.pixel, color_mul(new_contrib, pt.contrib));
                     return(Option[Ray]::None)
                 } else if r < p_a + p_s {
@@ -226,6 +227,7 @@ fn @make_volume_path_renderer(max_path_len: i32, _min_path_len: i32, light_selec
                     let contrib       = color_mul(pt.contrib, path_contrib);
     
                     let rr_prob      = russian_roulette_pbrt(color_mulf(contrib, pt.eta * pt.eta), 0.95);
+                    stats::add_quantity(stats::Quantity::VolumeScatter, 1);
     
                     if rnd.next_f32() >= rr_prob {
                         return(Option[Ray]::None)
@@ -255,6 +257,7 @@ fn @make_volume_path_renderer(max_path_len: i32, _min_path_len: i32, light_selec
                         inv_pdf = inv_pdf,
                         contrib = contrib
                     };
+                    stats::add_quantity(stats::Quantity::VolumeNullCollision, 1);
                     $sample_rec(medium_sample.pos)
                 }
             } else {

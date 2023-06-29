@@ -16,6 +16,8 @@ fn @make_density_grid(buffer: DeviceBuffer, shader: VolumeShader[NanoVDBVolumeVa
     
             // every Voxel consists of 2 f32
             let value_d     = buffer.load_f32(4 + (2*i));
+            stats::add_quantity(stats::Quantity::VolumeTreeTraversal, 1);
+            stats::add_quantity(stats::Quantity::VolumeValueSample, 1);
             let value_t_opt = if (has_temp) {
                 make_option(buffer.load_f32(4 + (2*i) + 1))
             } else {

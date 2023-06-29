@@ -167,10 +167,15 @@ int main(int argc, char** argv)
 
                 auto ticks = std::chrono::high_resolution_clock::now();
 
-                timer_render.start();
-                runtime->step();
+                if (totalIter == 0) {
+                    // Dont start the timer for the first iteration as it takes a lot longer than subsequent frames
+                    runtime->step();
+                } else {
+                    timer_render.start();
+                    runtime->step();
+                    timer_render.stop();
+                }
                 ++totalIter;
-                timer_render.stop();
 
                 auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - ticks).count();
 
