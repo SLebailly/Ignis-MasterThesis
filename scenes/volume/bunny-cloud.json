@@ -1,7 +1,7 @@
 {
 	"technique": {
 		"type": "volpath",
-		"max_depth": 50,
+		"max_depth": 3,
 		"nee": false
 	},
 	"camera": {
@@ -40,14 +40,14 @@
 			"name": "Medium",
 			"filename": "nvdb/bunny_cloud.nvdb",
 
-			// Data representation parameter
+			// Data representation parameter, can be sparse or uniform
 			"grid_type": "sparse",
 
 			// Method parameters
-			"method": "regular",
-			"marcher": "HDDA",
-			"majorant_dimension": 8,
-			"step_distance": 0.0001,
+			"method": "regular",     // regular, ray_marching or delta_tracking
+			"marcher": "HDDA",       // DDA or HDDA (applicable only for regular tracking)
+			"step_distance": 0.0125, // step distance (applicable only for ray marching)
+			"majorant_dimension": 8, // dimension on which the DDA will compute the majorant (applicable only for delta tracking on sparse grids)
 
 			// medium parameters (will change output)
 			"max_scattering": 3,

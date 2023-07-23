@@ -1,7 +1,7 @@
 {
 	"technique": {
 		"type": "volpath",
-		"max_depth": 4,
+		"max_depth": 3,
 		"nee": false
 	},
 	"camera": {
@@ -42,18 +42,18 @@
 			"name": "Medium",
 			"filename": "nvdb/fire.nvdb",
 
-			// Data representation parameter
+			// Data representation parameter, can be sparse or uniform
 			"grid_type": "sparse",
 
 			// Method parameters
-			"method": "delta_tracking",
-			"marcher": "HDDA",
-			"majorant_dimension": 128,
-			"step_distance": 0.0001,
+			"method": "regular",       // regular, ray_marching or delta_tracking
+			"marcher": "DDA",          // DDA or HDDA (applicable only for regular tracking)
+			"step_distance": 0.0125,   // step distance (applicable only for ray marching)
+			"majorant_dimension": 8,   // dimension on which the DDA will compute the majorant (applicable only for delta tracking on sparse grids)
 
 			// medium parameters (will change output)
 			"scalar_density": 1400,
-			"max_scattering":     1,
+			"max_scattering": 1,
 
 			// Volume definition - do not change
 			"grid_temperature": "temperature",
